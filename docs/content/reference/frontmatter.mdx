@@ -1,0 +1,59 @@
+---
+title: Frontmatter
+description: The page metadata schema.
+---
+
+# Frontmatter
+
+Every page accepts the following frontmatter. All fields are optional.
+
+<ParameterTable
+  parameters={[
+    { name: "title", type: "string", description: "Page title." },
+    { name: "description", type: "string", description: "Page summary." },
+    {
+      name: "type",
+      type: "string",
+      description: "Content type (default: doc).",
+    },
+    {
+      name: "slug",
+      type: "string",
+      description: "Override the generated slug.",
+    },
+    {
+      name: "draft",
+      type: "boolean",
+      description: "Exclude from production builds.",
+    },
+  ]}
+/>
+
+## Sidebar
+
+```yaml
+sidebar:
+  label: Install
+  order: 2
+  icon: Download
+  hidden: false
+```
+
+## SEO
+
+```yaml
+seo:
+  title: Install Blume
+  image: /og/install.png
+  noindex: false
+```
+
+## Search
+
+```yaml
+search:
+  exclude: false
+  tags: [api]
+```
+
+Schemas are exported from `blume/schema` for editor and migration tooling.

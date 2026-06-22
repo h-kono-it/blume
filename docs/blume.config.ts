@@ -1,0 +1,19 @@
+import { defineConfig } from "blume";
+
+export default defineConfig({
+  ai: {
+    llmsTxt: true,
+  },
+  content: {
+    root: "content",
+  },
+  deployment: {
+    site: "https://blume.dev",
+  },
+  description:
+    "Open-source, markdown-first documentation powered by Astro and Vite.",
+  theme: {
+    accent: "teal",
+  },
+  title: "Blume",
+});

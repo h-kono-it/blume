@@ -1,0 +1,57 @@
+---
+title: Navigation
+description: Generate sidebars from files, folder meta, or config.
+---
+
+# Navigation
+
+Blume generates the sidebar from your file system, then lets you refine it.
+
+## Folder meta
+
+Add `_meta.json` to a directory to set its title, icon, order, and explicit
+page ordering:
+
+```json
+{
+  "title": "Guides",
+  "order": 2,
+  "pages": ["configuration", "navigation", "deployment"]
+}
+```
+
+## Ordering rules
+
+Order priority, highest first:
+
+<Steps>
+  <Step title="Config sidebar">
+    An explicit `navigation.sidebar` in config.
+  </Step>
+  <Step title="Folder meta pages">The `pages` array in `_meta.json`.</Step>
+  <Step title="Frontmatter">`sidebar.order` on a page.</Step>
+  <Step title="File system">Numeric prefixes, then title.</Step>
+</Steps>
+
+## Tabs
+
+Top-level sections render as header tabs:
+
+```ts
+navigation: {
+  tabs: [
+    { label: "Docs", path: "/" },
+    { label: "API", path: "/api" },
+  ],
+}
+```
+
+## Hidden pages
+
+```yaml
+sidebar:
+  hidden: true
+```
+
+Hidden pages still build and have URLs, but are excluded from the sidebar and
+previous/next pagination.

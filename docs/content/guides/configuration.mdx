@@ -1,0 +1,40 @@
+---
+title: Configuration
+description: Configure Blume with blume.config.ts.
+---
+
+# Configuration
+
+Blume reads `blume.config.ts` from your project root. Every field is optional.
+
+```ts
+import { defineConfig } from "blume";
+
+export default defineConfig({
+  title: "My Docs",
+  description: "Docs powered by Blume.",
+  content: { root: "docs" },
+  theme: { accent: "teal", radius: "md", mode: "system" },
+  search: { provider: "pagefind" },
+  ai: { llmsTxt: true },
+  deployment: { output: "static", site: "https://docs.example.com" },
+  redirects: [{ from: "/old", to: "/new" }],
+});
+```
+
+## Precedence
+
+From lowest to highest priority:
+
+<Steps>
+  <Step title="Blume defaults">Sensible defaults for every field.</Step>
+  <Step title="blume.config.ts">Your project configuration.</Step>
+  <Step title="Folder meta">`_meta.json` files for nav groups.</Step>
+  <Step title="Page frontmatter">Per-page overrides.</Step>
+</Steps>
+
+## Deployment
+
+`deployment.output` defaults to `static`. Server-only features (like Ask AI)
+require `output: "server"` and an adapter, and a static build fails clearly if
+they are enabled.

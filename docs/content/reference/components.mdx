@@ -1,0 +1,62 @@
+---
+title: Components
+description: The built-in MDX component library.
+---
+
+# Components
+
+Blume ships an accessible, themeable component set available in any MDX page —
+no imports required.
+
+## Callout
+
+<Callout type="info" title="Info">
+  Use for neutral context.
+</Callout>
+<Callout type="warning">Use for warnings.</Callout>
+<Callout type="success">Use for confirmations.</Callout>
+
+```mdx
+<Callout type="warning" title="Heads up">
+  This API is experimental.
+</Callout>
+```
+
+## Cards
+
+<CardGroup cols={2}>
+  <Card title="Guides" href="/guides/configuration" icon="book-open">
+    Task-focused walkthroughs.
+  </Card>
+  <Card title="CLI" href="/reference/cli" icon="rocket">
+    Command reference.
+  </Card>
+</CardGroup>
+
+## Steps
+
+<Steps>
+  <Step title="Install">Add Blume.</Step>
+  <Step title="Write">Author Markdown.</Step>
+  <Step title="Ship">Build and deploy.</Step>
+</Steps>
+
+## Tabs
+
+<Tabs>
+  <Tab title="bun">`bun add blume`</Tab>
+  <Tab title="npm">`npm install blume`</Tab>
+</Tabs>
+
+## Accordion
+
+<Accordion title="Is the core theme React-free?">
+  Yes. Interactive bits like tabs and search are vanilla custom elements. React
+  is only enabled when you add an island.
+</Accordion>
+
+## API reference
+
+`Endpoint`, `ParameterTable`, `RequestExample`, `ResponseExample`, and
+`AuthMethod` power API docs. Generate them from an OpenAPI spec with
+`blume import openapi`.

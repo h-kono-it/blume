@@ -13,6 +13,12 @@
         "vitest": "^3.0.0",
       },
     },
+    "docs": {
+      "name": "@blume/docs",
+      "dependencies": {
+        "blume": "workspace:*",
+      },
+    },
     "examples/basic": {
       "name": "@blume-examples/basic",
       "dependencies": {
@@ -119,6 +125,8 @@
     "@babel/types": ["@babel/types@7.29.7", "", { "dependencies": { "@babel/helper-string-parser": "^7.29.7", "@babel/helper-validator-identifier": "^7.29.7" } }, "sha512-4zBIxpPzowiZpusoFkyGVwakdRJUyuH5PxQ/PrqghfdFWWasvnCdPfQXHrenDai+gyLARulZjZowCOj6fjT4pA=="],
 
     "@blume-examples/basic": ["@blume-examples/basic@workspace:examples/basic"],
+
+    "@blume/docs": ["@blume/docs@workspace:docs"],
 
     "@capsizecss/unpack": ["@capsizecss/unpack@4.0.1", "", { "dependencies": { "fontkitten": "^1.0.3" } }, "sha512-CuNiSqg7+e1cO/GjffyMOm5Tt2jUF9CWHHnvQ/UkqvtkGfHdgwEC0wpmq7fkN3gxwpRnrAN0WzO3vREKmNolMQ=="],
 

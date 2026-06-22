@@ -1,0 +1,38 @@
+---
+title: Installation
+description: Install Blume and create the minimum project surface.
+---
+
+# Installation
+
+Add Blume to a new or existing project.
+
+<Tabs>
+  <Tab title="bun">Run `bun add blume`.</Tab>
+  <Tab title="npm">Run `npm install blume`.</Tab>
+  <Tab title="pnpm">Run `pnpm add blume`.</Tab>
+</Tabs>
+
+## Scaffold a project
+
+```bash
+blume init
+```
+
+This creates the minimum surface:
+
+```txt
+docs/
+  index.mdx
+blume.config.ts
+```
+
+<Callout type="tip">
+  Blume works regardless of your package manager, and never requires you to set
+  up Astro or Tailwind yourself.
+</Callout>
+
+## Requirements
+
+- Node.js 20 or newer
+- A `docs/` folder with at least one `.md` or `.mdx` file

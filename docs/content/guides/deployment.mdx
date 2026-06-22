@@ -1,0 +1,41 @@
+---
+title: Deployment
+description: Ship static docs anywhere, or server output via adapters.
+---
+
+# Deployment
+
+## Static
+
+The default. `blume build` writes `dist/` — deploy it to any static host.
+
+```bash
+blume build
+```
+
+Static builds include local search, `sitemap.xml` (when `deployment.site` is
+set), redirects, and `llms.txt`.
+
+## Server
+
+For dynamic features, switch to server output and pick an adapter:
+
+```ts
+deployment: {
+  output: "server",
+  adapter: "vercel", // vercel | node | netlify | cloudflare
+}
+```
+
+## Redirects
+
+```ts
+redirects: [{ from: "/old", to: "/new", status: 301 }];
+```
+
+Static builds emit redirect pages; server builds handle them at request time.
+
+## Diagnostics
+
+Every build prints a summary of the output mode, adapter, search provider,
+redirect count, sitemap and llms status, and any enabled server features.

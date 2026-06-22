@@ -1,0 +1,60 @@
+---
+title: Customization
+description: Override components, add React islands, and custom pages.
+---
+
+# Customization
+
+Blume scales from zero config to full ownership.
+
+## Component overrides
+
+Create `components.ts` and replace any built-in component:
+
+```ts
+import { defineComponents } from "blume";
+import Callout from "./components/Callout.astro";
+
+export default defineComponents({
+  mdx: { Callout },
+});
+```
+
+## React islands
+
+Drop a `.tsx` component anywhere and Blume auto-enables React. Wrap it in an
+`.astro` file with a hydration directive to use it in MDX:
+
+```astro
+---
+import Counter from "./Counter.tsx";
+---
+<Counter client:load />
+```
+
+Register the wrapper as an MDX override and use `<Counter />` in any page.
+
+## Custom pages
+
+`.astro` files under `pages/` are mounted as routes, keeping their location so
+relative imports and `getStaticPaths` work. Access project data through the
+`blume:data` module.
+
+## Registry
+
+Install Blume-owned source components into your project:
+
+```bash
+blume add feedback
+```
+
+## Eject
+
+When you need full control:
+
+```bash
+blume eject --yes
+```
+
+Eject promotes the generated runtime into a normal Astro project. The `blume`
+package stays importable.

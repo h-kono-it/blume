@@ -1,0 +1,39 @@
+---
+title: AI
+description: LLM-friendly outputs and an optional Ask AI assistant.
+---
+
+# AI
+
+AI features are optional, and static docs stay static when they are disabled.
+
+## llms.txt
+
+Generate `llms.txt` (a compact index) and `llms-full.txt` (the full Markdown
+corpus) on build:
+
+```ts
+ai: {
+  llmsTxt: true;
+}
+```
+
+These are written to your output and help coding agents consume your docs.
+
+## Ask AI
+
+Add an in-page assistant backed by an Astro endpoint and the AI SDK:
+
+```ts
+ai: {
+  ask: { enabled: true, model: "openai/gpt-4.1-mini" },
+}
+```
+
+<Callout type="warning">
+  Ask AI requires server output. A static build fails with a clear message if it
+  is enabled, telling you to set `deployment.output` to `server`.
+</Callout>
+
+Model strings use the Vercel AI Gateway, so no provider-specific SDK is required
+for the default path.

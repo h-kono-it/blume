@@ -1,0 +1,37 @@
+---
+title: Search
+description: Local, static-friendly search with Pagefind.
+---
+
+# Search
+
+Blume builds a local [Pagefind](https://pagefind.app) index over your built
+site — no hosted infrastructure required.
+
+```ts
+search: {
+  provider: "pagefind",
+  indexing: { includeHiddenPages: false },
+}
+```
+
+## How it works
+
+<Steps>
+  <Step title="Build">Astro renders your docs to HTML.</Step>
+  <Step title="Index">Blume runs Pagefind over the output.</Step>
+  <Step title="Search">The header search modal loads the local index.</Step>
+</Steps>
+
+Press <Badge variant="accent">⌘K</Badge> (or `/`) to open search.
+
+## Excluding pages
+
+Only content marked indexable is searched. Exclude a page with frontmatter:
+
+```yaml
+search:
+  exclude: true
+```
+
+Hidden pages are excluded unless `search.indexing.includeHiddenPages` is set.

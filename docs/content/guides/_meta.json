@@ -1,0 +1,14 @@
+{
+  "title": "Guides",
+  "order": 3,
+  "pages": [
+    "configuration",
+    "content",
+    "navigation",
+    "theming",
+    "customization",
+    "search",
+    "ai",
+    "deployment"
+  ]
+}

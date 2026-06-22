@@ -1,0 +1,37 @@
+---
+title: Introduction
+description: Blume is an open-source, markdown-first documentation framework powered by Astro and Vite.
+sidebar:
+  label: Introduction
+  order: 0
+---
+
+# Blume
+
+Blume is an open-source documentation framework: drop Markdown or MDX into a
+folder, run `blume dev`, and get a production-grade docs site with navigation,
+search, theming, and a rich component library — no app boilerplate.
+
+> Mintlify's authoring DX, Astro/Vite performance, and full open-source ownership.
+
+<CardGroup cols={2}>
+  <Card title="Installation" href="/installation" icon="rocket">
+    Add Blume to a project in one command.
+  </Card>
+  <Card title="Quickstart" href="/quickstart" icon="book-open">
+    Write your first page and run the dev server.
+  </Card>
+</CardGroup>
+
+## Why Blume
+
+- **Zero-boilerplate authoring.** A folder of docs is a complete project.
+- **Static-first.** Fast, cacheable output by default; opt into server features.
+- **Astro-first theme.** The core theme ships no client JavaScript.
+- **Own your output.** `blume eject` produces a normal Astro project.
+
+## How it works
+
+The Blume CLI discovers your content, builds a content graph, generates a hidden
+Astro project under `.blume/`, and runs Astro for dev and build. The generated
+runtime is an implementation detail until you choose to eject.

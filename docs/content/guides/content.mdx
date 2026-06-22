@@ -1,0 +1,49 @@
+---
+title: Writing content
+description: Author docs with Markdown, MDX, and frontmatter.
+---
+
+# Writing content
+
+Content lives under your content root (`docs/` by default). Files map to routes:
+
+| File                       | Route              |
+| -------------------------- | ------------------ |
+| `docs/index.mdx`           | `/`                |
+| `docs/getting-started.mdx` | `/getting-started` |
+| `docs/api/auth.mdx`        | `/api/auth`        |
+
+## Numeric prefixes
+
+Prefix files to control order without affecting the URL:
+
+```txt
+01-introduction.mdx  ->  /introduction
+02-installation.mdx  ->  /installation
+```
+
+## Group folders
+
+Wrap a folder name in parentheses to group pages in the sidebar without adding a
+URL segment:
+
+```txt
+docs/(internal)/security.mdx  ->  /security
+```
+
+## Frontmatter
+
+```yaml
+---
+title: Installation
+description: Install Blume.
+sidebar:
+  label: Install
+  order: 2
+draft: false
+---
+```
+
+<Callout type="info">
+  Drafts render in `blume dev` but are excluded from `blume build` output.
+</Callout>

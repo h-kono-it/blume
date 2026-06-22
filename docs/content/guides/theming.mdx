@@ -1,0 +1,43 @@
+---
+title: Theming
+description: Customize the look with config tokens and theme.css.
+---
+
+# Theming
+
+Blume's default theme is token-driven and works in light and dark mode without
+any setup.
+
+## Config tokens
+
+```ts
+theme: {
+  accent: "teal",   // a named preset or any CSS color
+  radius: "md",     // none | sm | md | lg
+  mode: "system",   // system | light | dark
+}
+```
+
+## theme.css
+
+Add a `theme.css` to your project to override any CSS variable. It layers after
+Blume defaults and config tokens:
+
+```css
+:root {
+  --blume-accent: oklch(0.68 0.14 180);
+  --blume-radius: 0.5rem;
+}
+
+:root[data-theme="dark"] {
+  --blume-background: oklch(0.16 0 0);
+}
+```
+
+## Cascade order
+
+<Steps>
+  <Step title="Base">Blume reset and component styles.</Step>
+  <Step title="Config">Tokens compiled from `theme` config.</Step>
+  <Step title="theme.css">Your overrides win.</Step>
+</Steps>

@@ -1,0 +1,30 @@
+---
+title: CLI
+description: The Blume command-line interface.
+---
+
+# CLI
+
+```bash
+blume <command> [options]
+```
+
+## Commands
+
+| Command                       | Description                                      |
+| ----------------------------- | ------------------------------------------------ |
+| `blume init`                  | Scaffold a minimal project.                      |
+| `blume dev`                   | Start the dev server with hot reload.            |
+| `blume build`                 | Build the static (or server) site.               |
+| `blume preview`               | Preview the last build.                          |
+| `blume add <item>`            | Install a source component from the registry.    |
+| `blume import openapi <spec>` | Generate API pages from an OpenAPI spec.         |
+| `blume migrate <tool>`        | Migrate from Mintlify, Starlight, or Fumadocs.   |
+| `blume eject`                 | Promote the runtime into a standalone Astro app. |
+| `blume doctor`                | Diagnose config and content problems.            |
+
+## Common flags
+
+- `blume dev --host --port <n> --open`
+- `blume build --strict` — fail on diagnostics.
+- `blume eject --yes` — skip the confirmation prompt.
