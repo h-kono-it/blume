@@ -19,10 +19,19 @@ interface Props {
   themeMode: "system" | "light" | "dark";
   searchEnabled: boolean;
   indexable: boolean;
+  ogImage?: string | null;
 }
 
-const { site, navigation, page, headings, themeMode, searchEnabled, indexable } =
-  Astro.props;
+const {
+  site,
+  navigation,
+  page,
+  headings,
+  themeMode,
+  searchEnabled,
+  indexable,
+  ogImage,
+} = Astro.props;
 
 const tocHeadings = headings.filter((h) => h.depth >= 2 && h.depth <= 3);
 const pageTitle = page.title ? `${page.title} - ${site.title}` : site.title;
@@ -45,6 +54,17 @@ const toggleScript = `document.addEventListener("click",(e)=>{const t=e.target.c
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{pageTitle}</title>
     {description && <meta name="description" content={description} />}
+    <meta property="og:title" content={pageTitle} />
+    {description && <meta property="og:description" content={description} />}
+    {
+      ogImage && (
+        <>
+          <meta property="og:image" content={ogImage} />
+          <meta name="twitter:image" content={ogImage} />
+          <meta name="twitter:card" content="summary_large_image" />
+        </>
+      )
+    }
     <script is:inline set:html={initialThemeScript} />
   </head>
   <body>

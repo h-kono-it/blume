@@ -35,6 +35,7 @@ blume build
 - **Customization** — component overrides, React islands, custom pages, theme
   tokens and `theme.css`, and a source-component registry (`blume add`).
 - **API docs** — `blume import openapi` generates editable reference pages.
+- **OG images** — per-page Open Graph images rendered at build with Takumi.
 - **AI** — `llms.txt`/`llms-full.txt` and an optional Ask AI assistant.
 - **Migration** — `blume migrate mintlify | starlight | fumadocs`.
 - **Eject** — `blume eject` produces a standalone Astro project.

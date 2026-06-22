@@ -251,6 +251,12 @@ const redirectSchema = z
   })
   .strict();
 
+const ogConfigSchema = z
+  .object({
+    enabled: z.boolean().default(false),
+  })
+  .strict();
+
 /** Full user-facing config schema. All fields optional with defaults. */
 export const blumeConfigSchema = z
   .object({
@@ -261,6 +267,7 @@ export const blumeConfigSchema = z
     description: z.string().optional(),
     logo: logoConfigSchema.optional(),
     navigation: navigationConfigSchema.default({}),
+    og: ogConfigSchema.default({}),
     redirects: z.array(redirectSchema).default([]),
     search: searchConfigSchema.default({}),
     theme: themeConfigSchema.default({}),

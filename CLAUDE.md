@@ -25,7 +25,8 @@ written (HMR-friendly).
 `cli` commands · `core` config/content/graph/navigation/manifest/diagnostics ·
 `astro` runtime generation + integration · `components` Astro/React UI ·
 `theme` tokens/CSS/icons/palette · `search` Pagefind · `registry` add + eject ·
-`migrate` migrators · `openapi` import · `ai` llms.txt + Ask AI endpoint.
+`migrate` migrators · `openapi` import · `ai` llms.txt + Ask AI endpoint ·
+`og` Takumi-rendered Open Graph images.
 
 ## Conventions
 

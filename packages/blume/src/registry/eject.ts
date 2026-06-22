@@ -10,6 +10,7 @@ import {
   catchAllPageTemplate,
   contentConfigTemplate,
   envTemplate,
+  ogEndpointTemplate,
   runtimeTsconfigTemplate,
   userComponentsTemplate,
 } from "../astro/templates.ts";
@@ -94,6 +95,13 @@ export const eject = async (root: string): Promise<string[]> => {
         config.ai.ask?.model ?? "openai/gpt-4.1-mini"
       ),
       path: join(srcDir, "pages", "api", "ask.ts"),
+    });
+  }
+
+  if (config.og.enabled) {
+    files.push({
+      content: ogEndpointTemplate(),
+      path: join(srcDir, "pages", "og", "[...slug].png.ts"),
     });
   }
 

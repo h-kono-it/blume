@@ -8,6 +8,9 @@ export default defineConfig({
     site: "https://docs.example.com",
   },
   description: "Example documentation built with Blume.",
+  og: {
+    enabled: true,
+  },
   redirects: [{ from: "/intro", to: "/" }],
   theme: {
     accent: "teal",

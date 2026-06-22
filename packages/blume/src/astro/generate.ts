@@ -12,6 +12,7 @@ import {
   catchAllPageTemplate,
   contentConfigTemplate,
   envTemplate,
+  ogEndpointTemplate,
   runtimePackageTemplate,
   runtimeTsconfigTemplate,
   userComponentsTemplate,
@@ -52,7 +53,9 @@ export const buildRuntimeData = (project: BlumeProject): string => {
     config: {
       description: config.description,
       logo: config.logo ?? null,
+      og: { enabled: config.og.enabled },
       search: { enabled: config.search.provider !== "none" },
+      site: config.deployment.site ?? null,
       theme: config.theme,
       title: config.title,
     },
@@ -119,6 +122,13 @@ export const generateRuntime = async (
     await writeIfChanged(
       join(srcDir, "pages", "api", "ask.ts"),
       askEndpointTemplate(config.ai.ask?.model ?? "openai/gpt-4.1-mini")
+    );
+  }
+
+  if (config.og.enabled) {
+    await writeIfChanged(
+      join(srcDir, "pages", "og", "[...slug].png.ts"),
+      ogEndpointTemplate()
     );
   }
 
