@@ -18,7 +18,7 @@ import {
 } from "./templates.ts";
 
 /** Heuristically detect whether the project uses React islands. */
-const detectNeedsReact = async (root: string): Promise<boolean> => {
+export const detectNeedsReact = async (root: string): Promise<boolean> => {
   const matches = await glob(["**/*.{tsx,jsx}"], {
     cwd: root,
     ignore: ["**/node_modules/**", "**/.blume/**", "**/dist/**"],
@@ -46,7 +46,7 @@ const writeIfChanged = async (
 };
 
 /** Serialize the content graph into the data module the runtime consumes. */
-const buildRuntimeData = (project: BlumeProject): string => {
+export const buildRuntimeData = (project: BlumeProject): string => {
   const { config, graph, manifest } = project;
   const data = {
     config: {
