@@ -21,7 +21,11 @@ export const devCommand = defineCommand({
   },
   async run({ args }) {
     const root = process.cwd();
-    const project = await prepareProject({ root, strict: args.strict });
+    const project = await prepareProject({
+      mode: "dev",
+      root,
+      strict: args.strict,
+    });
 
     const server = await dev({
       logLevel: "info",
@@ -49,7 +53,7 @@ export const devCommand = defineCommand({
       }
       timer = setTimeout(async () => {
         try {
-          const next = await scanProject(root);
+          const next = await scanProject(root, { mode: "dev" });
           await generateRuntime(next);
         } catch (error) {
           logger.error(`Regeneration failed: ${(error as Error).message}`);

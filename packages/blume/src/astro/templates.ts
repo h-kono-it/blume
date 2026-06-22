@@ -92,12 +92,10 @@ import RootLayout from "blume/components/layout/RootLayout.astro";
 import data from "../generated/data.json";
 
 export function getStaticPaths() {
-  return data.routes
-    .filter((route) => !route.draft)
-    .map((route) => ({
-      params: { slug: route.path === "/" ? undefined : route.path.slice(1) },
-      props: { entryId: route.id, route: route.path, title: route.title },
-    }));
+  return data.routes.map((route) => ({
+    params: { slug: route.path === "/" ? undefined : route.path.slice(1) },
+    props: { entryId: route.id, route: route.path, title: route.title },
+  }));
 }
 
 const { entryId, route, title } = Astro.props;

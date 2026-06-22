@@ -15,7 +15,11 @@ export const buildCommand = defineCommand({
   },
   async run({ args }) {
     const root = process.cwd();
-    const project = await prepareProject({ root, strict: args.strict });
+    const project = await prepareProject({
+      mode: "build",
+      root,
+      strict: args.strict,
+    });
 
     logger.start(
       `Building ${project.graph.pages.length} page(s) (${project.config.deployment.output} output)`

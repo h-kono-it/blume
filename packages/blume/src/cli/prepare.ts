@@ -1,11 +1,12 @@
 import { generateRuntime } from "../astro/generate.ts";
 import { BlumeError, hasErrors } from "../core/diagnostics.ts";
 import { scanProject } from "../core/project-graph.ts";
-import type { BlumeProject } from "../core/project-graph.ts";
+import type { BlumeProject, BuildMode } from "../core/project-graph.ts";
 import { logger, reportDiagnostics } from "./log.ts";
 
 export interface PrepareOptions {
   root: string;
+  mode?: BuildMode;
   strict?: boolean;
 }
 
@@ -18,7 +19,7 @@ export const prepareProject = async (
 ): Promise<BlumeProject> => {
   let project: BlumeProject;
   try {
-    project = await scanProject(options.root);
+    project = await scanProject(options.root, { mode: options.mode });
   } catch (error) {
     if (error instanceof BlumeError) {
       reportDiagnostics([error.diagnostic], options.root);

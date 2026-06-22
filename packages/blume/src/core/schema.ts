@@ -148,10 +148,36 @@ const navTabSchema = z
   })
   .strict();
 
+/** A node in an explicit sidebar config: a page reference or a group/link. */
+export type SidebarItemConfig =
+  | string
+  | {
+      label: string;
+      href?: string;
+      icon?: string;
+      collapsed?: boolean;
+      items?: SidebarItemConfig[];
+    };
+
+const sidebarItemSchema: z.ZodType<SidebarItemConfig> = z.lazy(() =>
+  z.union([
+    z.string(),
+    z
+      .object({
+        collapsed: z.boolean().optional(),
+        href: z.string().optional(),
+        icon: iconName.optional(),
+        items: z.array(sidebarItemSchema).optional(),
+        label: z.string(),
+      })
+      .strict(),
+  ])
+);
+
 const navigationConfigSchema = z
   .object({
     /** Explicit sidebar override; when omitted the sidebar is generated. */
-    sidebar: z.array(z.unknown()).optional(),
+    sidebar: z.array(sidebarItemSchema).optional(),
     tabs: z.array(navTabSchema).optional(),
   })
   .strict();

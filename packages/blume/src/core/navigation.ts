@@ -1,0 +1,272 @@
+import { extname } from "pathe";
+
+import type { FolderMeta, SidebarItemConfig } from "./schema.ts";
+import type { NavNode, Navigation, NavTab, PageRecord } from "./types.ts";
+
+const NUMERIC_PREFIX = /^(?<order>\d+)[-_.]/u;
+const GROUP_FOLDER = /^\((?<label>.+)\)$/u;
+const WORD_SPLIT = /[-_]/u;
+
+const humanize = (segment: string): string =>
+  segment
+    .replace(NUMERIC_PREFIX, "")
+    .split(WORD_SPLIT)
+    .filter(Boolean)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+
+const numericOrder = (segment: string): number => {
+  const value = segment.match(NUMERIC_PREFIX)?.groups?.order;
+  return value ? Number.parseInt(value, 10) : Number.POSITIVE_INFINITY;
+};
+
+/** The nav key of a raw path segment: group label or numeric-stripped name. */
+const segmentKey = (raw: string): string => {
+  const group = raw.match(GROUP_FOLDER)?.groups?.label;
+  return (group ?? raw).replace(NUMERIC_PREFIX, "");
+};
+
+interface MutablePage {
+  kind: "page";
+  key: string;
+  label: string;
+  route: string;
+  icon?: string;
+  badge?: string;
+  pageId: string;
+  order: number;
+}
+
+interface MutableGroup {
+  kind: "group";
+  key: string;
+  path: string;
+  label: string;
+  icon?: string;
+  collapsed?: boolean;
+  order: number;
+  children: MutableNode[];
+  index: Map<string, MutableGroup>;
+}
+
+type MutableNode = MutablePage | MutableGroup;
+
+const createGroup = (
+  key: string,
+  path: string,
+  label: string,
+  order: number
+): MutableGroup => ({
+  children: [],
+  index: new Map(),
+  key,
+  kind: "group",
+  label,
+  order,
+  path,
+});
+
+const ensureGroup = (
+  parent: MutableGroup,
+  rawSegment: string
+): MutableGroup => {
+  const existing = parent.index.get(rawSegment);
+  if (existing) {
+    return existing;
+  }
+  const path = parent.path ? `${parent.path}/${rawSegment}` : rawSegment;
+  const group = createGroup(
+    segmentKey(rawSegment),
+    path,
+    humanize(rawSegment.match(GROUP_FOLDER)?.groups?.label ?? rawSegment),
+    numericOrder(rawSegment)
+  );
+  parent.index.set(rawSegment, group);
+  parent.children.push(group);
+  return group;
+};
+
+const pageOrder = (page: PageRecord, filename: string): number => {
+  if (page.meta.sidebar.order !== undefined) {
+    return page.meta.sidebar.order;
+  }
+  if (filename.replace(extname(filename), "") === "index") {
+    return Number.NEGATIVE_INFINITY;
+  }
+  return numericOrder(filename);
+};
+
+/** Apply folder meta (title/order/icon/collapsed and explicit page order). */
+const applyFolderMeta = (
+  group: MutableGroup,
+  folderMeta: Map<string, FolderMeta>
+): void => {
+  const meta = folderMeta.get(group.path);
+  if (meta) {
+    group.label = meta.title ?? group.label;
+    group.icon = meta.icon ?? group.icon;
+    group.order = meta.order ?? group.order;
+    group.collapsed = meta.collapsed ?? group.collapsed;
+
+    if (meta.pages) {
+      const rank = new Map(meta.pages.map((key, i) => [key, i]));
+      for (const child of group.children) {
+        const position = rank.get(child.key);
+        if (position !== undefined) {
+          child.order = position;
+        }
+      }
+    }
+  }
+
+  for (const child of group.children) {
+    if (child.kind === "group") {
+      applyFolderMeta(child, folderMeta);
+    }
+  }
+};
+
+const sortNodes = (nodes: MutableNode[]): void => {
+  nodes.sort((a, b) => {
+    if (a.order !== b.order) {
+      return a.order - b.order;
+    }
+    return a.label.localeCompare(b.label);
+  });
+  for (const node of nodes) {
+    if (node.kind === "group") {
+      sortNodes(node.children);
+    }
+  }
+};
+
+const toNavNode = (node: MutableNode): NavNode => {
+  if (node.kind === "page") {
+    return {
+      badge: node.badge,
+      icon: node.icon,
+      kind: "page",
+      label: node.label,
+      pageId: node.pageId,
+      route: node.route,
+    };
+  }
+  return {
+    children: node.children.map(toNavNode),
+    collapsed: node.collapsed,
+    icon: node.icon,
+    kind: "group",
+    label: node.label,
+  };
+};
+
+/** Build the sidebar tree from the file system and folder meta. */
+const buildFileSystemSidebar = (
+  pages: PageRecord[],
+  folderMeta: Map<string, FolderMeta>
+): NavNode[] => {
+  const root = createGroup("", "", "", 0);
+
+  for (const page of pages) {
+    if (page.meta.sidebar.hidden) {
+      continue;
+    }
+    const parts = page.id.split("/");
+    const filename = parts.at(-1) ?? page.id;
+    const dirs = parts.slice(0, -1);
+
+    let parent = root;
+    for (const dir of dirs) {
+      parent = ensureGroup(parent, dir);
+    }
+
+    parent.children.push({
+      badge: page.meta.sidebar.badge,
+      icon: page.meta.sidebar.icon,
+      key: segmentKey(filename.replace(extname(filename), "")),
+      kind: "page",
+      label: page.meta.sidebar.label ?? page.title,
+      order: pageOrder(page, filename),
+      pageId: page.id,
+      route: page.route,
+    });
+  }
+
+  applyFolderMeta(root, folderMeta);
+  sortNodes(root.children);
+  return root.children.map(toNavNode);
+};
+
+const normalizeRef = (ref: string): string => {
+  if (ref === "index") {
+    return "/";
+  }
+  const withSlash = ref.startsWith("/") ? ref : `/${ref}`;
+  return withSlash.endsWith("/index") ? withSlash.slice(0, -6) : withSlash;
+};
+
+/** Build the sidebar tree from an explicit config spec. */
+const buildConfigSidebar = (
+  items: SidebarItemConfig[],
+  byRoute: Map<string, PageRecord>
+): NavNode[] => {
+  const nodes: NavNode[] = [];
+
+  for (const item of items) {
+    if (typeof item === "string") {
+      const page = byRoute.get(normalizeRef(item));
+      if (page) {
+        nodes.push({
+          icon: page.meta.sidebar.icon,
+          kind: "page",
+          label: page.meta.sidebar.label ?? page.title,
+          pageId: page.id,
+          route: page.route,
+        });
+      }
+      continue;
+    }
+
+    if (item.items) {
+      nodes.push({
+        children: buildConfigSidebar(item.items, byRoute),
+        collapsed: item.collapsed,
+        icon: item.icon,
+        kind: "group",
+        label: item.label,
+      });
+      continue;
+    }
+
+    if (item.href) {
+      nodes.push({
+        icon: item.icon,
+        kind: "page",
+        label: item.label,
+        pageId: "",
+        route: item.href,
+      });
+    }
+  }
+
+  return nodes;
+};
+
+/** Build the complete navigation model from pages, meta, and config. */
+export const buildNavigation = (
+  pages: PageRecord[],
+  options: {
+    folderMeta: Map<string, FolderMeta>;
+    tabs?: NavTab[];
+    sidebar?: SidebarItemConfig[];
+  }
+): Navigation => {
+  const tabs = options.tabs ?? [];
+
+  if (options.sidebar) {
+    const byRoute = new Map(pages.map((page) => [page.route, page]));
+    return { sidebar: buildConfigSidebar(options.sidebar, byRoute), tabs };
+  }
+
+  return { sidebar: buildFileSystemSidebar(pages, options.folderMeta), tabs };
+};
