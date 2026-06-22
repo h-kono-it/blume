@@ -2,6 +2,7 @@ import { generateRuntime } from "../astro/generate.ts";
 import { BlumeError, hasErrors } from "../core/diagnostics.ts";
 import { scanProject } from "../core/project-graph.ts";
 import type { BlumeProject, BuildMode } from "../core/project-graph.ts";
+import { serverFeatures } from "../core/server-features.ts";
 import { logger, reportDiagnostics } from "./log.ts";
 
 export interface PrepareOptions {
@@ -26,6 +27,29 @@ export const prepareProject = async (
       process.exit(1);
     }
     throw error;
+  }
+
+  // Hard gate: server-only features cannot ship in a static build.
+  if (
+    options.mode === "build" &&
+    project.config.deployment.output === "static"
+  ) {
+    const features = serverFeatures(project.config);
+    if (features.length > 0) {
+      reportDiagnostics(
+        [
+          {
+            code: "BLUME_SERVER_FEATURE_REQUIRED",
+            message: `${features.join(", ")} require server output, but deployment.output is "static".`,
+            severity: "error",
+            suggestion:
+              'Set deployment: { output: "server", adapter: "vercel" } in blume.config.ts.',
+          },
+        ],
+        options.root
+      );
+      process.exit(1);
+    }
   }
 
   const hadErrors = reportDiagnostics(project.diagnostics, options.root);

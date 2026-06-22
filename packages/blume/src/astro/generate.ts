@@ -7,6 +7,7 @@ import type { BlumeProject } from "../core/project-graph.ts";
 import { buildThemeCss } from "../theme/palette.ts";
 import { discoverPages } from "./pages.ts";
 import {
+  askEndpointTemplate,
   astroConfigTemplate,
   catchAllPageTemplate,
   contentConfigTemplate,
@@ -85,10 +86,12 @@ export const generateRuntime = async (
   const srcDir = join(out, "src");
   const dataPath = join(srcDir, "generated", "data.json");
 
-  const [pages, needsReact] = await Promise.all([
+  const askEnabled = config.ai.ask?.enabled ?? false;
+  const [pages, detectedReact] = await Promise.all([
     context.pagesRoot ? discoverPages(context.pagesRoot) : Promise.resolve([]),
     detectNeedsReact(context.root),
   ]);
+  const needsReact = detectedReact || askEnabled;
 
   const structural = await Promise.all([
     writeIfChanged(
@@ -104,13 +107,20 @@ export const generateRuntime = async (
     ),
     writeIfChanged(
       join(srcDir, "pages", "[...slug].astro"),
-      catchAllPageTemplate({ themeFile: context.themeFile })
+      catchAllPageTemplate({ askEnabled, themeFile: context.themeFile })
     ),
     writeIfChanged(
       join(srcDir, "generated", "components.ts"),
       userComponentsTemplate(context.componentsFile)
     ),
   ]);
+
+  if (askEnabled) {
+    await writeIfChanged(
+      join(srcDir, "pages", "api", "ask.ts"),
+      askEndpointTemplate(config.ai.ask?.model ?? "openai/gpt-4.1-mini")
+    );
+  }
 
   await writeIfChanged(
     join(srcDir, "generated", "theme.css"),

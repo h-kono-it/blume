@@ -80,6 +80,7 @@ const toggleScript = `document.addEventListener("click",(e)=>{const t=e.target.c
         )
       }
       <div class="blume-header__spacer"></div>
+      <slot name="ask" />
       {searchEnabled && <Search />}
       <button
         aria-label="Toggle color theme"

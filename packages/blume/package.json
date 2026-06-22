@@ -34,7 +34,9 @@
   },
   "dependencies": {
     "@astrojs/mdx": "^4.3.0",
+    "@astrojs/node": "^9.0.0",
     "@astrojs/react": "^4.2.0",
+    "ai": "^5.0.0",
     "astro": "^5.13.0",
     "citty": "^0.1.6",
     "consola": "^3.4.0",

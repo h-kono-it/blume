@@ -1,7 +1,10 @@
+import { writeFile } from "node:fs/promises";
+
 import { build } from "astro";
 import { defineCommand } from "citty";
 import { join } from "pathe";
 
+import { buildLlmsFiles } from "../../ai/llms.ts";
 import { buildSearchIndex } from "../../search/build.ts";
 import { logger } from "../log.ts";
 import { prepareProject } from "../prepare.ts";
@@ -37,6 +40,15 @@ export const buildCommand = defineCommand({
       logger.start("Building search index");
       const indexed = await buildSearchIndex(distDir);
       logger.success(`Indexed ${indexed} page(s) for search`);
+    }
+
+    if (project.config.ai.llmsTxt) {
+      const { index, full } = await buildLlmsFiles(project);
+      await Promise.all([
+        writeFile(join(distDir, "llms.txt"), index, "utf-8"),
+        writeFile(join(distDir, "llms-full.txt"), full, "utf-8"),
+      ]);
+      logger.success("Generated llms.txt and llms-full.txt");
     }
 
     logger.success(`Built to ${distDir}`);

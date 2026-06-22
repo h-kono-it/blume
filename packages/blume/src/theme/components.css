@@ -525,6 +525,75 @@ a.blume-card:hover {
   font-size: 0.9rem;
 }
 
+/* Ask AI --------------------------------------------------------------- */
+
+.blume-ask {
+  position: relative;
+}
+
+.blume-ask__panel {
+  position: absolute;
+  top: calc(100% + 0.5rem);
+  right: 0;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  width: min(24rem, 90vw);
+  max-height: 70vh;
+  border: 1px solid var(--blume-border);
+  border-radius: var(--blume-radius);
+  background: var(--blume-background);
+  box-shadow: 0 8px 30px oklch(0 0 0 / 0.12);
+  overflow: hidden;
+}
+
+.blume-ask__messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0.85rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.blume-ask__hint {
+  margin: 0;
+  color: var(--blume-muted-foreground);
+  font-size: 0.9rem;
+}
+
+.blume-ask__message {
+  padding: 0.5rem 0.7rem;
+  border-radius: var(--blume-radius);
+  font-size: 0.9rem;
+  white-space: pre-wrap;
+}
+
+.blume-ask__message--user {
+  align-self: flex-end;
+  background: color-mix(in oklch, var(--blume-accent) 16%, transparent);
+}
+
+.blume-ask__message--assistant {
+  align-self: flex-start;
+  background: var(--blume-muted);
+}
+
+.blume-ask__form {
+  display: flex;
+  gap: 0.5rem;
+  padding: 0.6rem;
+  border-top: 1px solid var(--blume-border);
+}
+
+.blume-ask__form .blume-search-input {
+  flex: 1;
+  border: 1px solid var(--blume-border);
+  border-radius: var(--blume-radius);
+  padding: 0.4rem 0.6rem;
+  font-size: 0.9rem;
+}
+
 /* File tree ------------------------------------------------------------ */
 
 .blume-file-tree {
