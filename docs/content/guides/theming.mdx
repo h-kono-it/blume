@@ -10,7 +10,7 @@ any setup.
 
 ## Config tokens
 
-```ts
+```ts blume.config.ts
 theme: {
   accent: "teal",   // a named preset or any CSS color
   radius: "md",     // none | sm | md | lg
@@ -23,7 +23,7 @@ theme: {
 Add a `theme.css` to your project to override any CSS variable. It layers after
 Blume defaults and config tokens:
 
-```css
+```css theme.css
 :root {
   --blume-accent: oklch(0.68 0.14 180);
   --blume-radius: 0.5rem;

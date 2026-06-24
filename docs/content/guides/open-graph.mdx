@@ -14,7 +14,7 @@ stay fast.
 
 Open Graph images are off by default. Turn them on in `blume.config.ts`:
 
-```ts
+```ts blume.config.ts
 og: {
   enabled: true,
 }
@@ -48,7 +48,7 @@ They're prerendered, so they ship as static files even in server mode.
 `og:image` needs an absolute URL to preview on most platforms. Set
 `deployment.site` so Blume can build full URLs:
 
-```ts
+```ts blume.config.ts
 deployment: {
   site: "https://docs.example.com",
 }
@@ -94,7 +94,7 @@ seo:
 The card's mark and underline use your theme accent. Named accents (`blue`,
 `green`, `orange`, `pink`, `purple`, `red`, `teal`) and raw hex values both work:
 
-```ts
+```ts blume.config.ts
 theme: {
   accent: "teal",
 }

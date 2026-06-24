@@ -12,7 +12,7 @@ Blume generates the sidebar from your file system, then lets you refine it.
 Add `_meta.json` to a directory to set its title, icon, order, and explicit
 page ordering:
 
-```json
+```json _meta.json
 {
   "title": "Guides",
   "order": 2,
@@ -37,7 +37,7 @@ Order priority, highest first:
 
 Top-level sections render as header tabs:
 
-```ts
+```ts blume.config.ts
 navigation: {
   tabs: [
     { label: "Docs", path: "/" },

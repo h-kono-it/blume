@@ -11,7 +11,7 @@ Blume scales from zero config to full ownership.
 
 Create `components.ts` and replace any built-in component:
 
-```ts
+```ts components.ts
 import { defineComponents } from "blume";
 import Callout from "./components/Callout.astro";
 
@@ -25,7 +25,7 @@ export default defineComponents({
 Drop a `.tsx` component anywhere and Blume auto-enables React. Wrap it in an
 `.astro` file with a hydration directive to use it in MDX:
 
-```astro
+```astro Counter.astro
 ---
 import Counter from "./Counter.tsx";
 ---

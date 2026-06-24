@@ -9,7 +9,7 @@ Blume ships local search with no hosted infrastructure. The default engine is
 [Orama](https://orama.com), which indexes your content graph — so search works
 in `blume dev` (with live updates) and `blume build` alike.
 
-```ts
+```ts blume.config.ts
 search: {
   provider: "orama", // default
   indexing: { includeHiddenPages: false },
@@ -36,7 +36,7 @@ Press <Badge variant="accent">⌘K</Badge> (or `/`) to open search.
 For very large docs, opt into [Pagefind](https://pagefind.app), which indexes
 the built HTML and loads the index in shards on demand:
 
-```ts
+```ts blume.config.ts
 search: {
   provider: "pagefind";
 }

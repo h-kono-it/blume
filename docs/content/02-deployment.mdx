@@ -40,7 +40,7 @@ A static build includes:
 Add `deployment.site` to `blume.config.ts` so sitemaps, canonical tags, and Open
 Graph images resolve to absolute URLs:
 
-```ts
+```ts blume.config.ts
 deployment: {
   site: "https://docs.example.com",
 }
@@ -62,7 +62,7 @@ Serving docs under a path like `example.com/docs`? Set `deployment.base` — com
 for GitHub Pages project sites. Internal links and assets are rewritten to
 include the base path.
 
-```ts
+```ts blume.config.ts
 deployment: {
   base: "/docs",
 }
@@ -73,7 +73,7 @@ deployment: {
 Static output covers most docs. Switch to server output when you need
 request-time features — most notably the [Ask AI](/guides/ai) endpoint:
 
-```ts
+```ts blume.config.ts
 deployment: {
   output: "server",
   adapter: "vercel",
@@ -102,7 +102,7 @@ API key. See the [AI guide](/guides/ai) for setup.
 
 Map old URLs to new ones in `blume.config.ts`:
 
-```ts
+```ts blume.config.ts
 redirects: [{ from: "/old", to: "/new", status: 301 }];
 ```
 

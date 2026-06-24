@@ -12,7 +12,7 @@ AI features are optional, and static docs stay static when they are disabled.
 Generate `llms.txt` (a compact index) and `llms-full.txt` (the full Markdown
 corpus) on build:
 
-```ts
+```ts blume.config.ts
 ai: {
   llmsTxt: true;
 }
@@ -24,7 +24,7 @@ These are written to your output and help coding agents consume your docs.
 
 Add an in-page assistant backed by an Astro endpoint and the AI SDK:
 
-```ts
+```ts blume.config.ts
 ai: {
   ask: { enabled: true, model: "openai/gpt-4.1-mini" },
 }
