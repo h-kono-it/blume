@@ -89,7 +89,7 @@ export const astroConfigTemplate = (options: {
     ? `import { blumeIntegration } from "blume/astro";\n`
     : "";
 
-  const integrations = ["mdx()"];
+  const integrations = ["mdx({ processor: blumeMdxProcessor() })"];
   if (needsReact) {
     integrations.push("react()");
   }
@@ -101,6 +101,7 @@ export const astroConfigTemplate = (options: {
 import { defineConfig } from "astro/config";
 import mdx from "@astrojs/mdx";
 import tailwindcss from "@tailwindcss/vite";
+import { blumeMdxProcessor } from "blume/markdown";
 ${reactImport}${blumeImport}${adapterImport}
 export default defineConfig({
   root: ${JSON.stringify(context.outDir)},

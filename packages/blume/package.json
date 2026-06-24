@@ -25,6 +25,7 @@
     "./runtime": "./src/runtime/index.ts",
     "./astro": "./src/astro/index.ts",
     "./og": "./src/og/index.ts",
+    "./markdown": "./src/markdown/index.ts",
     "./components": "./src/components/index.ts",
     "./components/*": "./src/components/*",
     "./theme/*": "./src/theme/*",
@@ -35,6 +36,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@astrojs/markdown-satteri": "^0.3.2",
     "@astrojs/mdx": "^7.0.0",
     "@astrojs/node": "^11.0.0",
     "@astrojs/react": "^6.0.0",

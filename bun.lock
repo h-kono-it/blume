@@ -5,6 +5,7 @@
     "": {
       "name": "blume-monorepo",
       "devDependencies": {
+        "@astrojs/markdown-satteri": "^0.3.2",
         "@astrojs/mdx": "^7.0.0",
         "@astrojs/node": "^11.0.0",
         "@astrojs/react": "^6.0.0",
@@ -47,6 +48,7 @@
         "blume": "./bin/blume.mjs",
       },
       "dependencies": {
+        "@astrojs/markdown-satteri": "^0.3.2",
         "@astrojs/mdx": "^7.0.0",
         "@astrojs/node": "^11.0.0",
         "@astrojs/react": "^6.0.0",

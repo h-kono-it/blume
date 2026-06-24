@@ -1,0 +1,78 @@
+import { describe, expect, it } from "vitest";
+
+import { toPackageCommands } from "../src/markdown/package-commands.ts";
+
+describe(toPackageCommands, () => {
+  it("treats a bare package list as an install", () => {
+    expect(toPackageCommands("react react-dom")).toStrictEqual({
+      bun: "bun add react react-dom",
+      npm: "npm install react react-dom",
+      pnpm: "pnpm add react react-dom",
+      yarn: "yarn add react react-dom",
+    });
+  });
+
+  it("converts an explicit npm install with a dev flag", () => {
+    expect(toPackageCommands("npm i -D typescript")).toStrictEqual({
+      bun: "bun add -D typescript",
+      npm: "npm install -D typescript",
+      pnpm: "pnpm add -D typescript",
+      yarn: "yarn add -D typescript",
+    });
+  });
+
+  it("normalizes --save-dev to -D", () => {
+    expect(toPackageCommands("npm install --save-dev vitest").pnpm).toBe(
+      "pnpm add -D vitest"
+    );
+  });
+
+  it("handles a bare `npm install` as install-all", () => {
+    expect(toPackageCommands("npm install")).toStrictEqual({
+      bun: "bun install",
+      npm: "npm install",
+      pnpm: "pnpm install",
+      yarn: "yarn install",
+    });
+  });
+
+  it("maps npx to each manager's exec command", () => {
+    expect(toPackageCommands("npx astro add react")).toStrictEqual({
+      bun: "bunx astro add react",
+      npm: "npx astro add react",
+      pnpm: "pnpm dlx astro add react",
+      yarn: "yarn dlx astro add react",
+    });
+  });
+
+  it("maps create/init", () => {
+    expect(toPackageCommands("npm create astro@latest")).toStrictEqual({
+      bun: "bun create astro@latest",
+      npm: "npm create astro@latest",
+      pnpm: "pnpm create astro@latest",
+      yarn: "yarn create astro@latest",
+    });
+  });
+
+  it("routes global installs through yarn global add", () => {
+    expect(toPackageCommands("npm i -g vercel")).toStrictEqual({
+      bun: "bun add -g vercel",
+      npm: "npm install -g vercel",
+      pnpm: "pnpm add -g vercel",
+      yarn: "yarn global add vercel",
+    });
+  });
+
+  it("maps uninstall to remove", () => {
+    expect(toPackageCommands("npm uninstall lodash")).toStrictEqual({
+      bun: "bun remove lodash",
+      npm: "npm uninstall lodash",
+      pnpm: "pnpm remove lodash",
+      yarn: "yarn remove lodash",
+    });
+  });
+
+  it("keeps run scripts on each manager", () => {
+    expect(toPackageCommands("npm run build").yarn).toBe("yarn run build");
+  });
+});

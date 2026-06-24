@@ -26,7 +26,8 @@ written (HMR-friendly).
 `astro` runtime generation + integration · `components` Astro/React UI ·
 `theme` Tailwind v4 entry/tokens/icons/palette · `search` Orama (default, dev + build) + Pagefind opt-in · `registry` add + eject ·
 `migrate` migrators · `openapi` import · `ai` llms.txt + Ask AI endpoint ·
-`og` Takumi-rendered Open Graph images.
+`og` Takumi-rendered Open Graph images · `markdown` Satteri MDAST plugins
+(`package-install` → package-manager tabs) wired into MDX via `blumeMdxProcessor`.
 
 ## Conventions
 
