@@ -9,11 +9,18 @@ sidebar:
 
 Blume ships a set of MDX components you can use in any page.
 
-<Callout type="info" title="Heads up">
-  Callouts support info, tip, success, warning, and danger types.
-</Callout>
+## Callouts
 
-<Callout type="warning">This API is experimental.</Callout>
+Callouts are written as directives — `:::note` (or `:::tip`, `:::success`,
+`:::warning`, `:::danger`), with an optional `[title]`:
+
+:::note[Heads up]
+Callouts support note, info, tip, success, warning, and danger types.
+:::
+
+:::warning
+This API is experimental.
+:::
 
 ## Cards
 
@@ -52,18 +59,6 @@ blume
 ## Typography
 
 Superscript and subscript: H~2~O is water; E = mc^2^ is mass–energy.
-
-## Directives
-
-Callouts can be written as directives instead of components:
-
-:::note
-This `:::note` directive renders as a Callout.
-:::
-
-:::warning[Be careful]
-A directive with a `[label]` title.
-:::
 
 ## Math
 
