@@ -1,39 +1,70 @@
 ---
 title: AI
-description: LLM-friendly outputs and an optional Ask AI assistant.
+description: Machine-readable docs with llms.txt and an optional in-page Ask AI assistant.
 ---
 
 # AI
 
-AI features are optional, and static docs stay static when they are disabled.
+Blume has two AI features, both opt-in: machine-readable docs for external tools
+(`llms.txt`), and an in-page **Ask AI** assistant. Everything is off by default,
+and static docs stay fully static until you turn a feature on.
 
 ## llms.txt
 
-Generate `llms.txt` (a compact index) and `llms-full.txt` (the full Markdown
-corpus) on build:
+Emit machine-readable versions of your docs that coding agents and chat
+assistants can consume:
 
 ```ts blume.config.ts
 ai: {
-  llmsTxt: true;
+  llmsTxt: true,
 }
 ```
 
-These are written to your output and help coding agents consume your docs.
+With this on, `blume build` writes two files to the root of your site:
+
+- **`/llms.txt`** — a compact index: your site title and description, then a
+  linked list of every page with its summary.
+- **`/llms-full.txt`** — the entire corpus: each page's full Markdown body, with
+  its source URL, in one file.
+
+Draft pages are excluded. Set [`deployment.site`](/deployment) so the links and
+source URLs resolve to absolute addresses.
 
 ## Ask AI
 
-Add an in-page assistant backed by an Astro endpoint and the AI SDK:
+Add an assistant that answers reader questions in an in-page chat panel, backed
+by a streaming server endpoint and the [AI SDK](https://ai-sdk.dev):
 
 ```ts blume.config.ts
 ai: {
-  ask: { enabled: true, model: "openai/gpt-4.1-mini" },
+  ask: {
+    enabled: true,
+    model: "openai/gpt-4.1-mini", // default
+  },
 }
 ```
 
-:::warning
-Ask AI requires server output. A static build fails with a clear message if it
-is enabled, telling you to set `deployment.output` to `server`.
-:::
+### Server output required
 
-Model strings use the Vercel AI Gateway, so no provider-specific SDK is required
-for the default path.
+Ask AI is a server route (`POST /api/ask`), so it can't run on a static build.
+Switch to server output and pick an adapter:
+
+```ts blume.config.ts
+deployment: {
+  output: "server",
+  adapter: "vercel",
+}
+```
+
+A static build with Ask AI enabled fails fast with a message telling you to set
+`deployment.output` to `server`. See [Deployment](/deployment) for the adapters.
+
+### Models and credentials
+
+The `model` is a `provider/model` string resolved through the Vercel AI Gateway,
+so you don't install a provider SDK — switch models by changing the string
+(`openai/gpt-4.1-mini`, `anthropic/claude-sonnet-4-5`, and so on).
+
+The gateway reads an API key from your environment (`AI_GATEWAY_API_KEY`), and is
+wired up automatically when you deploy on Vercel. Enabling Ask AI also turns on
+React for the in-page island — see [Customization](/configuration/customization#react-islands).
