@@ -253,6 +253,9 @@ blume-tabs pre,
    rules are unlayered like the base \`pre\` styles, so they win over Tailwind's
    layered utilities (which a class on the panel cannot). */
 blume-tabs [data-blume-tab-panel] > pre {
+  /* Important to beat the astro-code background rule above; the tab container
+     owns the surface, so the code sits directly on it. */
+  background: transparent !important;
   border: 0;
   border-radius: 0;
   margin: 0;
