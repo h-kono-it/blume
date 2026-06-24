@@ -4,6 +4,7 @@ import "blume:theme";
 import Icon from "../Icon.astro";
 import { findBreadcrumbs, flattenPages, getPagination } from "./nav-utils.ts";
 import NavTree from "./NavTree.astro";
+import PageActions from "./PageActions.astro";
 import Search from "./Search.astro";
 
 interface Props {
@@ -185,30 +186,33 @@ const toggleScript = `document.addEventListener("click",(e)=>{const t=e.target.c
           )
         }
       </main>
-      {
-        tocHeadings.length > 0 && (
-          <aside
-            aria-label="Table of contents"
-            class="sticky top-16 hidden h-[calc(100dvh-4rem)] overflow-y-auto px-4 py-10 text-sm xl:block"
-          >
-            <p class="mb-3 font-semibold text-foreground text-sm">
-              On this page
-            </p>
-            <ul class="m-0 list-none p-0">
-              {tocHeadings.map((heading) => (
-                <li style={`padding-left:${(heading.depth - 2) * 0.75}rem`}>
-                  <a
-                    class="block py-1.5 text-muted-foreground transition-colors hover:text-foreground"
-                    href={`#${heading.slug}`}
-                  >
-                    {heading.text}
-                  </a>
-                </li>
-              ))}
-            </ul>
-          </aside>
-        )
-      }
+      <aside
+        aria-label="On this page"
+        class="sticky top-16 hidden h-[calc(100dvh-4rem)] overflow-y-auto px-4 py-10 text-sm xl:block"
+      >
+        {
+          tocHeadings.length > 0 && (
+            <>
+              <p class="mb-3 font-semibold text-foreground text-sm">
+                On this page
+              </p>
+              <ul class="m-0 list-none p-0">
+                {tocHeadings.map((heading) => (
+                  <li style={`padding-left:${(heading.depth - 2) * 0.75}rem`}>
+                    <a
+                      class="block py-1.5 text-muted-foreground transition-colors hover:text-foreground"
+                      href={`#${heading.slug}`}
+                    >
+                      {heading.text}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </>
+          )
+        }
+        <PageActions route={page.route} />
+      </aside>
     </div>
     <button
       aria-label="Close navigation"
