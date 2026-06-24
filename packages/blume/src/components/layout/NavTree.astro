@@ -10,7 +10,7 @@ interface Props {
 const { items, currentRoute } = Astro.props;
 ---
 
-<ul class="m-0 list-none p-0">
+<ul class="m-0 list-none space-y-px p-0">
   {
     items.map((item, index) =>
       item.kind === "page" ? (
