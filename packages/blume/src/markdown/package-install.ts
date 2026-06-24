@@ -1,28 +1,19 @@
+import { codeBlock, jsxAttribute, jsxFlowElement } from "./mdast.ts";
+import type { MdastNode, MdastVisitorContext } from "./mdast.ts";
 import { PACKAGE_MANAGERS, toPackageCommands } from "./package-commands.ts";
 
-/**
- * Minimal structural types for the Satteri MDAST nodes and visitor context we
- * touch. The full types live in `satteri` (a transitive dependency reached only
- * through `@astrojs/markdown-satteri`); we model just what this plugin reads and
- * builds so the package needs no direct dependency on the alpha core.
- */
-interface CodeNode {
+interface CodeNode extends MdastNode {
   lang?: string | null;
-  type: "code";
   value: string;
 }
 
-interface MdastVisitorContext {
-  replaceNode: (node: CodeNode, replacement: unknown) => void;
-}
-
 /** Build an `<Tab title="...">` node wrapping a single highlighted command. */
-const tabNode = (manager: string, command: string) => ({
-  attributes: [{ name: "title", type: "mdxJsxAttribute", value: manager }],
-  children: [{ lang: "bash", meta: null, type: "code", value: command }],
-  name: "Tab",
-  type: "mdxJsxFlowElement",
-});
+const tabNode = (manager: string, command: string) =>
+  jsxFlowElement(
+    "Tab",
+    [jsxAttribute("title", manager)],
+    [codeBlock("bash", command)]
+  );
 
 /**
  * Satteri MDAST plugin that turns a ` ```package-install ` code block into a
@@ -36,14 +27,14 @@ export const packageInstallPlugin = () => ({
       return;
     }
     const commands = toPackageCommands(node.value);
-    ctx.replaceNode(node, {
-      attributes: [],
-      children: PACKAGE_MANAGERS.map((manager) =>
-        tabNode(manager, commands[manager])
-      ),
-      name: "Tabs",
-      type: "mdxJsxFlowElement",
-    });
+    ctx.replaceNode(
+      node,
+      jsxFlowElement(
+        "Tabs",
+        [],
+        PACKAGE_MANAGERS.map((manager) => tabNode(manager, commands[manager]))
+      )
+    );
   },
   name: "blume-package-install",
 });

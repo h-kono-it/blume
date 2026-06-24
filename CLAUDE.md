@@ -28,9 +28,9 @@ written (HMR-friendly).
 `migrate` migrators · `openapi` import · `ai` llms.txt + Ask AI endpoint ·
 `og` Takumi-rendered Open Graph images · `markdown` Satteri processors
 (`blumeMarkdownProcessor` for `.md`, `blumeMdxProcessor` for `.mdx`): curated
-feature set (GFM + frontmatter + smart punctuation on by default, plus
-superscript/subscript) and MDAST plugins (`package-install` → package-manager
-tabs, MDX-only).
+feature set (GFM/frontmatter/smart punctuation/super+subscript) and MDX-only
+MDAST plugins — `package-install` → package-manager tabs, `:::note` directives →
+`<Callout>`, and opt-in KaTeX math (`markdown.math`) → `<Math>`.
 
 ## Conventions
 

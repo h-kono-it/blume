@@ -53,6 +53,27 @@ blume
 
 Superscript and subscript: H~2~O is water; E = mc^2^ is mass–energy.
 
+## Directives
+
+Callouts can be written as directives instead of components:
+
+:::note
+This `:::note` directive renders as a Callout.
+:::
+
+:::warning[Be careful]
+A directive with a `[label]` title.
+:::
+
+## Math
+
+With `markdown.math` enabled, inline math like $a^2 + b^2 = c^2$ and block math
+render with KaTeX:
+
+$$
+\int_0^1 x^2 \,dx = \frac{1}{3}
+$$
+
 ## Accordion
 
 <Accordion title="What is Blume?">

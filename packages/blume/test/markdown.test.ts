@@ -1,6 +1,29 @@
 import { describe, expect, it } from "vitest";
 
+import { calloutTypeFor } from "../src/markdown/directives.ts";
 import { toPackageCommands } from "../src/markdown/package-commands.ts";
+
+describe("calloutTypeFor", () => {
+  it("passes through canonical callout types", () => {
+    expect(calloutTypeFor("note")).toBe("note");
+    expect(calloutTypeFor("warning")).toBe("warning");
+    expect(calloutTypeFor("tip")).toBe("tip");
+  });
+
+  it("resolves aliases", () => {
+    expect(calloutTypeFor("caution")).toBe("warning");
+    expect(calloutTypeFor("error")).toBe("danger");
+    expect(calloutTypeFor("important")).toBe("note");
+  });
+
+  it("is case-insensitive", () => {
+    expect(calloutTypeFor("NOTE")).toBe("note");
+  });
+
+  it("returns null for non-callout directives", () => {
+    expect(calloutTypeFor("details")).toBeNull();
+  });
+});
 
 describe(toPackageCommands, () => {
   it("treats a bare package list as an install", () => {

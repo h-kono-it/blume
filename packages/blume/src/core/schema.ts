@@ -257,6 +257,16 @@ const ogConfigSchema = z
   })
   .strict();
 
+const markdownConfigSchema = z
+  .object({
+    /**
+     * Enable LaTeX math (`$…$` inline, `$$…$$` block) rendered with KaTeX.
+     * Off by default since `$` is common in prose, shell, and code. MDX only.
+     */
+    math: z.boolean().default(false),
+  })
+  .strict();
+
 /** Full user-facing config schema. All fields optional with defaults. */
 export const blumeConfigSchema = z
   .object({
@@ -266,6 +276,7 @@ export const blumeConfigSchema = z
     deployment: deploymentConfigSchema.default({}),
     description: z.string().optional(),
     logo: logoConfigSchema.optional(),
+    markdown: markdownConfigSchema.default({}),
     navigation: navigationConfigSchema.default({}),
     og: ogConfigSchema.default({}),
     redirects: z.array(redirectSchema).default([]),

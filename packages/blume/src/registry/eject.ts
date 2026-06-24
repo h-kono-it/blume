@@ -85,7 +85,10 @@ export const eject = async (root: string): Promise<string[]> => {
       path: join(srcDir, "content.config.ts"),
     },
     {
-      content: catchAllPageTemplate({ askEnabled }),
+      content: catchAllPageTemplate({
+        askEnabled,
+        mathEnabled: config.markdown.math,
+      }),
       path: join(srcDir, "pages", "[...slug].astro"),
     },
     {

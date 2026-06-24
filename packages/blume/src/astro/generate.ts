@@ -184,7 +184,7 @@ export const generateRuntime = async (
     ),
     writeIfChanged(
       join(srcDir, "pages", "[...slug].astro"),
-      catchAllPageTemplate({ askEnabled })
+      catchAllPageTemplate({ askEnabled, mathEnabled: config.markdown.math })
     ),
     writeIfChanged(
       join(srcDir, "generated", "components.ts"),
