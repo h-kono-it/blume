@@ -13,7 +13,7 @@ const external = href?.startsWith("http");
 ---
 
 <Tag
-  class="not-prose block rounded-blume border border-border bg-background p-5 text-inherit transition-colors hover:[&[href]]:border-accent"
+  class="not-prose block rounded-blume border border-border bg-background p-5 text-inherit no-underline! transition-colors hover:[&[href]]:border-accent"
   href={href}
   rel={external ? "noreferrer" : undefined}
   target={external ? "_blank" : undefined}
@@ -25,11 +25,11 @@ const external = href?.startsWith("http");
       </div>
     )
   }
-  <p class="mb-1.5 flex items-center gap-1.5 font-semibold">
+  <p class="mt-0! mb-1.5! flex items-center gap-1.5 font-semibold">
     {title}
     {href && <Icon class="text-muted-foreground" name="arrow-right" size={14} />}
   </p>
-  <div class="text-muted-foreground text-sm [&>:first-child]:mt-0 [&>:last-child]:mb-0">
+  <div class="text-muted-foreground text-sm [&>:first-child]:mt-0! [&>:last-child]:mb-0!">
     <slot />
   </div>
 </Tag>
