@@ -2,6 +2,7 @@ import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 
 import { join, relative } from "pathe";
 
+import { buildRawMarkdown } from "../ai/markdown.ts";
 import { buildRuntimeData, detectNeedsReact } from "../astro/generate.ts";
 import { discoverPages } from "../astro/pages.ts";
 import {
@@ -11,6 +12,7 @@ import {
   contentConfigTemplate,
   envTemplate,
   ogEndpointTemplate,
+  rawMarkdownEndpointTemplate,
   runtimeTsconfigTemplate,
   searchEndpointTemplate,
   userComponentsTemplate,
@@ -38,12 +40,13 @@ export const eject = async (root: string): Promise<string[]> => {
   const genDir = join(srcDir, "generated");
   const askEnabled = config.ai.ask?.enabled ?? false;
 
-  const [pages, needsReactRaw, userTheme] = await Promise.all([
+  const [pages, needsReactRaw, userTheme, rawMarkdown] = await Promise.all([
     context.pagesRoot ? discoverPages(context.pagesRoot) : Promise.resolve([]),
     detectNeedsReact(root),
     context.themeFile
       ? readFile(context.themeFile, "utf-8")
       : Promise.resolve(""),
+    buildRawMarkdown(project),
   ]);
   const needsReact = needsReactRaw || askEnabled;
 
@@ -108,13 +111,23 @@ export const eject = async (root: string): Promise<string[]> => {
       path: join(genDir, "app.css"),
     },
     { content: buildRuntimeData(project), path: join(genDir, "data.json") },
+    {
+      content: `${JSON.stringify(rawMarkdown)}\n`,
+      path: join(genDir, "raw-markdown.json"),
+    },
+    {
+      content: rawMarkdownEndpointTemplate(),
+      path: join(srcDir, "pages", "[...slug].md.ts"),
+    },
+    {
+      content: rawMarkdownEndpointTemplate(),
+      path: join(srcDir, "pages", "[...slug].mdx.ts"),
+    },
   ];
 
   if (askEnabled) {
     files.push({
-      content: askEndpointTemplate(
-        config.ai.ask?.model ?? "openai/gpt-4.1-mini"
-      ),
+      content: askEndpointTemplate(config.ai.ask?.model ?? "openai/gpt-5.5"),
       path: join(srcDir, "pages", "api", "ask.ts"),
     });
   }

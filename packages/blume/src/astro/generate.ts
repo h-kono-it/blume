@@ -13,6 +13,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { dirname, join } from "pathe";
 import { glob } from "tinyglobby";
 
+import { buildRawMarkdown } from "../ai/markdown.ts";
 import type { BlumeProject } from "../core/project-graph.ts";
 import { buildSearchDocuments } from "../search/documents.ts";
 import { tailwindEntryTemplate } from "../theme/entry.ts";
@@ -25,6 +26,7 @@ import {
   contentConfigTemplate,
   envTemplate,
   ogEndpointTemplate,
+  rawMarkdownEndpointTemplate,
   runtimeDependencies,
   runtimePackageTemplate,
   runtimeTsconfigTemplate,
@@ -222,7 +224,7 @@ export const generateRuntime = async (
   if (askEnabled) {
     await writeIfChanged(
       join(srcDir, "pages", "api", "ask.ts"),
-      askEndpointTemplate(config.ai.ask?.model ?? "openai/gpt-4.1-mini")
+      askEndpointTemplate(config.ai.ask?.model ?? "openai/gpt-5.5")
     );
   }
 
@@ -244,6 +246,22 @@ export const generateRuntime = async (
       searchEndpointTemplate()
     );
   }
+
+  const rawMarkdown = await buildRawMarkdown(project);
+  await Promise.all([
+    writeIfChanged(
+      join(srcDir, "generated", "raw-markdown.json"),
+      `${JSON.stringify(rawMarkdown)}\n`
+    ),
+    writeIfChanged(
+      join(srcDir, "pages", "[...slug].md.ts"),
+      rawMarkdownEndpointTemplate()
+    ),
+    writeIfChanged(
+      join(srcDir, "pages", "[...slug].mdx.ts"),
+      rawMarkdownEndpointTemplate()
+    ),
+  ]);
 
   // Data and manifest are not "structural" for Astro; they hot-reload.
   await writeIfChanged(
