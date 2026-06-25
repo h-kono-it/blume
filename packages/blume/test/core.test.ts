@@ -87,6 +87,16 @@ describe("config schema", () => {
       blumeConfigSchema.safeParse({ og: { enabled: true } }).success
     ).toBeFalsy();
   });
+
+  it("accepts a banner string or object, defaulting dismissible to false", () => {
+    expect(blumeConfigSchema.parse({ banner: "Beta" }).banner).toBe("Beta");
+    expect(
+      blumeConfigSchema.parse({ banner: { content: "Hi" } }).banner
+    ).toStrictEqual({ content: "Hi", dismissible: false });
+    expect(
+      blumeConfigSchema.safeParse({ banner: { dismissible: true } }).success
+    ).toBeFalsy();
+  });
 });
 
 describe("astro config template", () => {

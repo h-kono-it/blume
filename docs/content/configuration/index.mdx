@@ -84,6 +84,7 @@ export default defineConfig({
 | `title`       | `"Documentation"` | Site name — shown in the header, page titles, OG cards. |
 | `description` | —                 | Default meta description, used for SEO and OG.          |
 | `logo`        | —                 | Brand logo shown beside the title in the header.        |
+| `banner`      | —                 | Site-wide announcement bar above the header.            |
 
 ### Logo
 
@@ -108,6 +109,29 @@ logo: {
 ```
 
 `href` overrides the logo's link (it defaults to `/`).
+
+### Banner
+
+Show a site-wide announcement bar above the header. Pass a string, or an object
+with a link and a dismiss button:
+
+```ts blume.config.ts
+banner: "Docs are in beta — expect changes.",
+```
+
+```ts blume.config.ts lineNumbers
+banner: {
+  content: "Blume v1 is here!",
+  link: { text: "Read more", href: "/blog/v1" },
+  dismissible: true,
+  id: "v1",
+},
+```
+
+When `dismissible` is on, the bar shows a close button and stays hidden for that
+visitor afterward. The dismissal key defaults to the content text, so editing
+the message brings the banner back; set a stable `id` to keep it dismissed
+across edits.
 
 ## Content
 

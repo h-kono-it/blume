@@ -15,6 +15,7 @@ import { glob } from "tinyglobby";
 
 import { buildRawMarkdown } from "../ai/markdown.ts";
 import type { BlumeProject } from "../core/project-graph.ts";
+import type { ResolvedConfig } from "../core/schema.ts";
 import { buildRssFeeds, renderRssFeed } from "../deploy/rss.ts";
 import { buildSearchDocuments } from "../search/documents.ts";
 import { tailwindEntryTemplate } from "../theme/entry.ts";
@@ -161,6 +162,32 @@ const resolveLogo = (project: BlumeProject): ResolvedLogo | null => {
   return { alt, dark, href, light };
 };
 
+/** The announcement banner shape the runtime consumes. */
+interface ResolvedBanner {
+  content: string;
+  link?: { href: string; text: string };
+  dismissible: boolean;
+  /** Dismissal key: the configured id, else the content itself. */
+  key: string;
+}
+
+/** Normalize the banner config (string shorthand or object) for the runtime. */
+const resolveBanner = (config: ResolvedConfig): ResolvedBanner | null => {
+  const { banner } = config;
+  if (!banner) {
+    return null;
+  }
+  if (typeof banner === "string") {
+    return { content: banner, dismissible: false, key: banner };
+  }
+  return {
+    content: banner.content,
+    dismissible: banner.dismissible,
+    key: banner.id ?? banner.content,
+    link: banner.link,
+  };
+};
+
 /** Serialize the content graph into the data module the runtime consumes. */
 export const buildRuntimeData = (project: BlumeProject): string => {
   const { config, context, graph, manifest } = project;
@@ -180,6 +207,7 @@ export const buildRuntimeData = (project: BlumeProject): string => {
 
   const data = {
     config: {
+      banner: resolveBanner(config),
       description: config.description,
       logo: resolveLogo(project),
       og: { enabled: config.seo.og.enabled },

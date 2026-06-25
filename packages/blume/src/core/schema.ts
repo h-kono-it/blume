@@ -140,6 +140,24 @@ const logoConfigSchema = z.union([
     .strict(),
 ]);
 
+/** Site-wide announcement banner: a string, or text with an optional link. */
+const bannerConfigSchema = z.union([
+  z.string(),
+  z
+    .object({
+      content: z.string(),
+      /** Show a dismiss button; the choice is remembered per visitor. */
+      dismissible: z.boolean().default(false),
+      /** Stable key for remembering dismissal; defaults to the content. */
+      id: z.string().optional(),
+      link: z
+        .object({ href: z.string(), text: z.string() })
+        .strict()
+        .optional(),
+    })
+    .strict(),
+]);
+
 const contentConfigSchema = z
   .object({
     defaultType: z.string().default("doc"),
@@ -316,6 +334,7 @@ export const blumeConfigSchema = z
   .object({
     ai: aiConfigSchema.default({}),
     analytics: analyticsConfigSchema.optional(),
+    banner: bannerConfigSchema.optional(),
     content: contentConfigSchema.default({}),
     deployment: deploymentConfigSchema.default({}),
     description: z.string().optional(),
