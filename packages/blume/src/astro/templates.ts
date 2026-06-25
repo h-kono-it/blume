@@ -105,6 +105,7 @@ export const astroConfigTemplate = (options: {
 import { defineConfig } from "astro/config";
 import mdx from "@astrojs/mdx";
 import tailwindcss from "@tailwindcss/vite";
+import { searchForWorkspaceRoot } from "vite";
 import { blumeMarkdownProcessor, blumeMdxProcessor, codeTitleTransformer } from "blume/markdown";
 ${reactImport}${blumeImport}${adapterImport}
 export default defineConfig({
@@ -136,7 +137,9 @@ export default defineConfig({
     },
     server: {
       fs: {
-        allow: [${JSON.stringify(context.root)}],
+        // The project root plus the workspace root, so hoisted dependencies
+        // (e.g. KaTeX fonts under a monorepo's root node_modules) stay servable.
+        allow: [searchForWorkspaceRoot(${JSON.stringify(context.root)}), ${JSON.stringify(context.root)}],
       },
     },
   },
