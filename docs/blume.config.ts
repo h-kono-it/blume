@@ -17,6 +17,7 @@ export default defineConfig({
     owner: "haydenbleasel",
     repo: "blume",
   },
+  logo: "/logo.svg",
   markdown: {
     math: true,
   },

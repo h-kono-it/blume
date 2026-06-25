@@ -1,4 +1,4 @@
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import {
   mkdir,
   readFile,
@@ -123,6 +123,44 @@ const writeIfChanged = async (
   return true;
 };
 
+/** The logo shape the runtime consumes: an inline SVG or image URL(s). */
+interface ResolvedLogo {
+  svg?: string;
+  light?: string;
+  dark?: string;
+  alt: string;
+  href: string;
+}
+
+/**
+ * Resolve the configured logo. A single SVG is read and inlined so a
+ * `currentColor` logo follows the theme; other images keep their URL for an
+ * `<img>`. The file is looked up under `public/` and the project root.
+ */
+const resolveLogo = (project: BlumeProject): ResolvedLogo | null => {
+  const { logo } = project.config;
+  if (!logo) {
+    return null;
+  }
+  const config = typeof logo === "string" ? { light: logo } : logo;
+  const light = config.light ?? config.dark;
+  const dark = config.dark ?? config.light;
+  const alt = config.alt ?? "";
+  const href = config.href ?? "/";
+
+  if (light && light === dark && light.toLowerCase().endsWith(".svg")) {
+    const rel = light.replace(/^\//u, "");
+    const file = [
+      join(project.context.root, "public", rel),
+      join(project.context.root, rel),
+    ].find((path) => existsSync(path));
+    if (file) {
+      return { alt, href, svg: readFileSync(file, "utf-8") };
+    }
+  }
+  return { alt, dark, href, light };
+};
+
 /** Serialize the content graph into the data module the runtime consumes. */
 export const buildRuntimeData = (project: BlumeProject): string => {
   const { config, context, graph, manifest } = project;
@@ -143,7 +181,7 @@ export const buildRuntimeData = (project: BlumeProject): string => {
   const data = {
     config: {
       description: config.description,
-      logo: config.logo ?? null,
+      logo: resolveLogo(project),
       og: { enabled: config.seo.og.enabled },
       repoUrl,
       search: {

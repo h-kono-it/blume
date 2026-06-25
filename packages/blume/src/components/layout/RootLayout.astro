@@ -10,6 +10,13 @@ import Search from "./Search.astro";
 
 interface Props {
   site: { title: string; description?: string };
+  logo?: {
+    svg?: string;
+    light?: string;
+    dark?: string;
+    alt: string;
+    href: string;
+  } | null;
   navigation: Navigation;
   page: { title: string; description?: string; route: string };
   headings: Heading[];
@@ -32,6 +39,7 @@ interface Props {
 
 const {
   site,
+  logo,
   navigation,
   page,
   headings,
@@ -55,6 +63,14 @@ const {
 const tocHeadings = headings.filter((h) => h.depth >= 2 && h.depth <= 3);
 const pageTitle = page.title ? `${page.title} - ${site.title}` : site.title;
 const description = page.description ?? site.description;
+
+// The logo is resolved upstream: an inline `svg` (so a currentColor mark
+// follows the theme) or image URL(s) for an <img>.
+const logoSvg = logo?.svg;
+const logoLight = logo?.light;
+const logoDark = logo?.dark ?? logo?.light;
+const logoAlt = logo?.alt ?? "";
+const brandHref = logo?.href ?? "/";
 
 const crumbs = findBreadcrumbs(navigation.sidebar, page.route);
 const { prev, next } = getPagination(
@@ -153,8 +169,33 @@ const toggleScript = `document.addEventListener("click",(e)=>{const t=e.target.c
       </button>
       <a
         class="inline-flex items-center gap-2 font-semibold text-foreground text-sm"
-        href="/"
+        href={brandHref}
       >
+        {
+          logoSvg && (
+            <span
+              aria-hidden="true"
+              class="inline-flex h-6 items-center [&>svg]:h-6 [&>svg]:w-auto"
+              set:html={logoSvg}
+            />
+          )
+        }
+        {
+          !logoSvg &&
+            logoLight &&
+            (logoLight === logoDark ? (
+              <img alt={logoAlt} class="h-6 w-auto" src={logoLight} />
+            ) : (
+              <>
+                <img alt={logoAlt} class="h-6 w-auto dark:hidden" src={logoLight} />
+                <img
+                  alt={logoAlt}
+                  class="hidden h-6 w-auto dark:block"
+                  src={logoDark}
+                />
+              </>
+            ))
+        }
         {site.title}
       </a>
       {

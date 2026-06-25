@@ -436,6 +436,7 @@ const canonical =
 
 <RootLayout
   site={{ title: data.config.title, description: data.config.description }}
+  logo={data.config.logo}
   navigation={data.navigation}
   page={{ title: seo.title ?? title, description: seo.description ?? frontmatter.description, route }}
   headings={headings}
