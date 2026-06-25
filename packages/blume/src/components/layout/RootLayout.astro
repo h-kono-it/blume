@@ -211,14 +211,14 @@ const bannerScript = banner?.dismissible
         <Icon name="menu" size={20} />
       </button>
       <a
-        class="inline-flex items-center gap-2 font-semibold text-foreground text-sm"
+        class="inline-flex items-center gap-2 font-semibold text-base text-foreground"
         href={brandHref}
       >
         {
           logoSvg && (
             <span
               aria-hidden="true"
-              class="inline-flex h-6 items-center [&>svg]:h-6 [&>svg]:w-auto"
+              class="inline-flex h-5 items-center [&>svg]:h-5 [&>svg]:w-auto"
               set:html={logoSvg}
             />
           )
@@ -227,13 +227,13 @@ const bannerScript = banner?.dismissible
           !logoSvg &&
             logoLight &&
             (logoLight === logoDark ? (
-              <img alt={logoAlt} class="h-6 w-auto" src={logoLight} />
+              <img alt={logoAlt} class="h-5 w-auto" src={logoLight} />
             ) : (
               <>
-                <img alt={logoAlt} class="h-6 w-auto dark:hidden" src={logoLight} />
+                <img alt={logoAlt} class="h-5 w-auto dark:hidden" src={logoLight} />
                 <img
                   alt={logoAlt}
-                  class="hidden h-6 w-auto dark:block"
+                  class="hidden h-5 w-auto dark:block"
                   src={logoDark}
                 />
               </>
