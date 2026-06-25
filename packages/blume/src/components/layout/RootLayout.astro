@@ -128,13 +128,13 @@ const toggleScript = `document.addEventListener("click",(e)=>{const t=e.target.c
     <div class="mx-auto grid grid-cols-1 items-start lg:grid-cols-[17.5rem_minmax(0,1fr)] xl:grid-cols-[17.5rem_minmax(0,1fr)_16rem]">
       <aside
         aria-label="Primary"
-        class="fixed top-16 left-0 z-[35] h-[calc(100dvh-4rem)] w-64 max-w-[80vw] -translate-x-[105%] overflow-y-auto border-border border-r bg-background px-5 py-6 transition-transform [:where([data-blume-nav-open])_&]:translate-x-0 lg:sticky lg:z-auto lg:w-auto lg:max-w-none lg:translate-x-0 lg:border-r-0 lg:bg-transparent lg:px-4"
+        class="fixed top-16 left-0 z-[35] h-[calc(100dvh-4rem)] w-64 max-w-[80vw] -translate-x-[105%] overflow-y-auto border-border border-r bg-background px-5 pt-4 pb-6 transition-transform [:where([data-blume-nav-open])_&]:translate-x-0 lg:sticky lg:z-auto lg:w-auto lg:max-w-none lg:translate-x-0 lg:border-r-0 lg:bg-transparent lg:px-4"
       >
         <nav>
           <NavTree currentRoute={page.route} items={navigation.sidebar} />
         </nav>
       </aside>
-      <main class="min-w-0 px-6 py-10 lg:px-8 xl:px-10" id="blume-content">
+      <main class="min-w-0 px-6 pt-6 pb-10 lg:px-8 xl:px-10" id="blume-content">
         {
           eyebrowCrumb && (
             <nav
@@ -194,7 +194,7 @@ const toggleScript = `document.addEventListener("click",(e)=>{const t=e.target.c
       </main>
       <aside
         aria-label="On this page"
-        class="sticky top-16 hidden h-[calc(100dvh-4rem)] overflow-y-auto px-4 py-10 text-sm xl:block"
+        class="sticky top-16 hidden h-[calc(100dvh-4rem)] overflow-y-auto px-4 pt-6 pb-10 text-sm xl:block"
       >
         {
           tocHeadings.length > 0 && (
