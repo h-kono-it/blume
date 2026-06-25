@@ -4,6 +4,11 @@ export default defineConfig({
   ai: {
     llmsTxt: true,
   },
+  banner: {
+    content: "Blume is in beta — expect breaking changes.",
+    dismissible: true,
+    id: "beta",
+  },
   content: {
     root: "content",
   },
