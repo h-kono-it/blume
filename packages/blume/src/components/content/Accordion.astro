@@ -1,29 +1,8 @@
 ---
-import Icon from "../Icon.astro";
-
-interface Props {
-  title: string;
-  defaultOpen?: boolean;
-}
-
-const { title, defaultOpen = false } = Astro.props;
 ---
 
-<details
-  class="not-prose group my-4 rounded-blume border border-border"
-  open={defaultOpen}
+<div
+  class="not-prose my-6 overflow-hidden rounded-blume border border-border [&>details:not(:first-of-type)]:border-border [&>details:not(:first-of-type)]:border-t"
 >
-  <summary
-    class="flex cursor-pointer list-none items-center justify-between p-4 font-medium [&::-webkit-details-marker]:hidden"
-  >
-    <span>{title}</span>
-    <Icon
-      class="text-muted-foreground transition-transform group-open:rotate-180"
-      name="chevron-down"
-      size={16}
-    />
-  </summary>
-  <div class="px-4 pb-4 [&>:first-child]:mt-0 [&>:last-child]:mb-0">
-    <slot />
-  </div>
-</details>
+  <slot />
+</div>

@@ -25,6 +25,7 @@ import {
   askEndpointTemplate,
   astroConfigTemplate,
   catchAllPageTemplate,
+  changelogIndexTemplate,
   contentConfigTemplate,
   envTemplate,
   ogEndpointTemplate,
@@ -322,6 +323,24 @@ export const generateRuntime = async (
     await writeIfChanged(
       join(srcDir, "pages", "og", "[...slug].png.ts"),
       ogEndpointTemplate()
+    );
+  }
+
+  // Changelog index (`/changelog`): a timeline of every `type: changelog` entry,
+  // rendered through the Update layout. Skipped when there are no entries, or
+  // when a user content page already occupies the `/changelog` route.
+  const hasChangelog = project.graph.pages.some(
+    (page) =>
+      page.contentType === "changelog" &&
+      !(page.meta.draft || page.meta.sidebar.hidden)
+  );
+  const changelogRouteTaken = project.graph.pages.some(
+    (page) => page.route === "/changelog"
+  );
+  if (hasChangelog && !changelogRouteTaken) {
+    await writeIfChanged(
+      join(srcDir, "pages", "changelog.astro"),
+      changelogIndexTemplate({ askEnabled })
     );
   }
 
