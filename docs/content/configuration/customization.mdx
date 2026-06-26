@@ -62,17 +62,11 @@ Choose how eagerly the island hydrates with the directive: `client:load`,
 ## Custom pages
 
 Add `.astro` files under your `pages/` folder to mount fully custom routes
-alongside your docs. They keep their location, so relative imports and
-`getStaticPaths` work as usual. Read your config, navigation, and page list from
-the `blume:data` module:
+alongside your docs — a landing page, a pricing page, or a hand-built index. They
+keep their location, so relative imports and `getStaticPaths` work as usual, and
+they can read your config, navigation, and routes from the `blume:data` module.
 
-```astro pages/changelog.astro lineNumbers
----
-import data from "blume:data";
----
-
-<h1>{data.config.title} changelog</h1>
-```
+See [Custom Pages](/advanced/custom-pages) for the full guide.
 
 ## Registry
 

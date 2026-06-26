@@ -94,12 +94,10 @@ changelog:
 ```
 
 The type is independent of where the file lives, but by convention blog posts
-go under `blog/` and changelog entries under `changelog/`.
-
-Changelog entries are also collected into a generated **`/changelog`** timeline —
-each one rendered newest-first with its date, version, and `category` in a left
-rail beside its content. The page appears automatically once you have at least
-one `type: changelog` entry (and nothing already occupies the `/changelog` route).
+go under `blog/` and changelog entries under `changelog/`. Both get an RSS feed
+automatically, and changelog entries are also collected into a generated
+[`/changelog` timeline](/advanced/changelog). See [Blog](/advanced/blog) and
+[Changelog](/advanced/changelog) for authoring each.
 
 ## Feeds
 
@@ -126,7 +124,8 @@ description: Why we built a markdown-first docs framework.
 
 Feeds need an absolute site URL, so set [`deployment.site`](/deployment). Blume
 adds `<link rel="alternate">` tags to every page so browsers and feed readers
-discover them automatically.
+discover them automatically. See [Blog](/advanced/blog) and
+[Changelog](/advanced/changelog) for authoring each content type.
 
 ## Where to next
 
