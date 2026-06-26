@@ -450,20 +450,10 @@ Show or hide content by audience. `for="web"` renders only on the site;
 <Visibility for="agents">Shown only in the generated Markdown.</Visibility>
 ```
 
-## API reference
+## Parameters and fields
 
-These components power API documentation. Blume generates them for you from a
-spec with `blume import openapi`, but you can also write them by hand.
-
-### Endpoint
-
-A method-and-path header for an API operation. The method is color-coded by verb.
-
-<Endpoint method="POST" path="/v1/pets" />
-
-```astro
-<Endpoint method="POST" path="/v1/pets" />
-```
+Components for documenting parameters, fields, and structured options — used
+throughout these docs for config, frontmatter, and data tables.
 
 ### Parameter table
 
@@ -493,83 +483,6 @@ description. Pass a `parameters` array.
     },
     { name: "tag", type: "string", description: "An optional category." },
   ]}
-/>
-```
-
-### Request example
-
-Show an example request body or call, framed in a titled panel. Defaults the
-title to “Request”.
-
-<RequestExample title="Request">
-
-```json lineNumbers
-{
-  "name": "Rex",
-  "tag": "dog"
-}
-```
-
-</RequestExample>
-
-````astro
-<RequestExample title="Request">
-
-```json
-{
-  "name": "Rex",
-  "tag": "dog"
-}
-```
-
-</RequestExample>
-````
-
-### Response example
-
-Show an example response, usually paired with a request example. Use the title to
-label the status, like “201 — Created”.
-
-<ResponseExample title="201 — Created">
-
-```json lineNumbers
-{
-  "id": 1,
-  "name": "Rex"
-}
-```
-
-</ResponseExample>
-
-````astro
-<ResponseExample title="201 — Created">
-
-```json
-{
-  "id": 1,
-  "name": "Rex"
-}
-```
-
-</ResponseExample>
-````
-
-### Auth method
-
-Note the authentication scheme an endpoint expects, with an optional name and
-description.
-
-<AuthMethod
-  type="Bearer"
-  name="Authorization"
-  description="Pass your API key as a bearer token."
-/>
-
-```astro lineNumbers
-<AuthMethod
-  type="Bearer"
-  name="Authorization"
-  description="Pass your API key as a bearer token."
 />
 ```
 

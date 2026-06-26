@@ -385,11 +385,7 @@ import TreeFile from "blume/components/content/TreeFile.astro";
 import TreeFolder from "blume/components/content/TreeFolder.astro";
 import Visibility from "blume/components/content/Visibility.astro";
 import Warning from "blume/components/content/Warning.astro";
-import AuthMethod from "blume/components/api/AuthMethod.astro";
-import Endpoint from "blume/components/api/Endpoint.astro";
-import ParameterTable from "blume/components/api/ParameterTable.astro";
-import RequestExample from "blume/components/api/RequestExample.astro";
-import ResponseExample from "blume/components/api/ResponseExample.astro";
+import ParameterTable from "blume/components/content/ParameterTable.astro";
 import Icon from "blume/components/Icon.astro";
 ${mathImport}import { mdxComponents as userMdx } from "../generated/components.ts";
 import data from "../generated/data.json";
@@ -406,7 +402,6 @@ export const prerender = true;
 const components = {
   Accordion,
   AccordionItem,
-  AuthMethod,
   Badge,
   Callout,
   Card,
@@ -415,7 +410,6 @@ const components = {
   Color,
   Column,
   Columns,
-  Endpoint,
   Expandable,
   FileTree,
   Frame,
@@ -424,8 +418,6 @@ const components = {
   ParameterTable,
   ParamField,
   Prompt,
-  RequestExample,
-  ResponseExample,
   ResponseField,
   Step,
   Steps,

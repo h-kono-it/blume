@@ -52,6 +52,7 @@ Astro gives Blume the default shape it wants:
 | `17-meta-schema.md` | Frontmatter and meta schema reference |
 | `18-errors.md` | Error model, diagnostics, overlay, doctor output |
 | `19-deployment.md` | Static/server builds, Vercel, adapters, search, redirects |
+| `21-openapi.md` | OpenAPI & AsyncAPI reference via an embedded Scalar renderer (no native UI) |
 
 ## Core architecture in one diagram
 

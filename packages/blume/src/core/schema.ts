@@ -67,16 +67,6 @@ const searchMetaSchema = z
   })
   .strict();
 
-const apiMetaSchema = z
-  .object({
-    auth: z.string().optional(),
-    method: z
-      .enum(["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"])
-      .optional(),
-    path: z.string().optional(),
-  })
-  .strict();
-
 const changelogMetaSchema = z
   .object({
     category: z.string().optional(),
@@ -88,7 +78,6 @@ const changelogMetaSchema = z
 /** Frontmatter accepted on any content page. */
 export const pageMetaSchema = z
   .object({
-    api: apiMetaSchema.optional(),
     changelog: changelogMetaSchema.optional(),
     /** Publish date for feed-backed content like blog/changelog. */
     date: dateSchema.optional(),
