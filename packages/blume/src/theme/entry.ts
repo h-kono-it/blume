@@ -176,11 +176,9 @@ ${options.sources.map((source) => `@source "${source}";`).join("\n")}
 }
 
 .prose :where(h2) {
-  border-top: 1px solid var(--blume-border);
   font-size: 1.875rem;
   line-height: 1.2;
   margin-top: 3rem;
-  padding-top: 2rem;
 }
 
 .prose :where(h3) {
