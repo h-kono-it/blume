@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "bun:test";
 
 import { codeTitleTransformer } from "../src/markdown/code-title.ts";
 import { calloutTypeFor } from "../src/markdown/directives.ts";
@@ -6,7 +6,7 @@ import { toPackageCommands } from "../src/markdown/package-commands.ts";
 
 /** Run the code-meta transformer over a fence's meta and return the <pre> attrs. */
 const metaAttrs = (
-  raw: string | undefined
+  raw?: string
 ): Record<string, boolean | number | string | undefined> => {
   const node = {
     properties: {} as Record<string, boolean | number | string | undefined>,

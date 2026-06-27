@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "bun:test";
 
 import { extractLinks } from "../src/core/content.ts";
 import { validateLinks } from "../src/core/links.ts";

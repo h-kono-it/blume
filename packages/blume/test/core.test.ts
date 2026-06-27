@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "bun:test";
 
 import {
   astroConfigTemplate,
@@ -502,7 +502,7 @@ describe("api reference (scalar)", () => {
     const [page] = files;
     expect(warnings).toStrictEqual([]);
     expect(files).toHaveLength(1);
-    expect(page.pagePath).toBe("reference.astro");
+    expect(page?.pagePath).toBe("reference.astro");
   });
 
   it("emits a prerendered Scalar page with the spec url and theme accent", async () => {
@@ -515,10 +515,10 @@ describe("api reference (scalar)", () => {
       contentRoutes: new Set(),
       root: "/r",
     });
-    const [{ content }] = files;
-    expect(content).toContain("export const prerender = true");
-    expect(content).toContain('"url": "https://x.dev/openapi.json"');
-    expect(content).toContain("--scalar-color-accent");
+    const [page] = files;
+    expect(page?.content).toContain("export const prerender = true");
+    expect(page?.content).toContain('"url": "https://x.dev/openapi.json"');
+    expect(page?.content).toContain("--scalar-color-accent");
   });
 
   it("skips a reference whose route collides with a content page", async () => {
