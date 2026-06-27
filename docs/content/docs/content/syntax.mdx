@@ -172,6 +172,48 @@ serve({ port: 3000 });
 ```
 ````
 
+### Highlighting
+
+Annotate code with GitHub-style comments to draw attention to lines, words, and
+changes. The comments are stripped from the rendered output, so the code stays
+copy-paste clean. All four are on by default — no configuration.
+
+Mark a line with `// [!code highlight]` to give it a highlighted background:
+
+```ts
+const config = defineConfig({
+  title: "My docs", // [!code highlight]
+});
+```
+
+Show changes with `// [!code ++]` for additions and `// [!code --]` for
+removals, rendered as a green/red diff:
+
+```ts
+export default defineConfig({
+  title: "My docs", // [!code --]
+  title: "Blume docs", // [!code ++]
+});
+```
+
+Highlight every occurrence of a term on a line with `// [!code word:serve]`:
+
+```ts
+import { serve } from "blume"; // [!code word:serve]
+
+serve({ port: 3000 });
+```
+
+Dim everything except the lines you mark with `// [!code focus]` (the rest
+sharpens on hover):
+
+```ts
+export default defineConfig({
+  title: "My docs", // [!code focus]
+  description: "Built with Blume",
+});
+```
+
 ## Package install
 
 A `package-install` block turns a single install command into a tabbed snippet

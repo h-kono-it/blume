@@ -37,6 +37,15 @@ ${options.sources.map((source) => `@source "${source}";`).join("\n")}
   --blume-accent: oklch(0.145 0 0);
   --blume-accent-foreground: oklch(1 0 0);
   --blume-code-background: oklch(0.99 0 0);
+  /* Shiki notation transformers: line/word highlight, diff add/remove. */
+  --blume-code-highlight: oklch(0.55 0.16 255 / 0.1);
+  --blume-code-highlight-border: oklch(0.55 0.16 255 / 0.55);
+  --blume-code-add: oklch(0.72 0.16 150 / 0.16);
+  --blume-code-add-border: oklch(0.52 0.15 150 / 0.7);
+  --blume-code-remove: oklch(0.66 0.21 22 / 0.16);
+  --blume-code-remove-border: oklch(0.55 0.2 22 / 0.7);
+  --blume-code-word: oklch(0.55 0.16 255 / 0.16);
+  --blume-code-word-border: oklch(0.55 0.16 255 / 0.5);
   --blume-radius: 0.75rem;
 
   /*
@@ -78,6 +87,15 @@ ${options.sources.map((source) => `@source "${source}";`).join("\n")}
   --blume-accent: oklch(0.96 0 0);
   --blume-accent-foreground: oklch(0.085 0 0);
   --blume-code-background: oklch(0.12 0 0);
+  /* Brighter tints read better over the dark code surface. */
+  --blume-code-highlight: oklch(0.7 0.14 255 / 0.16);
+  --blume-code-highlight-border: oklch(0.7 0.14 255 / 0.6);
+  --blume-code-add: oklch(0.78 0.17 150 / 0.2);
+  --blume-code-add-border: oklch(0.72 0.16 150 / 0.7);
+  --blume-code-remove: oklch(0.72 0.21 22 / 0.22);
+  --blume-code-remove-border: oklch(0.7 0.2 22 / 0.7);
+  --blume-code-word: oklch(0.7 0.14 255 / 0.22);
+  --blume-code-word-border: oklch(0.7 0.14 255 / 0.55);
 }
 
 @theme inline {
@@ -361,6 +379,62 @@ pre[data-line-numbers] .line::before {
   text-align: right;
   user-select: none;
   width: 1.25rem;
+}
+
+/* Shiki notation transformers (on by default). The notation comments are
+   stripped from the output; these style the classes they leave behind. A styled
+   line becomes a full-width inline-block so its background fills the row; plain
+   lines are left untouched, so blocks without notations render as before. */
+.line.highlighted,
+.line.diff {
+  display: inline-block;
+  width: 100%;
+}
+
+/* The backgrounds need !important to beat the \`pre.astro-code span\` rule above,
+   which forces token spans transparent; these line/word spans are exceptions. */
+.line.highlighted {
+  background-color: var(--blume-code-highlight) !important;
+  box-shadow: inset 2px 0 0 0 var(--blume-code-highlight-border);
+}
+
+.line.diff.add {
+  background-color: var(--blume-code-add) !important;
+  box-shadow: inset 2px 0 0 0 var(--blume-code-add-border);
+}
+
+.line.diff.remove {
+  background-color: var(--blume-code-remove) !important;
+  box-shadow: inset 2px 0 0 0 var(--blume-code-remove-border);
+}
+
+/* Word highlight (\`// [!code word:x]\`) wraps matches in an inline span. The
+   element selector keeps it ahead of the transparent token-span rule. */
+span.highlighted-word {
+  background-color: var(--blume-code-word) !important;
+  border-radius: 0.25rem;
+  box-shadow: 0 0 0 1px var(--blume-code-word-border);
+  padding: 0.1em 0.2em;
+}
+
+/* Focus (\`// [!code focus]\`): dim and blur the rest; reveal on hover. */
+pre:has(.line.focused) .line:not(.focused) {
+  filter: blur(0.085rem);
+  opacity: 0.5;
+  transition:
+    filter 0.2s ease,
+    opacity 0.2s ease;
+}
+
+pre:has(.line.focused):hover .line:not(.focused) {
+  filter: none;
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  pre:has(.line.focused) .line:not(.focused) {
+    transition: none;
+  }
 }
 
 @media (max-width: 640px) {

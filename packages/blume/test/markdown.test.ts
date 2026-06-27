@@ -5,6 +5,7 @@ import {
   calloutTypeFor,
   directiveToCalloutPlugin,
 } from "../src/markdown/directives.ts";
+import { blumeShikiTransformers } from "../src/markdown/index.ts";
 import { mathPlugin } from "../src/markdown/math.ts";
 import {
   codeBlock,
@@ -166,6 +167,26 @@ describe(codeTitleTransformer, () => {
   it("ignores line ranges and leaves plain blocks bare", () => {
     expect(metaAttrs("{1,3-5}").dataTitle).toBeUndefined();
     expect(metaAttrs().dataLineNumbers).toBeUndefined();
+  });
+});
+
+describe(blumeShikiTransformers, () => {
+  it("enables the notation transformers and the meta reader by default", () => {
+    const names = blumeShikiTransformers().map(
+      (transformer) => transformer.name ?? ""
+    );
+    expect(names).toHaveLength(5);
+    // The four upstream notation transformers run first, the meta reader last.
+    expect(
+      names
+        .slice(0, 4)
+        .every((name) => name.startsWith("@shikijs/transformers:"))
+    ).toBe(true);
+    expect(names).toContain("@shikijs/transformers:notation-highlight");
+    expect(names).toContain("@shikijs/transformers:notation-diff");
+    expect(names).toContain("@shikijs/transformers:notation-highlight-word");
+    expect(names).toContain("@shikijs/transformers:notation-focus");
+    expect(names.at(-1)).toBe("blume:code-meta");
   });
 });
 
