@@ -5,12 +5,14 @@ import {
   calloutTypeFor,
   directiveToCalloutPlugin,
 } from "../src/markdown/directives.ts";
+import { mathPlugin } from "../src/markdown/math.ts";
 import {
   codeBlock,
   jsxAttribute,
   jsxFlowElement,
   jsxTextElement,
 } from "../src/markdown/mdast.ts";
+import { mermaidPlugin } from "../src/markdown/mermaid.ts";
 import {
   PACKAGE_MANAGERS,
   toPackageCommands,
@@ -304,6 +306,56 @@ describe("packageInstallPlugin", () => {
     const result = captureReplacement((ctx) =>
       packageInstallPlugin().code(node, ctx)
     );
+    expect(result).toBeUndefined();
+  });
+});
+
+describe("mathPlugin", () => {
+  it("rewrites block math into a display <Math> element", () => {
+    const node = { type: "math", value: "a^2 + b^2" };
+    const result = captureReplacement((ctx) => mathPlugin().math(node, ctx));
+    expect(result).toStrictEqual(
+      jsxFlowElement(
+        "Math",
+        [jsxAttribute("code", "a^2 + b^2"), jsxAttribute("display")],
+        []
+      )
+    );
+  });
+
+  it("rewrites inline math into an inline <Math> element", () => {
+    const node = { type: "inlineMath", value: "x_i" };
+    const result = captureReplacement((ctx) =>
+      mathPlugin().inlineMath(node, ctx)
+    );
+    expect(result).toStrictEqual(
+      jsxTextElement("Math", [jsxAttribute("code", "x_i")])
+    );
+  });
+});
+
+describe("mermaidPlugin", () => {
+  it("rewrites a mermaid fence into a <blume-mermaid> element", () => {
+    const node = { lang: "mermaid", type: "code", value: "graph TD; A-->B;" };
+    const result = captureReplacement((ctx) => mermaidPlugin().code(node, ctx));
+    expect(result).toStrictEqual(
+      jsxFlowElement(
+        "blume-mermaid",
+        [
+          jsxAttribute(
+            "class",
+            "not-prose my-6 flex justify-center overflow-x-auto"
+          ),
+          jsxAttribute("data-source", "graph TD; A-->B;"),
+        ],
+        []
+      )
+    );
+  });
+
+  it("ignores non-mermaid code blocks", () => {
+    const node = { lang: "js", type: "code", value: "1" };
+    const result = captureReplacement((ctx) => mermaidPlugin().code(node, ctx));
     expect(result).toBeUndefined();
   });
 });
