@@ -180,6 +180,17 @@ export const astroConfigTemplate = (options: {
     ? `import { blumeIntegration } from "blume/astro";\n`
     : "";
 
+  // Twoslash is opt-in (markdown.code.twoslash): only import it when enabled, so
+  // the TypeScript compiler isn't loaded into every build. It runs first, before
+  // the always-on transformers, and only on fences with the `twoslash` meta.
+  const { twoslash } = config.markdown.code;
+  const twoslashImport = twoslash
+    ? `import { transformerTwoslash } from "@shikijs/twoslash";\n`
+    : "";
+  const twoslashTransformer = twoslash
+    ? "transformerTwoslash({ explicitTrigger: true }), "
+    : "";
+
   const integrations = [
     `mdx({ processor: blumeMdxProcessor(${JSON.stringify({
       math: config.markdown.math,
@@ -197,7 +208,7 @@ ${defineConfigImport}
 import mdx from "@astrojs/mdx";
 import tailwindcss from "@tailwindcss/vite";
 import { blumeMarkdownProcessor, blumeMdxProcessor, blumeShikiTransformers } from "blume/markdown";
-${reactImport}${blumeImport}${adapterImport}
+${twoslashImport}${reactImport}${blumeImport}${adapterImport}
 export default defineConfig({
   root: ${JSON.stringify(context.outDir)},
   srcDir: ${JSON.stringify(`${context.outDir}/src`)},
@@ -213,9 +224,9 @@ export default defineConfig({
         dark: "github-dark",
       },
       defaultColor: false,
-      transformers: blumeShikiTransformers(${JSON.stringify({
-        icons: config.markdown.code.icons,
-      })}),
+      transformers: [${twoslashTransformer}...blumeShikiTransformers(${JSON.stringify(
+        { icons: config.markdown.code.icons }
+      )})],
     },
   },
   devToolbar: { enabled: false },

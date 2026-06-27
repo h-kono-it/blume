@@ -28,6 +28,7 @@ import { buildSearchDocuments } from "../search/documents.ts";
 import { servesStaticIndex } from "../search/providers.ts";
 import { tailwindEntryTemplate } from "../theme/entry.ts";
 import { buildThemeCss } from "../theme/palette.ts";
+import { twoslashCss } from "../theme/twoslash.ts";
 
 const POSIX = (path: string): string => path.split("\\").join("/");
 
@@ -113,6 +114,7 @@ export const eject = async (root: string): Promise<string[]> => {
           "../../node_modules/blume/src/**/*.{astro,ts,tsx}",
           "../../**/*.{astro,mdx,ts,tsx}",
         ],
+        twoslashCss: config.markdown.code.twoslash ? twoslashCss() : undefined,
         userTheme,
       }),
       path: join(genDir, "app.css"),

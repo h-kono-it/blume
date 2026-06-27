@@ -27,6 +27,7 @@ import { searchProviderMeta, servesStaticIndex } from "../search/providers.ts";
 import { tailwindEntryTemplate } from "../theme/entry.ts";
 import { buildFontsCss, configuredCssVars } from "../theme/fonts.ts";
 import { buildThemeCss } from "../theme/palette.ts";
+import { twoslashCss } from "../theme/twoslash.ts";
 import { discoverPages } from "./pages.ts";
 import {
   askEndpointTemplate,
@@ -332,6 +333,7 @@ export const generateRuntime = async (
           `${BLUME_SRC}/**/*.{astro,ts,tsx}`,
           `${context.root}/**/*.{astro,mdx,ts,tsx}`,
         ],
+        twoslashCss: config.markdown.code.twoslash ? twoslashCss() : undefined,
         userTheme,
       })
     ),

@@ -25,6 +25,9 @@ export default defineConfig({
   lastModified: true,
   logo: "/logo.svg",
   markdown: {
+    code: {
+      twoslash: true,
+    },
     math: true,
   },
   navigation: {

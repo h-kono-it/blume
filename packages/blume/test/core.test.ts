@@ -166,6 +166,20 @@ describe("astro config template", () => {
     expect(output).toContain('name: "Inter Tight"');
     expect(output).toContain('cssVariable: "--blume-ff-ibm-plex-mono"');
   });
+
+  it("omits twoslash by default and wires it in when enabled", () => {
+    const off = configTemplate(blumeConfigSchema.parse({}));
+    expect(off).not.toContain("@shikijs/twoslash");
+    expect(off).not.toContain("transformerTwoslash");
+
+    const on = configTemplate(
+      blumeConfigSchema.parse({ markdown: { code: { twoslash: true } } })
+    );
+    expect(on).toContain(
+      'import { transformerTwoslash } from "@shikijs/twoslash"'
+    );
+    expect(on).toContain("transformerTwoslash({ explicitTrigger: true })");
+  });
 });
 
 describe("page meta schema", () => {

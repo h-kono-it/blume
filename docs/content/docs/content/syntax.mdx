@@ -239,6 +239,31 @@ export default defineConfig({
 ```
 ````
 
+### Twoslash
+
+Mark a TypeScript block `twoslash` to run the compiler over it: hover any token
+to see its inferred type, and add an inline `^?` query to pin a type below the
+line. Turn it on with `markdown: { code: { twoslash: true } }`.
+
+```ts twoslash
+const config = {
+  title: "My docs",
+  version: 1,
+};
+
+config.title;
+//     ^?
+```
+
+````md
+```ts twoslash
+const config = { title: "My docs", version: 1 };
+
+config.title;
+//     ^?
+```
+````
+
 :::note
 Hide the language icons or wrap long lines instead of scrolling with
 `markdown: { code: { icons: false, wrap: true } }` in `blume.config.ts`.

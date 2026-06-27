@@ -165,6 +165,10 @@ describe(codeTitleTransformer, () => {
     expect(attrs.dataLineNumbers).toBeTruthy();
   });
 
+  it("does not treat the twoslash keyword as a title", () => {
+    expect(metaAttrs("twoslash").dataTitle).toBeUndefined();
+  });
+
   it("ignores line ranges and leaves plain blocks bare", () => {
     expect(metaAttrs("{1,3-5}").dataTitle).toBeUndefined();
     expect(metaAttrs().dataLineNumbers).toBeUndefined();

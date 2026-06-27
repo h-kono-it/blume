@@ -8,6 +8,8 @@ interface TailwindEntryOptions {
   configTokens: string;
   /** Raw contents of the user's theme.css, if any. */
   userTheme: string;
+  /** Twoslash rich-renderer styles, included only when twoslash is enabled. */
+  twoslashCss?: string;
 }
 
 /**
@@ -489,6 +491,9 @@ pre:has(.line.focused):hover .line:not(.focused) {
 .prose :not(pre) > code::after {
   content: none;
 }
+
+/* Twoslash rich-renderer styles (only when markdown.code.twoslash is on). */
+${options.twoslashCss ?? ""}
 
 /* Token overrides: config first, then the user's theme.css (highest priority). */
 ${options.configTokens}
