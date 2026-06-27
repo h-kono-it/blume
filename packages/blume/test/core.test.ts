@@ -122,6 +122,7 @@ describe("astro config template", () => {
       dataPath: "/r/.blume/src/generated/data.json",
       needsReact: false,
       pages: [],
+      searchClientPath: "/r/.blume/src/generated/search-client.ts",
       themePath: "/r/.blume/src/generated/app.css",
     });
 

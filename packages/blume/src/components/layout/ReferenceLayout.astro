@@ -26,7 +26,6 @@ interface Props {
   route: string;
   themeMode: "system" | "light" | "dark";
   searchEnabled: boolean;
-  searchProvider: "orama" | "pagefind";
   pageTitle: string;
 }
 
@@ -38,7 +37,6 @@ const {
   route,
   themeMode,
   searchEnabled,
-  searchProvider,
   pageTitle,
 } = Astro.props;
 
@@ -69,7 +67,6 @@ const bannerScript = banner?.dismissible
       navigation={navigation}
       route={route}
       searchEnabled={searchEnabled}
-      searchProvider={searchProvider}
       site={site}
     />
     <div

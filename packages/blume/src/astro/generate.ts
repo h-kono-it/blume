@@ -23,6 +23,7 @@ import {
   referenceTabs,
 } from "../openapi/scalar.ts";
 import { buildSearchDocuments } from "../search/documents.ts";
+import { searchProviderMeta, servesStaticIndex } from "../search/providers.ts";
 import { tailwindEntryTemplate } from "../theme/entry.ts";
 import { buildThemeCss } from "../theme/palette.ts";
 import { discoverPages } from "./pages.ts";
@@ -33,12 +34,14 @@ import {
   changelogIndexTemplate,
   contentConfigTemplate,
   envTemplate,
+  mixedbreadSearchEndpointTemplate,
   ogEndpointTemplate,
   rawMarkdownEndpointTemplate,
   rssEndpointTemplate,
   runtimeDependencies,
   runtimePackageTemplate,
   runtimeTsconfigTemplate,
+  searchClientTemplate,
   searchEndpointTemplate,
   userComponentsTemplate,
 } from "./templates.ts";
@@ -48,17 +51,19 @@ const BLUME_SRC = fileURLToPath(new URL("..", import.meta.url));
 /** The Blume package's own `node_modules` (where Astro and friends live). */
 const BLUME_NODE_MODULES = join(BLUME_SRC, "..", "node_modules");
 
-/** Whether Astro resolves from a directory via normal node resolution. */
-const canResolveAstro = (fromDir: string): boolean => {
+/** Whether a module specifier resolves from a directory via node resolution. */
+const canResolveFrom = (fromDir: string, spec: string): boolean => {
   try {
-    createRequire(pathToFileURL(join(fromDir, "_.js")).href).resolve(
-      "astro/package.json"
-    );
+    createRequire(pathToFileURL(join(fromDir, "_.js")).href).resolve(spec);
     return true;
   } catch {
     return false;
   }
 };
+
+/** Whether Astro resolves from a directory via normal node resolution. */
+const canResolveAstro = (fromDir: string): boolean =>
+  canResolveFrom(fromDir, "astro/package.json");
 
 /**
  * Make the generated runtime resolve Astro and its integrations. When they are
@@ -270,6 +275,7 @@ export const generateRuntime = async (
   const srcDir = join(out, "src");
   const dataPath = join(srcDir, "generated", "data.json");
   const themePath = join(srcDir, "generated", "app.css");
+  const searchClientPath = join(srcDir, "generated", "search-client.ts");
 
   await ensureDepsLink(out);
 
@@ -290,6 +296,7 @@ export const generateRuntime = async (
         dataPath,
         needsReact,
         pages,
+        searchClientPath,
         themePath,
       })
     ),
@@ -356,7 +363,12 @@ export const generateRuntime = async (
     );
   }
 
-  if (config.search.provider === "orama") {
+  // The provider-specific client loader behind the `blume:search-client` alias
+  // is always (re)generated so the alias resolves even when search is disabled.
+  await writeIfChanged(searchClientPath, searchClientTemplate(config));
+
+  // Client-loaded providers (orama, flexsearch) ship a static index + endpoint.
+  if (servesStaticIndex(config.search.provider)) {
     const documents = await buildSearchDocuments(project);
     await writeIfChanged(
       join(srcDir, "generated", "search.json"),
@@ -365,6 +377,14 @@ export const generateRuntime = async (
     await writeIfChanged(
       join(srcDir, "pages", "blume-search.json.ts"),
       searchEndpointTemplate()
+    );
+  }
+
+  // Mixedbread proxies queries through a server endpoint that holds the key.
+  if (config.search.provider === "mixedbread") {
+    await writeIfChanged(
+      join(srcDir, "pages", "api", "search.ts"),
+      mixedbreadSearchEndpointTemplate(config.search.mixedbread?.storeId ?? "")
     );
   }
 
@@ -406,6 +426,16 @@ export const generateRuntime = async (
   // API/AsyncAPI reference pages (Scalar). One self-contained page per source,
   // mounted on its configured route and regenerated each run.
   const warnings: string[] = [];
+
+  // The new provider SDKs are optional peers; warn (rather than fail opaquely in
+  // Vite) when the configured provider's package isn't installed.
+  for (const dep of searchProviderMeta(config.search.provider).runtimeDeps) {
+    if (!canResolveFrom(context.root, dep)) {
+      warnings.push(
+        `Search provider "${config.search.provider}" needs "${dep}", which isn't installed. Run \`npm install ${dep}\` (or your package manager's equivalent).`
+      );
+    }
+  }
   if (hasReferences(config)) {
     const references = await buildReferenceFiles({
       config,

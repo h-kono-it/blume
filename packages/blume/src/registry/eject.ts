@@ -11,10 +11,12 @@ import {
   catchAllPageTemplate,
   contentConfigTemplate,
   envTemplate,
+  mixedbreadSearchEndpointTemplate,
   ogEndpointTemplate,
   rawMarkdownEndpointTemplate,
   rssEndpointTemplate,
   runtimeTsconfigTemplate,
+  searchClientTemplate,
   searchEndpointTemplate,
   userComponentsTemplate,
 } from "../astro/templates.ts";
@@ -23,6 +25,7 @@ import type { ProjectContext } from "../core/types.ts";
 import { buildRssFeeds, renderRssFeed } from "../deploy/rss.ts";
 import { buildReferenceFiles, hasReferences } from "../openapi/scalar.ts";
 import { buildSearchDocuments } from "../search/documents.ts";
+import { servesStaticIndex } from "../search/providers.ts";
 import { tailwindEntryTemplate } from "../theme/entry.ts";
 import { buildThemeCss } from "../theme/palette.ts";
 
@@ -77,6 +80,7 @@ export const eject = async (root: string): Promise<string[]> => {
         dataPath: "./src/generated/data.json",
         needsReact,
         pages: relPages,
+        searchClientPath: "./src/generated/search-client.ts",
         themePath: "./src/generated/app.css",
       }),
       path: join(root, "astro.config.mjs"),
@@ -142,7 +146,13 @@ export const eject = async (root: string): Promise<string[]> => {
     });
   }
 
-  if (config.search.provider === "orama") {
+  // The provider-specific client loader behind the `blume:search-client` alias.
+  files.push({
+    content: searchClientTemplate(config),
+    path: join(genDir, "search-client.ts"),
+  });
+
+  if (servesStaticIndex(config.search.provider)) {
     const documents = await buildSearchDocuments(project);
     files.push(
       {
@@ -154,6 +164,15 @@ export const eject = async (root: string): Promise<string[]> => {
         path: join(srcDir, "pages", "blume-search.json.ts"),
       }
     );
+  }
+
+  if (config.search.provider === "mixedbread") {
+    files.push({
+      content: mixedbreadSearchEndpointTemplate(
+        config.search.mixedbread?.storeId ?? ""
+      ),
+      path: join(srcDir, "pages", "api", "search.ts"),
+    });
   }
 
   const feeds = buildRssFeeds(project);

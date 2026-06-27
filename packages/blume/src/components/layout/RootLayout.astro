@@ -30,7 +30,6 @@ interface Props {
   imageZoom?: boolean;
   themeMode: "system" | "light" | "dark";
   searchEnabled: boolean;
-  searchProvider: "orama" | "pagefind";
   indexable: boolean;
   ogImage?: string | null;
   canonical?: string | null;
@@ -55,7 +54,6 @@ const {
   imageZoom = true,
   themeMode,
   searchEnabled,
-  searchProvider,
   indexable,
   ogImage,
   canonical,
@@ -165,7 +163,6 @@ const bannerScript = banner?.dismissible
       navigation={navigation}
       route={page.route}
       searchEnabled={searchEnabled}
-      searchProvider={searchProvider}
       site={site}
     >
       <slot name="ask" slot="ask" />

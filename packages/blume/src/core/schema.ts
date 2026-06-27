@@ -208,17 +208,90 @@ const themeConfigSchema = z
   })
   .strict();
 
+/** Public credentials for the Algolia search backend (sync key is an env var). */
+const algoliaSearchSchema = z
+  .object({
+    appId: z.string(),
+    indexName: z.string(),
+    searchApiKey: z.string(),
+  })
+  .strict();
+
+/** Public credentials for the Orama Cloud search backend. */
+const oramaCloudSearchSchema = z
+  .object({
+    apiKey: z.string(),
+    endpoint: z.string(),
+    /** Index id used by the build-time sync (with `ORAMA_PRIVATE_API_KEY`). */
+    indexId: z.string().optional(),
+  })
+  .strict();
+
+/** Public credentials for a (self-hosted or cloud) Typesense backend. */
+const typesenseSearchSchema = z
+  .object({
+    collection: z.string(),
+    host: z.string(),
+    port: z.number().int().positive().optional(),
+    protocol: z.enum(["http", "https"]).optional(),
+    searchApiKey: z.string(),
+  })
+  .strict();
+
+/** Mixedbread semantic search: the store the server endpoint queries. */
+const mixedbreadSearchSchema = z
+  .object({
+    storeId: z.string(),
+  })
+  .strict();
+
+export const searchProviders = [
+  "orama",
+  "pagefind",
+  "flexsearch",
+  "algolia",
+  "orama-cloud",
+  "typesense",
+  "mixedbread",
+  "none",
+] as const;
+
+/** Providers that need a config block, mapped to its `search.*` key. */
+const PROVIDER_CONFIG_KEY = {
+  algolia: "algolia",
+  mixedbread: "mixedbread",
+  "orama-cloud": "oramaCloud",
+  typesense: "typesense",
+} as const;
+
 const searchConfigSchema = z
   .object({
+    algolia: algoliaSearchSchema.optional(),
     indexing: z
       .object({
         includeHiddenPages: z.boolean().default(false),
       })
       .strict()
       .default({}),
-    provider: z.enum(["orama", "pagefind", "none"]).default("orama"),
+    mixedbread: mixedbreadSearchSchema.optional(),
+    oramaCloud: oramaCloudSearchSchema.optional(),
+    provider: z.enum(searchProviders).default("orama"),
+    typesense: typesenseSearchSchema.optional(),
   })
-  .strict();
+  .strict()
+  .superRefine((value, ctx) => {
+    // Hosted providers can't work without their credentials; flag a missing
+    // block with a path so the diagnostic points at `search.<provider>`.
+    const field =
+      PROVIDER_CONFIG_KEY[value.provider as keyof typeof PROVIDER_CONFIG_KEY];
+    if (field && !value[field]) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `search.${field} is required when provider is "${value.provider}".`,
+        path: [field],
+      });
+    }
+  });
 
 const aiConfigSchema = z
   .object({
@@ -400,3 +473,5 @@ export const blumeConfigSchema = z
 export type ResolvedConfig = z.infer<typeof blumeConfigSchema>;
 /** User-authored config: the shape accepted by `defineConfig`. */
 export type BlumeConfig = z.input<typeof blumeConfigSchema>;
+/** A configured search backend. */
+export type SearchProvider = (typeof searchProviders)[number];
