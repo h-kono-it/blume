@@ -42,6 +42,7 @@
     "oxlint": "^1.70.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "simple-icons": "^13.0.0",
     "tailwindcss": "^4",
     "turbo": "^2.3.0",
     "typescript": "^5.7.0",

@@ -1,5 +1,6 @@
 import { satteri } from "@astrojs/markdown-satteri";
 import {
+  transformerMetaHighlight,
   transformerNotationDiff,
   transformerNotationFocus,
   transformerNotationHighlight,
@@ -8,6 +9,7 @@ import {
 
 import { codeTitleTransformer } from "./code-title.ts";
 import { directiveToCalloutPlugin } from "./directives.ts";
+import { languageIconTransformer } from "./language-icon.ts";
 import { mathPlugin } from "./math.ts";
 import { mermaidPlugin } from "./mermaid.ts";
 import { packageInstallPlugin } from "./package-install.ts";
@@ -38,16 +40,22 @@ type MdastPlugin = NonNullable<
  * notation transformers read GitHub-style comments and strip them from the
  * output: `// [!code highlight]`, `// [!code ++]` / `// [!code --]`,
  * `// [!code word:x]`, and `// [!code focus]`. The v3 match algorithm scopes a
- * notation to the line it sits on (or the next, for a trailing comment). Blume's
- * own {@link codeTitleTransformer} runs last to promote fence-meta (title / line
+ * notation to the line it sits on (or the next, for a trailing comment).
+ * `transformerMetaHighlight` adds numeric range highlighting from the fence meta
+ * (` ```ts {1,3-5} `), reusing the same `highlighted` class. Blume's own
+ * {@link languageIconTransformer} prepends a brand icon, and
+ * {@link codeTitleTransformer} runs last to promote fence-meta (title / line
  * numbers) to `<pre>` attributes. The theme styles the classes these emit
- * (`highlighted`, `diff add/remove`, `highlighted-word`, `focused`).
+ * (`highlighted`, `diff add/remove`, `highlighted-word`, `focused`,
+ * `blume-lang-icon`).
  */
 export const blumeShikiTransformers = (): ShikiTransformer[] => [
   transformerNotationHighlight({ matchAlgorithm: "v3" }),
   transformerNotationDiff({ matchAlgorithm: "v3" }),
   transformerNotationWordHighlight({ matchAlgorithm: "v3" }),
   transformerNotationFocus({ matchAlgorithm: "v3" }),
+  transformerMetaHighlight(),
+  languageIconTransformer() as unknown as ShikiTransformer,
   codeTitleTransformer() as unknown as ShikiTransformer,
 ];
 

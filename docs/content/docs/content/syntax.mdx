@@ -131,9 +131,10 @@ Separate major shifts in topic within a long page.
 
 ## Code blocks
 
-Fenced code blocks are syntax-highlighted with a header showing the language and
-a copy button. Add a **title** after the language — typically a filename — and it
-replaces the language label in the header.
+Fenced code blocks are syntax-highlighted with a header showing the language —
+with a brand icon for recognized languages — and a copy button. Add a **title**
+after the language — typically a filename — and it replaces the language label in
+the header.
 
 ```ts blume.config.ts
 import { defineConfig } from "blume";
@@ -213,6 +214,30 @@ export default defineConfig({
   description: "Built with Blume",
 });
 ```
+
+Or highlight lines by **number** instead of comments — useful when you can't edit
+the code. Put a brace range after the language; single lines, comma lists, and
+`start-end` spans all work:
+
+```ts {1,4-5}
+import { defineConfig } from "blume";
+
+export default defineConfig({
+  title: "My docs",
+  description: "Built with Blume",
+});
+```
+
+````md
+```ts {1,4-5}
+import { defineConfig } from "blume";
+
+export default defineConfig({
+  title: "My docs",
+  description: "Built with Blume",
+});
+```
+````
 
 ## Package install
 

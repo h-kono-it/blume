@@ -288,6 +288,28 @@ ${options.sources.map((source) => `@source "${source}";`).join("\n")}
   content: attr(data-title);
 }
 
+/* Language icon (simple-icons) sits at the header's left edge; the label shifts
+   right to make room. Injected at build time by the language-icon transformer.
+   Shown only for top-level prose blocks, which have a header — flush code in
+   tabs and API panels is nested deeper, so the child combinator skips it. */
+.blume-lang-icon {
+  display: none;
+}
+
+.prose > :where(pre[data-icon]) > .blume-lang-icon {
+  color: var(--blume-muted-foreground);
+  display: block;
+  height: 1rem;
+  left: 1rem;
+  position: absolute;
+  top: 0.875rem;
+  width: 1rem;
+}
+
+.prose > :where(pre[data-icon])::before {
+  padding-left: 2.5rem;
+}
+
 .prose :where(pre code) {
   background: transparent;
   border-radius: 0;
