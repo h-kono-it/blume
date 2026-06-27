@@ -1,7 +1,7 @@
 /**
- * CSS for Twoslash's rich renderer, emitted into the Tailwind entry only when
- * `markdown.code.twoslash` is on. It is the shipped `@shikijs/twoslash`
- * stylesheet plus a Blume-themed override layer:
+ * CSS for Twoslash's rich renderer, emitted into the Tailwind entry (Twoslash
+ * runs on any fence with the `twoslash` meta). It is the shipped
+ * `@shikijs/twoslash` stylesheet plus a Blume-themed override layer:
  *
  * - maps the renderer's `--twoslash-*` variables onto Blume tokens so popups
  *   match the active theme (light/dark);
@@ -32,10 +32,21 @@ const OVERRIDES = `
 }
 
 /* Popups are absolutely positioned and must escape the pre's scroll container.
-   (The .twoslash class is on the <pre>; a :where()/:has() selector here loses to
-   the base pre rule under the CSS processor, so target the class directly.) */
+   The base prose pre rule (from the typography layer) wins the cascade here
+   despite lower specificity, so !important is needed to force visibility. */
 .prose pre.twoslash {
-  overflow: visible;
+  overflow: visible !important;
+}
+
+/* The rich renderer renders each popup's type signature as a nested Shiki
+   pre. Strip the code-block chrome (border, radius, padding, background) so it
+   sits flush inside the popup, which owns the frame. */
+.prose pre.twoslash .twoslash-popup-container pre {
+  background: transparent !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
 }
 
 /* Re-assert chrome backgrounds the transparent token-span rule would clear. */

@@ -363,6 +363,11 @@ const bannerScript = banner?.dismissible
         if (pre.querySelector("[data-blume-copy]")) {
           continue;
         }
+        // Skip nested <pre>: Twoslash renders each hover popup's type signature
+        // as a <pre> inside the code block, which shouldn't get its own button.
+        if (pre.parentElement?.closest("pre")) {
+          continue;
+        }
         const language = pre.getAttribute("data-language");
         if (language) {
           pre.setAttribute(

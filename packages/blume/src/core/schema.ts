@@ -417,18 +417,11 @@ const codeConfigSchema = z
      */
     icons: z.boolean().default(true),
     /**
-     * Syntax-highlight inline `` `code`{:lang} `` snippets. Off by default — most
+     * Syntax-highlight inline `` `code{:lang}` `` snippets. Off by default — most
      * inline code (flags, file names) reads better plain; opt a snippet in with
      * a trailing `{:lang}` marker.
      */
     inline: z.boolean().default(false),
-    /**
-     * Enable Twoslash: run the TypeScript compiler over fences marked
-     * `twoslash` to add type-on-hover, inline queries, and error rendering.
-     * Off by default — it adds the TS compiler and build cost, and only runs on
-     * blocks that opt in.
-     */
-    twoslash: z.boolean().default(false),
     /**
      * Wrap long lines instead of scrolling horizontally. Off by default, so
      * code keeps its original line breaks and overflows into a scroll area.

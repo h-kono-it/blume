@@ -333,7 +333,7 @@ export const generateRuntime = async (
           `${BLUME_SRC}/**/*.{astro,ts,tsx}`,
           `${context.root}/**/*.{astro,mdx,ts,tsx}`,
         ],
-        twoslashCss: config.markdown.code.twoslash ? twoslashCss() : undefined,
+        twoslashCss: twoslashCss(),
         userTheme,
       })
     ),

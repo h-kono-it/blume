@@ -27,7 +27,6 @@ export default defineConfig({
   markdown: {
     code: {
       inline: true,
-      twoslash: true,
     },
     math: true,
   },

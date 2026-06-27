@@ -167,18 +167,12 @@ describe("astro config template", () => {
     expect(output).toContain('cssVariable: "--blume-ff-ibm-plex-mono"');
   });
 
-  it("omits twoslash by default and wires it in when enabled", () => {
-    const off = configTemplate(blumeConfigSchema.parse({}));
-    expect(off).not.toContain("@shikijs/twoslash");
-    expect(off).not.toContain("transformerTwoslash");
-
-    const on = configTemplate(
-      blumeConfigSchema.parse({ markdown: { code: { twoslash: true } } })
-    );
-    expect(on).toContain(
+  it("always wires Twoslash in with an explicit per-block trigger", () => {
+    const output = configTemplate(blumeConfigSchema.parse({}));
+    expect(output).toContain(
       'import { transformerTwoslash } from "@shikijs/twoslash"'
     );
-    expect(on).toContain("transformerTwoslash({ explicitTrigger: true })");
+    expect(output).toContain("transformerTwoslash({ explicitTrigger: true })");
   });
 });
 

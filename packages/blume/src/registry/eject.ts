@@ -114,7 +114,7 @@ export const eject = async (root: string): Promise<string[]> => {
           "../../node_modules/blume/src/**/*.{astro,ts,tsx}",
           "../../**/*.{astro,mdx,ts,tsx}",
         ],
-        twoslashCss: config.markdown.code.twoslash ? twoslashCss() : undefined,
+        twoslashCss: twoslashCss(),
         userTheme,
       }),
       path: join(genDir, "app.css"),

@@ -8,7 +8,7 @@ interface TailwindEntryOptions {
   configTokens: string;
   /** Raw contents of the user's theme.css, if any. */
   userTheme: string;
-  /** Twoslash rich-renderer styles, included only when twoslash is enabled. */
+  /** Twoslash rich-renderer styles (for fences with the `twoslash` meta). */
   twoslashCss?: string;
 }
 
@@ -501,7 +501,7 @@ pre:has(.line.focused):hover .line:not(.focused) {
   color: var(--shiki-dark);
 }
 
-/* Twoslash rich-renderer styles (only when markdown.code.twoslash is on). */
+/* Twoslash rich-renderer styles (used by fences with the \`twoslash\` meta). */
 ${options.twoslashCss ?? ""}
 
 /* Token overrides: config first, then the user's theme.css (highest priority). */

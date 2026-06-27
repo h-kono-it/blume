@@ -243,11 +243,12 @@ export default defineConfig({
 ```
 ````
 
-### Twoslash
+### Display types
 
-Mark a TypeScript block `twoslash` to run the compiler over it: hover any token
-to see its inferred type, and add an inline `^?` query to pin a type below the
-line. Turn it on with `markdown: { code: { twoslash: true } }`.
+Mark a TypeScript block `twoslash` to display real types straight from the
+compiler — powered by [Twoslash](https://shiki.style/packages/twoslash). Hover
+any token to see its inferred type, and add an inline `^?` query to pin a type
+below the line.
 
 ```ts twoslash
 const config = {

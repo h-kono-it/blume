@@ -180,16 +180,12 @@ export const astroConfigTemplate = (options: {
     ? `import { blumeIntegration } from "blume/astro";\n`
     : "";
 
-  // Twoslash is opt-in (markdown.code.twoslash): only import it when enabled, so
-  // the TypeScript compiler isn't loaded into every build. It runs first, before
-  // the always-on transformers, and only on fences with the `twoslash` meta.
-  const { twoslash } = config.markdown.code;
-  const twoslashImport = twoslash
-    ? `import { transformerTwoslash } from "@shikijs/twoslash";\n`
-    : "";
-  const twoslashTransformer = twoslash
-    ? "transformerTwoslash({ explicitTrigger: true }), "
-    : "";
+  // Twoslash runs first, before the always-on transformers, but only on fences
+  // with the `twoslash` meta (explicitTrigger) — so it's opt-in per block with
+  // no config flag; the TypeScript compiler only spins up when a block uses it.
+  const twoslashImport = `import { transformerTwoslash } from "@shikijs/twoslash";\n`;
+  const twoslashTransformer =
+    "transformerTwoslash({ explicitTrigger: true }), ";
 
   const integrations = [
     `mdx({ processor: blumeMdxProcessor(${JSON.stringify({
