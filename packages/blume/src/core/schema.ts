@@ -52,16 +52,6 @@ const seoMetaSchema = z
   })
   .strict();
 
-const tocMetaSchema = z.union([
-  z.boolean(),
-  z
-    .object({
-      maxHeadingLevel: z.number().int().min(1).max(6).default(3),
-      minHeadingLevel: z.number().int().min(1).max(6).default(2),
-    })
-    .strict(),
-]);
-
 const searchMetaSchema = z
   .object({
     boost: z.number().optional(),
@@ -93,7 +83,6 @@ export const pageMetaSchema = z
     sidebar: sidebarMetaSchema.default({}),
     slug: z.string().optional(),
     title: z.string().optional(),
-    toc: tocMetaSchema.default(true),
     type: z.string().default("doc"),
   })
   .strict();
