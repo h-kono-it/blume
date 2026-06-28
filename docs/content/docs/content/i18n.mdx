@@ -121,6 +121,8 @@ i18n: {
 
 Fallback pages are excluded from the search index and aren't advertised as real
 translations in `hreflang`, so untranslated content doesn't compete for ranking.
+They still appear in that locale's sidebar, so navigation stays complete — a
+reader can reach every page in any language.
 
 :::tip
 Start by translating your most important pages — the homepage, quickstart, and
@@ -183,12 +185,14 @@ French results, with an **All languages** toggle to search across every locale a
 once. The default (Orama) and FlexSearch indexes filter in the browser; hosted
 providers carry a `locale` facet on each record.
 
-## Current limitations
+## Right-to-left
 
-:::note
-Right-to-left locales set `<html dir="rtl">`, but a full RTL pass on the default
-theme is still in progress — some layout details won't mirror yet.
-:::
+Set `dir: "rtl"` on a locale and Blume mirrors the whole interface — the sidebar,
+header, table of contents, pagination, search, and menus — and sets `<html dir>`
+to match. Two things deliberately stay left-to-right: **code blocks** (code reads
+LTR in any language) and **fallback content** — an untranslated page keeps the
+direction of the language it's actually written in, so English shown under an RTL
+locale still reads correctly while the surrounding chrome mirrors.
 
 ## Where to next
 
