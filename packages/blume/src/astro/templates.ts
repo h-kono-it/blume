@@ -391,7 +391,8 @@ export const createSearch = () => create({ url });
   }
 
   // Search disabled: a no-op client so the alias always resolves.
-  return `${SEARCH_CLIENT_HEADER}export const createSearch = () => () => Promise.resolve([]);
+  return `${SEARCH_CLIENT_HEADER}export const createSearch = () => () =>
+  Promise.resolve({ hits: [], sections: [] });
 `;
 };
 

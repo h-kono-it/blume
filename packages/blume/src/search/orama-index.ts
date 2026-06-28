@@ -11,6 +11,10 @@ export interface OramaDoc {
   description: string;
   route: string;
   title: string;
+  /** Carried through for the search dialog's breadcrumb + filter pills. Stored
+   * but not indexed, so they ride along on the returned document untouched. */
+  breadcrumb?: string[];
+  section?: string;
 }
 
 const SCHEMA = {

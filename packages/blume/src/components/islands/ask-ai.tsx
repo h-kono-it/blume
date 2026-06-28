@@ -23,7 +23,15 @@ const AskAI = () => {
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    const handler = () => setOpen(true);
+    const handler = (event: Event) => {
+      // The search modal forwards the typed query so "Ask AI: <query>" carries
+      // straight into the chat input.
+      const query = (event as CustomEvent<{ query?: string }>).detail?.query;
+      if (query) {
+        setInput(query);
+      }
+      setOpen(true);
+    };
     window.addEventListener("blume:open-ask-ai", handler);
     return () => window.removeEventListener("blume:open-ask-ai", handler);
   }, []);

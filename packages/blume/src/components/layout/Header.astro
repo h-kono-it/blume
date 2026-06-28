@@ -15,6 +15,7 @@ interface Props {
   navigation: Navigation;
   route: string;
   searchEnabled: boolean;
+  askEnabled?: boolean;
   // The mobile menu button toggles the docs sidebar drawer; custom pages
   // without a sidebar (e.g. a landing page) pass `false` to hide it.
   hasSidebar?: boolean;
@@ -26,6 +27,7 @@ const {
   navigation,
   route,
   searchEnabled,
+  askEnabled = false,
   hasSidebar = true,
 } = Astro.props;
 
@@ -119,7 +121,7 @@ const clickScript = `document.addEventListener("click",(e)=>{const t=e.target.cl
   }
   <div class="flex-1"></div>
   <slot name="ask" />
-  {searchEnabled && <Search />}
+  {searchEnabled && <Search askEnabled={askEnabled} navigation={navigation} />}
   <button
     aria-label="Toggle color theme"
     class={iconButton}
