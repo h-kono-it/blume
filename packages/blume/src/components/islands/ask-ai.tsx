@@ -114,7 +114,7 @@ const AskAI = ({ strings }: { strings?: UIStrings["ask"] }) => {
         {t.title}
       </button>
       {open && (
-        <div className="absolute top-[calc(100%+0.5rem)] right-0 z-50 flex max-h-[70vh] w-[min(24rem,90vw)] flex-col overflow-hidden rounded-blume border border-border bg-background shadow-xl">
+        <div className="absolute top-[calc(100%+0.5rem)] end-0 z-50 flex max-h-[70vh] w-[min(24rem,90vw)] flex-col overflow-hidden rounded-blume border border-border bg-background shadow-xl">
           <div className="flex flex-1 flex-col gap-2.5 overflow-y-auto p-3.5">
             {messages.length === 0 && (
               <p className="m-0 text-muted-foreground text-sm">{t.empty}</p>

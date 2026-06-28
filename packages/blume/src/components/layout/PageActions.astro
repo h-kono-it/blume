@@ -65,12 +65,12 @@ const EMOJI = ["😭", "🙁", "🙂", "🤩"];
 // Top-level actions match the ToC links: flat, no background/padding, color
 // shift on hover only.
 const rowClass =
-  "flex w-full items-center gap-2.5 py-1.5 text-left text-muted-foreground text-sm transition-colors hover:text-foreground";
+  "flex w-full items-center gap-2.5 py-1.5 text-start text-muted-foreground text-sm transition-colors hover:text-foreground";
 
 // Items inside the floating popovers keep menu affordances (padding + hover
 // background).
 const menuRowClass =
-  "flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-muted-foreground text-sm transition-colors hover:bg-muted hover:text-foreground";
+  "flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-start text-muted-foreground text-sm transition-colors hover:bg-muted hover:text-foreground";
 ---
 
 <div
@@ -129,7 +129,7 @@ const menuRowClass =
               </button>
             ))}
             <button
-              class="ml-auto rounded-md bg-accent px-3 py-1 font-medium text-accent-foreground text-sm hover:opacity-90"
+              class="ms-auto rounded-md bg-accent px-3 py-1 font-medium text-accent-foreground text-sm hover:opacity-90"
               data-feedback-send
               type="button"
             >
@@ -155,7 +155,7 @@ const menuRowClass =
           <Icon name="download" size={16} />
           Export
           <Icon
-            class="ml-auto transition-transform group-open:rotate-180"
+            class="ms-auto transition-transform group-open:rotate-180"
             name="chevron-down"
             size={14}
           />
@@ -196,7 +196,7 @@ const menuRowClass =
       <Icon name="external-link" size={16} />
       {a.openInChat}
       <Icon
-        class="ml-auto transition-transform group-open:rotate-180"
+        class="ms-auto transition-transform group-open:rotate-180"
         name="chevron-down"
         size={14}
       />
@@ -231,7 +231,7 @@ const menuRowClass =
           <Icon name="plug" size={16} />
           {a.connectMcp}
           <Icon
-            class="ml-auto transition-transform group-open:rotate-180"
+            class="ms-auto transition-transform group-open:rotate-180"
             name="chevron-down"
             size={14}
           />

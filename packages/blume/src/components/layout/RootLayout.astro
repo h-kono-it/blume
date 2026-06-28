@@ -226,7 +226,7 @@ const bannerScript = banner?.dismissible
     data-blume-image-zoom={imageZoom ? "" : undefined}
   >
     <a
-      class="absolute left-[-999px] top-0 z-[100] bg-accent px-4 py-2 text-accent-foreground focus:left-0"
+      class="absolute start-[-999px] top-0 z-[100] bg-accent px-4 py-2 text-accent-foreground focus:start-0"
       href="#blume-content">{strings.page.skipToContent}</a
     >
     <Banner banner={banner} />
@@ -247,7 +247,7 @@ const bannerScript = banner?.dismissible
     <div class="mx-auto grid grid-cols-1 items-start lg:grid-cols-[17.5rem_minmax(0,1fr)] xl:grid-cols-[17.5rem_minmax(0,1fr)_16rem]">
       <aside
         aria-label="Primary"
-        class="fixed top-16 left-0 z-[35] h-[calc(100dvh-4rem)] w-64 max-w-[80vw] -translate-x-[105%] overflow-y-auto border-border border-r bg-background px-5 pt-4 pb-6 transition-transform [:where([data-blume-nav-open])_&]:translate-x-0 lg:sticky lg:z-auto lg:w-auto lg:max-w-none lg:translate-x-0 lg:border-r-0 lg:bg-transparent lg:px-4"
+        class="fixed top-16 start-0 z-[35] h-[calc(100dvh-4rem)] w-64 max-w-[80vw] -translate-x-[105%] overflow-y-auto border-border border-e bg-background px-5 pt-4 pb-6 transition-transform rtl:translate-x-[105%] [:where([data-blume-nav-open])_&]:translate-x-0! lg:sticky lg:z-auto lg:w-auto lg:max-w-none lg:translate-x-0! lg:border-e-0 lg:bg-transparent lg:px-4"
       >
         <nav>
           <NavTree currentRoute={page.route} items={navigation.sidebar} />
@@ -283,7 +283,7 @@ const bannerScript = banner?.dismissible
               </summary>
               <ul class="m-0 list-none border-border border-t p-2">
                 {tocHeadings.map((heading) => (
-                  <li style={`padding-left:${(heading.depth - 2) * 0.75}rem`}>
+                  <li style={`padding-inline-start:${(heading.depth - 2) * 0.75}rem`}>
                     <a
                       class="block rounded-md px-2 py-1.5 text-muted-foreground text-sm transition-colors hover:text-foreground"
                       href={`#${heading.slug}`}
@@ -317,7 +317,11 @@ const bannerScript = banner?.dismissible
                   class="flex max-w-[48%] flex-1 items-center gap-2 rounded-full border border-border px-4 py-3 text-foreground transition-colors hover:border-foreground max-md:max-w-full"
                   href={prev.route}
                 >
-                  <Icon name="arrow-left" size={16} />
+                  <Icon
+                    class="rtl:-scale-x-100"
+                    name="arrow-left"
+                    size={16}
+                  />
                   <span>
                     <span class="block text-muted-foreground text-xs">
                       {strings.page.previous}
@@ -330,7 +334,7 @@ const bannerScript = banner?.dismissible
               )}
               {next && (
                 <a
-                  class="ml-auto flex max-w-[48%] flex-1 items-center justify-end gap-2 rounded-full border border-border px-4 py-3 text-right text-foreground transition-colors hover:border-foreground max-md:max-w-full"
+                  class="ms-auto flex max-w-[48%] flex-1 items-center justify-end gap-2 rounded-full border border-border px-4 py-3 text-end text-foreground transition-colors hover:border-foreground max-md:max-w-full"
                   href={next.route}
                 >
                   <span>
@@ -339,7 +343,11 @@ const bannerScript = banner?.dismissible
                     </span>
                     <span class="block font-medium">{next.label}</span>
                   </span>
-                  <Icon name="arrow-right" size={16} />
+                  <Icon
+                    class="rtl:-scale-x-100"
+                    name="arrow-right"
+                    size={16}
+                  />
                 </a>
               )}
             </nav>
@@ -358,7 +366,7 @@ const bannerScript = banner?.dismissible
               </p>
               <ul class="m-0 list-none p-0">
                 {tocHeadings.map((heading) => (
-                  <li style={`padding-left:${(heading.depth - 2) * 0.75}rem`}>
+                  <li style={`padding-inline-start:${(heading.depth - 2) * 0.75}rem`}>
                     <a
                       class="block py-1.5 text-muted-foreground transition-colors hover:text-foreground"
                       href={`#${heading.slug}`}

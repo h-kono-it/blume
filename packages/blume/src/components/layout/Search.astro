@@ -41,7 +41,7 @@ const kbd = "rounded border border-border bg-muted px-1 py-0.5 font-mono";
     type="button"
   >
     <Icon name="search" size={16} />
-    <span class="min-w-0 flex-1 text-left max-sm:hidden">{s.button}</span>
+    <span class="min-w-0 flex-1 text-start max-sm:hidden">{s.button}</span>
     <kbd class="font-mono text-[0.7rem] max-sm:hidden" data-blume-search-kbd
       >⌘K</kbd
     >
@@ -70,7 +70,7 @@ const kbd = "rounded border border-border bg-muted px-1 py-0.5 font-mono";
       class="grid min-h-0 flex-1 md:grid-cols-[22rem_minmax(0,1fr)]"
       data-blume-search-grid
     >
-      <div class="flex min-h-0 flex-col md:border-border md:border-r">
+      <div class="flex min-h-0 flex-col md:border-border md:border-e">
         <div
           class="flex flex-wrap gap-1.5 border-border border-b px-3 py-2"
           data-blume-search-filters
@@ -160,7 +160,7 @@ const kbd = "rounded border border-border bg-muted px-1 py-0.5 font-mono";
 
     const GRID_COLS = "md:grid-cols-[22rem_minmax(0,1fr)]";
     const ROW_CLASS =
-      "flex w-full cursor-pointer items-start gap-2.5 rounded-blume border border-transparent px-2.5 py-2 text-left text-inherit transition-colors hover:no-underline";
+      "flex w-full cursor-pointer items-start gap-2.5 rounded-blume border border-transparent px-2.5 py-2 text-start text-inherit transition-colors hover:no-underline";
     // A transparent border sits on every row so selecting one only recolors it
     // (to the theme border) — no 1px layout shift as the cursor moves.
     const ROW_ON = ["bg-muted", "border-border"];
