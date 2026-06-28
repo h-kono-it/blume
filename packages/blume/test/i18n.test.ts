@@ -312,12 +312,12 @@ describe("dot parser and shared files", () => {
     expect(changelog.every((p) => p.navPath === "changelog.mdx")).toBe(true);
   });
 
-  it("applies shared _meta.$.json to every locale's nav group", async () => {
+  it("applies shared meta.$.ts to every locale's nav group", async () => {
     const resolved = config();
     const contentRoot = await tempContent({
       "fr/guides/intro.mdx": "# Intro fr\n",
-      "guides/_meta.$.json": JSON.stringify({ title: "Handbook" }),
       "guides/intro.mdx": "# Intro\n",
+      "guides/meta.$.ts": 'export default { title: "Handbook" };\n',
     });
     const { pages } = await discoverIn(contentRoot, resolved);
     const folderMeta = await discoverFolderMeta(contentRoot);

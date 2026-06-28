@@ -98,7 +98,7 @@ const pageOrder = (page: PageRecord, filename: string): number => {
 
 /**
  * Folder-meta lookup key for a group path. Under i18n the meta files live in
- * the locale directory (`fr/guides/_meta.json` -> key `fr/guides`) while the
+ * the locale directory (`fr/guides/meta.ts` -> key `fr/guides`) while the
  * nav group path is locale-stripped (`guides`), so prepend the locale prefix.
  */
 const metaKey = (path: string, metaPrefix: string): string => {
@@ -115,7 +115,7 @@ const applyFolderMeta = (
   sharedMeta: Map<string, FolderMeta>,
   metaPrefix: string
 ): void => {
-  // Locale-specific meta wins; a shared `_meta.$.*` (keyed by the locale-stripped
+  // Locale-specific meta wins; a shared `meta.$.*` (keyed by the locale-stripped
   // group path) applies to every locale otherwise.
   const meta =
     folderMeta.get(metaKey(group.path, metaPrefix)) ??
@@ -288,7 +288,7 @@ export const buildNavigation = (
      * single authored sidebar maps onto every locale's pages.
      */
     refByLogical?: boolean;
-    /** Shared `_meta.$.*` meta, keyed by locale-stripped dir path. */
+    /** Shared `meta.$.*` meta, keyed by locale-stripped dir path. */
     sharedFolderMeta?: Map<string, FolderMeta>;
   }
 ): Navigation => {

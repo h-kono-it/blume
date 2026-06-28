@@ -1,6 +1,5 @@
-import { createJiti } from "jiti";
-
 import { BlumeError, diagnosticsFromZod } from "./diagnostics.ts";
+import { createModuleLoader } from "./load-module.ts";
 import { findConfigFile } from "./project.ts";
 import { blumeConfigSchema } from "./schema.ts";
 import type { BlumeConfig, ResolvedConfig } from "./schema.ts";
@@ -20,11 +19,7 @@ export interface ConfigLoadResult {
   diagnostics: Diagnostic[];
 }
 
-const importConfigModule = async (file: string): Promise<unknown> => {
-  const jiti = createJiti(import.meta.url, { moduleCache: false });
-  const loaded = await jiti.import<{ default?: unknown }>(file);
-  return loaded?.default ?? loaded;
-};
+const importConfigModule = createModuleLoader();
 
 /**
  * Load and validate the project config. When no config file exists, schema

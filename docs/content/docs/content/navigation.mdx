@@ -37,17 +37,19 @@ See [Frontmatter](/docs/reference/frontmatter) for the full page schema.
 
 ## Folder groups
 
-Add a `_meta.json` to a folder to control how its group appears and how its pages
-are ordered:
+Add a `meta.ts` to a folder to control how its group appears and how its pages
+are ordered. Export a `defineMeta` object for full type-checking:
 
-```json _meta.json lineNumbers
-{
-  "title": "Guides",
-  "icon": "book-open",
-  "order": 2,
-  "collapsed": false,
-  "pages": ["configuration", "theming", "deployment"]
-}
+```ts meta.ts lineNumbers
+import { defineMeta } from "blume";
+
+export default defineMeta({
+  title: "Guides",
+  icon: "book-open",
+  order: 2,
+  collapsed: false,
+  pages: ["configuration", "theming", "deployment"],
+});
 ```
 
 - **`title`**, **`icon`**, **`order`** — the group's label, icon, and position
@@ -55,6 +57,18 @@ are ordered:
 - **`pages`** — explicit order for the group's children, listed by slug (numeric
   prefix and parentheses stripped). Pages you leave out still appear, after the
   listed ones.
+
+Because `meta.ts` is a real module, you can compute the meta — pass a function
+(sync or `async`) instead of an object to build it at scan time:
+
+```ts meta.ts
+import { defineMeta } from "blume";
+
+export default defineMeta(async () => ({
+  title: "Guides",
+  pages: await orderFromCms(),
+}));
+```
 
 To group pages _without_ adding a URL segment, use a parenthesized folder name —
 see [Pages](/docs/content#group-folders).
@@ -68,7 +82,7 @@ When the sidebar is generated, order is resolved highest priority first:
     An explicit `navigation.sidebar` replaces the generated tree entirely.
   </Step>
   <Step title="Folder meta">
-    The `pages` array in `_meta.json` orders a group.
+    The `pages` array in `meta.ts` orders a group.
   </Step>
   <Step title="Frontmatter">`sidebar.order` on a page.</Step>
   <Step title="File system">

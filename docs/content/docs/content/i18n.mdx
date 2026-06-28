@@ -79,10 +79,10 @@ a `$` marker so one file serves all locales without duplication:
 
 ```txt
 docs/changelog.$.mdx   ->  /changelog and /fr/changelog (same content)
-docs/guides/_meta.$.json   (folder meta applied to every locale)
+docs/guides/meta.$.ts   (folder meta applied to every locale)
 ```
 
-A locale-specific `_meta.json` still overrides the shared one for that language.
+A locale-specific `meta.ts` still overrides the shared one for that language.
 
 ## Default-locale URLs
 
@@ -101,8 +101,8 @@ i18n: {
 
 Each language gets its own sidebar, built from that locale's files — so
 translations can diverge in structure, ordering, or labels. Folder
-[`_meta.json`](/docs/content/navigation#folder-groups) files resolve per locale,
-too: put a `_meta.json` under `fr/guides/` to order the French group
+[`meta.ts`](/docs/content/navigation#folder-groups) files resolve per locale,
+too: put a `meta.ts` under `fr/guides/` to order the French group
 independently. Everything else about [navigation](/docs/content/navigation) works
 the same, per language.
 

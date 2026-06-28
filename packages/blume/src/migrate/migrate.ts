@@ -1,5 +1,5 @@
 import { existsSync } from "node:fs";
-import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 
 import { dirname, join, relative } from "pathe";
 import { glob } from "tinyglobby";
@@ -69,6 +69,38 @@ const writeBlumeConfig = async (
   await writeFile(join(root, "blume.config.ts"), body, "utf-8");
 };
 
+const META_JSON = /(?<sep>^|\/)meta\.json$/u;
+
+/**
+ * Convert a Fumadocs `meta.json` into a Blume `meta.ts` (`defineMeta`). On a
+ * parse failure the raw file is moved as-is so its data isn't lost.
+ */
+const convertMetaFile = async (
+  file: string,
+  dir: string,
+  rel: string
+): Promise<string | null> => {
+  const raw = await readFile(file, "utf-8");
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    const dest = join(dir, "meta.json");
+    await mkdir(dirname(dest), { recursive: true });
+    await rename(file, dest);
+    return `Could not parse ${rel}; moved as-is — convert it to meta.ts by hand.`;
+  }
+
+  const dest = join(dir, "meta.ts");
+  await mkdir(dirname(dest), { recursive: true });
+  await writeFile(
+    dest,
+    `import { defineMeta } from "blume";\n\nexport default defineMeta(${JSON.stringify(parsed, null, 2)});\n`
+  );
+  await rm(file);
+  return null;
+};
+
 /** Move files into `docs/`, returning how many moved and any skips. */
 const moveIntoDocs = async (
   root: string,
@@ -81,10 +113,24 @@ const moveIntoDocs = async (
 
   for (const file of absoluteFiles) {
     const rel = relative(base, file);
-    const targetName = options.renameMeta
-      ? rel.replace(/(?<sep>^|\/)meta\.json$/u, "$<sep>_meta.json")
-      : rel;
-    const dest = join(root, "docs", targetName);
+
+    if (options.renameMeta && META_JSON.test(rel)) {
+      const targetTs = rel.replace(META_JSON, "$<sep>meta.ts");
+      const destTs = join(root, "docs", targetTs);
+      if (existsSync(destTs)) {
+        warnings.push(`Skipped ${rel} (target already exists)`);
+        continue;
+      }
+      // oxlint-disable-next-line no-await-in-loop -- sequential fs moves
+      const warning = await convertMetaFile(file, dirname(destTs), rel);
+      if (warning) {
+        warnings.push(warning);
+      }
+      moved += 1;
+      continue;
+    }
+
+    const dest = join(root, "docs", rel);
     if (existsSync(dest)) {
       warnings.push(`Skipped ${rel} (target already exists)`);
       continue;
@@ -139,7 +185,7 @@ export const migrateMintlify = async (
   await writeBlumeConfig(root, config);
 
   warnings.push(
-    "Navigation is now inferred from files; review _meta.json for custom ordering.",
+    "Navigation is now inferred from files; add a meta.ts for custom ordering.",
     "Mintlify components (Card, Callout, Tabs, Steps, Accordion) map to Blume built-ins."
   );
   if (i18n) {

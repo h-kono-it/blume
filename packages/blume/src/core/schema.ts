@@ -91,7 +91,7 @@ export type PageMeta = z.infer<typeof pageMetaSchema>;
 export type PageMetaInput = z.input<typeof pageMetaSchema>;
 
 // ---------------------------------------------------------------------------
-// Folder meta (_meta.json / _meta.yaml)
+// Folder meta (meta.ts)
 // ---------------------------------------------------------------------------
 
 export const folderMetaSchema = z
