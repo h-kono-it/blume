@@ -1,10 +1,17 @@
 import type { ResolvedConfig, ResolvedI18nConfig } from "./schema.ts";
+import type { Diagnostic, PageRecord } from "./types.ts";
+import { UI_PACKS } from "./ui-packs/index.ts";
 
 /**
  * Locale logic, centralized. Every seam that needs to reason about locales
  * (content discovery, navigation, manifest, runtime generation, the catch-all)
  * goes through these helpers so the routing rules live in exactly one place.
  */
+
+/** Locale codes Blume recognizes (those it ships a UI pack for, plus English). */
+const KNOWN_LOCALES = new Set(
+  [...Object.keys(UI_PACKS), "en"].map((code) => code.toLowerCase())
+);
 
 /** True when the project opts into i18n. */
 export const i18nEnabled = (
@@ -75,4 +82,39 @@ export const detectLocale = (
     return { locale: first, rest: parts.slice(1) };
   }
   return { locale: i18n.defaultLocale, rest: parts };
+};
+
+/**
+ * Warn about top-level content folders that look like a locale (a code Blume
+ * recognizes) but aren't declared in `i18n.locales`. Without this they're
+ * silently treated as default-locale content under a `/<code>/…` route, which
+ * is almost never intended — usually a translation that wasn't registered.
+ */
+export const i18nDiagnostics = (
+  pages: PageRecord[],
+  i18n: ResolvedI18nConfig
+): Diagnostic[] => {
+  const configured = new Set(
+    i18n.locales.map((locale) => locale.code.toLowerCase())
+  );
+  const seen = new Set<string>();
+  const diagnostics: Diagnostic[] = [];
+  for (const page of pages) {
+    const first = page.id.split("/")[0]?.toLowerCase();
+    if (
+      first &&
+      !seen.has(first) &&
+      KNOWN_LOCALES.has(first) &&
+      !configured.has(first)
+    ) {
+      seen.add(first);
+      diagnostics.push({
+        code: "BLUME_I18N_UNCONFIGURED_LOCALE",
+        message: `Folder "${first}/" looks like a locale, but "${first}" is not in i18n.locales — its pages are treated as "${i18n.defaultLocale}" content at /${first}/….`,
+        severity: "warning",
+        suggestion: `Add { code: "${first}", label: "…" } to i18n.locales, or rename the folder if it isn't a translation.`,
+      });
+    }
+  }
+  return diagnostics;
 };

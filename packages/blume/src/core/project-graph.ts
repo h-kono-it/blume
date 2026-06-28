@@ -4,6 +4,7 @@ import { loadConfig } from "./config.ts";
 import { discoverContent } from "./content.ts";
 import { BlumeError } from "./diagnostics.ts";
 import { buildContentGraph } from "./graph.ts";
+import { i18nDiagnostics } from "./i18n.ts";
 import {
   gitLastModifiedTimes,
   resolveLastModifiedConfig,
@@ -99,6 +100,8 @@ export const scanProject = async (
   });
   const manifest = buildManifest({ config, context, graph });
 
+  const i18nWarnings = config.i18n ? i18nDiagnostics(pages, config.i18n) : [];
+
   return {
     config,
     context,
@@ -106,6 +109,7 @@ export const scanProject = async (
       ...content.diagnostics,
       ...folderMeta.diagnostics,
       ...graph.diagnostics,
+      ...i18nWarnings,
     ],
     graph,
     manifest,

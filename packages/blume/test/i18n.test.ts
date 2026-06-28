@@ -9,6 +9,7 @@ import { buildContentGraph } from "../src/core/graph.ts";
 import { EN_UI, resolveUIStrings } from "../src/core/i18n-ui.ts";
 import {
   detectLocale,
+  i18nDiagnostics,
   i18nEnabled,
   localePrefix,
   localizeRoute,
@@ -167,6 +168,65 @@ describe("per-locale navigation", () => {
     // The locale dir ("fr") must not appear as a top-level nav group.
     expect(labelsOf(fr)).not.toContain("Fr");
     expect(labelsOf(fr)).toContain("Guides");
+  });
+
+  it("localizes header tab paths per locale", async () => {
+    const resolved = blumeConfigSchema.parse({
+      i18n: {
+        defaultLocale: "en",
+        locales: [
+          { code: "en", label: "English" },
+          { code: "fr", label: "Français" },
+        ],
+      },
+      navigation: {
+        tabs: [
+          { label: "Docs", path: "/docs" },
+          { label: "Home", path: "/" },
+        ],
+      },
+    });
+    const { graph } = await buildProject(resolved);
+
+    expect(
+      (graph.navigationByLocale.fr?.tabs ?? []).map((tab) => tab.path)
+    ).toEqual(["/fr/docs", "/fr"]);
+    // The hidden default locale keeps unprefixed tab paths.
+    expect(
+      (graph.navigationByLocale.en?.tabs ?? []).map((tab) => tab.path)
+    ).toEqual(["/docs", "/"]);
+  });
+});
+
+describe("i18n diagnostics", () => {
+  it("warns about a locale-looking folder that isn't configured", async () => {
+    // Project locales are en + fr; the `de/` folder below is not configured.
+    const resolved = config();
+    const root = await mkdtemp(join(tmpdir(), "blume-i18n-diag-"));
+    dirs.push(root);
+    const contentRoot = join(root, "docs");
+    await mkdir(join(contentRoot, "de"), { recursive: true });
+    await writeFile(join(contentRoot, "index.mdx"), "# Home\n");
+    await writeFile(join(contentRoot, "de", "page.mdx"), "# DE\n");
+
+    const { pages } = await discoverContent({
+      contentRoot,
+      defaultType: resolved.content.defaultType,
+      exclude: resolved.content.exclude,
+      i18n: resolved.i18n,
+      include: resolved.content.include,
+    });
+    const diagnostics = i18nDiagnostics(pages, i18nOf());
+    expect(diagnostics.map((d) => d.code)).toContain(
+      "BLUME_I18N_UNCONFIGURED_LOCALE"
+    );
+    expect(diagnostics.some((d) => d.message.includes('"de"'))).toBe(true);
+  });
+
+  it("stays quiet when every locale folder is configured", async () => {
+    const { pages } = await buildProject(config());
+    // FILES ships an `fr/` folder, and `fr` is a configured locale.
+    expect(i18nDiagnostics(pages, i18nOf())).toEqual([]);
   });
 });
 

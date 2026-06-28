@@ -1,3 +1,4 @@
+import { localizeRoute } from "./i18n.ts";
 import { buildNavigation } from "./navigation.ts";
 import type {
   FolderMeta,
@@ -46,6 +47,14 @@ export const buildContentGraph = (
     // Each locale gets an independent tree from its own pages and folder meta,
     // so navigation may diverge per language (Mintlify-style).
     for (const { code } of i18n.locales) {
+      // Localize internal tab paths so a header tab points to its in-locale
+      // route (e.g. `/docs` -> `/fr/docs`); external paths pass through.
+      const tabs = options.navigation.tabs?.map((tab) => ({
+        ...tab,
+        path: tab.path.startsWith("/")
+          ? localizeRoute(tab.path, code, i18n)
+          : tab.path,
+      }));
       navigationByLocale[code] = buildNavigation(
         pages.filter((page) => page.locale === code),
         {
@@ -53,7 +62,7 @@ export const buildContentGraph = (
           metaPrefix: code === i18n.defaultLocale ? "" : code,
           refByLogical: true,
           sidebar: options.navigation.sidebar,
-          tabs: options.navigation.tabs,
+          tabs,
         }
       );
     }
