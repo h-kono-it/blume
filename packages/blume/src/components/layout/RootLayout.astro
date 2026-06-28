@@ -288,18 +288,20 @@ const bannerScript = banner?.dismissible
                   size={16}
                 />
               </summary>
-              <ul class="m-0 list-none border-border border-t p-2">
-                {tocHeadings.map((heading) => (
-                  <li style={`padding-inline-start:${(heading.depth - 2) * 0.75}rem`}>
-                    <a
-                      class="block rounded-md px-2 py-1.5 text-muted-foreground text-sm transition-colors hover:text-foreground"
-                      href={`#${heading.slug}`}
-                    >
-                      {heading.text}
-                    </a>
-                  </li>
-                ))}
-              </ul>
+              <blume-toc class="block">
+                <ul class="m-0 list-none border-border border-t p-2">
+                  {tocHeadings.map((heading) => (
+                    <li style={`padding-inline-start:${(heading.depth - 2) * 0.75}rem`}>
+                      <a
+                        class="block rounded-md px-2 py-1.5 text-muted-foreground text-sm transition-colors hover:text-foreground aria-[current=location]:font-medium aria-[current=location]:text-foreground"
+                        href={`#${heading.slug}`}
+                      >
+                        {heading.text}
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              </blume-toc>
             </details>
           )
         }
@@ -371,18 +373,20 @@ const bannerScript = banner?.dismissible
               <p class="mb-3 font-semibold text-foreground text-sm">
                 {strings.toc.title}
               </p>
-              <ul class="m-0 list-none p-0">
-                {tocHeadings.map((heading) => (
-                  <li style={`padding-inline-start:${(heading.depth - 2) * 0.75}rem`}>
-                    <a
-                      class="block py-1.5 text-muted-foreground transition-colors hover:text-foreground"
-                      href={`#${heading.slug}`}
-                    >
-                      {heading.text}
-                    </a>
-                  </li>
-                ))}
-              </ul>
+              <blume-toc class="block">
+                <ul class="m-0 list-none p-0">
+                  {tocHeadings.map((heading) => (
+                    <li style={`padding-inline-start:${(heading.depth - 2) * 0.75}rem`}>
+                      <a
+                        class="block py-1.5 text-muted-foreground transition-colors hover:text-foreground aria-[current=location]:font-medium aria-[current=location]:text-foreground"
+                        href={`#${heading.slug}`}
+                      >
+                        {heading.text}
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              </blume-toc>
             </>
           )
         }
@@ -410,6 +414,9 @@ const bannerScript = banner?.dismissible
       // Registers the <blume-mermaid> custom element (emitted by ```mermaid
       // fences). Mermaid itself is lazy-loaded only on pages that use a diagram.
       import "../content/mermaid-element.ts";
+      // Registers the <blume-toc> custom element: scrollspy for the table of
+      // contents, highlighting the section currently in view as you scroll.
+      import "./toc-element.ts";
 
       const svg = (name: string) =>
         `<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${icons[name]}</svg>`;
