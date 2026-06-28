@@ -1,6 +1,8 @@
 ---
-import type { Navigation } from "../../core/types.ts";
+import type { UIStrings } from "../../core/i18n-ui.ts";
+import type { LocaleSwitchOption, Navigation } from "../../core/types.ts";
 import Icon from "../Icon.astro";
+import LanguageSwitcher from "./LanguageSwitcher.astro";
 import Search from "./Search.astro";
 
 interface Props {
@@ -19,6 +21,9 @@ interface Props {
   // The mobile menu button toggles the docs sidebar drawer; custom pages
   // without a sidebar (e.g. a landing page) pass `false` to hide it.
   hasSidebar?: boolean;
+  searchStrings?: UIStrings["search"];
+  switcherStrings?: UIStrings["languageSwitcher"];
+  localeSwitch?: LocaleSwitchOption[];
 }
 
 const {
@@ -29,6 +34,9 @@ const {
   searchEnabled,
   askEnabled = false,
   hasSidebar = true,
+  searchStrings,
+  switcherStrings,
+  localeSwitch,
 } = Astro.props;
 
 // The logo is resolved upstream: an inline `svg` (so a currentColor mark
@@ -121,7 +129,24 @@ const clickScript = `document.addEventListener("click",(e)=>{const t=e.target.cl
   }
   <div class="flex-1"></div>
   <slot name="ask" />
-  {searchEnabled && <Search askEnabled={askEnabled} navigation={navigation} />}
+  {
+    localeSwitch && localeSwitch.length > 1 && (
+      <LanguageSwitcher
+        label={switcherStrings?.label ?? "Language"}
+        options={localeSwitch}
+        untranslatedLabel={switcherStrings?.untranslated ?? "Not translated"}
+      />
+    )
+  }
+  {
+    searchEnabled && (
+      <Search
+        askEnabled={askEnabled}
+        navigation={navigation}
+        strings={searchStrings}
+      />
+    )
+  }
   <button
     aria-label="Toggle color theme"
     class={iconButton}

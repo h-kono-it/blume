@@ -1,4 +1,6 @@
 ---
+import { EN_UI } from "../../core/i18n-ui.ts";
+import type { UIStrings } from "../../core/i18n-ui.ts";
 import Icon from "../Icon.astro";
 
 interface Props {
@@ -14,10 +16,22 @@ interface Props {
   mcpUrl?: string | null;
   /** Display name of the MCP server (defaults to the site title). */
   mcpName?: string | null;
+  /** Localized action labels. */
+  strings?: UIStrings["actions"];
 }
 
-const { route, editUrl, repoUrl, askEnabled, exportPdf, exportEpub, mcpUrl, mcpName } =
-  Astro.props;
+const {
+  route,
+  editUrl,
+  repoUrl,
+  askEnabled,
+  exportPdf,
+  exportEpub,
+  mcpUrl,
+  mcpName,
+  strings,
+} = Astro.props;
+const a = strings ?? EN_UI.actions;
 const mdPath = route === "/" ? "/index.md" : `${route}.md`;
 
 const GITHUB_LOGO =
@@ -62,6 +76,7 @@ const menuRowClass =
 <div
   class="mt-8 space-y-0.5 border-border border-t pt-4"
   data-blume-page-actions
+  data-i18n-copied={a.copied}
   data-mcp-name={mcpName ?? undefined}
   data-mcp-url={mcpUrl ?? undefined}
   data-md={mdPath}
@@ -70,14 +85,14 @@ const menuRowClass =
     editUrl && (
       <a class={rowClass} href={editUrl} rel="noreferrer" target="_blank">
         <span set:html={GITHUB_LOGO} />
-        Edit this page on GitHub
+        {a.edit}
       </a>
     )
   }
 
   <button class={rowClass} data-blume-scroll-top type="button">
     <Icon name="arrow-up" size={16} />
-    Scroll to top
+    {a.scrollToTop}
   </button>
 
   {
@@ -87,7 +102,7 @@ const menuRowClass =
           class={`${rowClass} cursor-pointer list-none [&::-webkit-details-marker]:hidden`}
         >
           <Icon name="thumbs-up" size={16} />
-          Give feedback
+          {a.giveFeedback}
         </summary>
         <div
           class="absolute right-0 left-0 z-50 mt-2 rounded-blume border border-border bg-background p-2.5 shadow-xl"
@@ -97,10 +112,10 @@ const menuRowClass =
           <textarea
             class="block max-h-40 min-h-20 w-full resize-y rounded-md border border-border bg-transparent px-2 py-1.5 text-foreground text-sm"
             data-feedback-text
-            placeholder="Leave your feedback…"
+            placeholder={a.feedbackPlaceholder}
           />
           <p class="mt-1 mb-2 text-muted-foreground text-xs">
-            Markdown supported
+            {a.markdownSupported}
           </p>
           <div class="flex items-center gap-1">
             {EMOJI.map((emoji) => (
@@ -118,7 +133,7 @@ const menuRowClass =
               data-feedback-send
               type="button"
             >
-              Send
+              {a.send}
             </button>
           </div>
         </div>
@@ -128,7 +143,7 @@ const menuRowClass =
 
   <button class={rowClass} data-blume-copy-page type="button">
     <Icon name="copy" size={16} />
-    <span data-blume-copy-label>Copy as Markdown</span>
+    <span data-blume-copy-label>{a.copyMarkdown}</span>
   </button>
 
   {
@@ -169,7 +184,7 @@ const menuRowClass =
     askEnabled && (
       <button class={rowClass} data-blume-ask-ai type="button">
         <Icon name="message-circle" size={16} />
-        Ask AI about this page
+        {a.askAI}
       </button>
     )
   }
@@ -179,7 +194,7 @@ const menuRowClass =
       class={`${rowClass} cursor-pointer list-none [&::-webkit-details-marker]:hidden`}
     >
       <Icon name="external-link" size={16} />
-      Open in chat
+      {a.openInChat}
       <Icon
         class="ml-auto transition-transform group-open:rotate-180"
         name="chevron-down"
@@ -214,7 +229,7 @@ const menuRowClass =
           class={`${rowClass} cursor-pointer list-none [&::-webkit-details-marker]:hidden`}
         >
           <Icon name="plug" size={16} />
-          Connect to MCP
+          {a.connectMcp}
           <Icon
             class="ml-auto transition-transform group-open:rotate-180"
             name="chevron-down"
@@ -225,24 +240,24 @@ const menuRowClass =
           <button class={menuRowClass} data-mcp-copy-url type="button">
             <Icon name="link" size={16} />
             <span class="flex-1" data-mcp-url-label>
-              Copy server URL
+              {a.copyServerUrl}
             </span>
           </button>
           <button class={menuRowClass} data-mcp-copy-claude type="button">
             <span set:html={LOGOS.claude} />
             <span class="flex-1" data-mcp-claude-label>
-              Copy Claude Code command
+              {a.copyClaudeCode}
             </span>
           </button>
           <hr class="my-1 border-border border-t" />
           <a class={menuRowClass} data-mcp-cursor rel="noreferrer">
             <span set:html={LOGOS.cursor} />
-            <span class="flex-1">Add to Cursor</span>
+            <span class="flex-1">{a.addToCursor}</span>
             <Icon name="external-link" size={13} />
           </a>
           <a class={menuRowClass} data-mcp-vscode rel="noreferrer">
             <Icon name="code" size={16} />
-            <span class="flex-1">Add to VS Code</span>
+            <span class="flex-1">{a.addToVscode}</span>
             <Icon name="external-link" size={13} />
           </a>
         </div>
@@ -312,6 +327,7 @@ hr { border: 0; border-top: 1px solid #ddd; margin: 2em 0; }`;
   const root = document.querySelector("[data-blume-page-actions]");
   if (root) {
     const md = root.getAttribute("data-md") ?? "";
+    const copiedLabel = root.getAttribute("data-i18n-copied") || "Copied!";
     const absolute = new URL(md, location.origin).href;
     const query = encodeURIComponent(
       `Read ${absolute} so I can ask you questions about this page.`
@@ -367,10 +383,12 @@ hr { border: 0; border-top: 1px solid #ddd; margin: 2em 0; }`;
           }, 1500);
         }
       };
-      const copy = async (value: string, el: Element | null, label: string) => {
+      const copy = async (value: string, el: Element | null) => {
+        // Restore the element's own label, so localized text round-trips.
+        const reset = el?.textContent ?? "";
         try {
           await navigator.clipboard.writeText(value);
-          flash(el, "Copied!", label);
+          flash(el, copiedLabel, reset);
         } catch {
           // Clipboard unavailable; nothing to do.
         }
@@ -378,19 +396,14 @@ hr { border: 0; border-top: 1px solid #ddd; margin: 2em 0; }`;
       root
         .querySelector("[data-mcp-copy-url]")
         ?.addEventListener("click", () =>
-          copy(
-            mcpUrl,
-            root.querySelector("[data-mcp-url-label]"),
-            "Copy server URL"
-          )
+          copy(mcpUrl, root.querySelector("[data-mcp-url-label]"))
         );
       root
         .querySelector("[data-mcp-copy-claude]")
         ?.addEventListener("click", () =>
           copy(
             `claude mcp add --transport http ${id} ${mcpUrl}`,
-            root.querySelector("[data-mcp-claude-label]"),
-            "Copy Claude Code command"
+            root.querySelector("[data-mcp-claude-label]")
           )
         );
     }
@@ -399,13 +412,14 @@ hr { border: 0; border-top: 1px solid #ddd; margin: 2em 0; }`;
     root
       .querySelector("[data-blume-copy-page]")
       ?.addEventListener("click", async () => {
+        const original = label?.textContent ?? "";
         try {
           const response = await fetch(md);
           await navigator.clipboard.writeText(await response.text());
           if (label) {
-            label.textContent = "Copied!";
+            label.textContent = copiedLabel;
             setTimeout(() => {
-              label.textContent = "Copy as Markdown";
+              label.textContent = original;
             }, 1500);
           }
         } catch {

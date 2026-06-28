@@ -1,4 +1,6 @@
 ---
+import { EN_UI } from "../../core/i18n-ui.ts";
+import type { UIStrings } from "../../core/i18n-ui.ts";
 import type { Navigation } from "../../core/types.ts";
 import Icon from "../Icon.astro";
 import { flattenPages } from "./nav-utils.ts";
@@ -11,9 +13,11 @@ import { flattenPages } from "./nav-utils.ts";
 interface Props {
   askEnabled?: boolean;
   navigation?: Navigation;
+  strings?: UIStrings["search"];
 }
 
-const { askEnabled = false, navigation } = Astro.props;
+const { askEnabled = false, navigation, strings } = Astro.props;
+const s = strings ?? EN_UI.search;
 
 // Pages shown in the empty state, before the user has typed anything.
 const popular = navigation ? flattenPages(navigation.sidebar).slice(0, 6) : [];
@@ -21,22 +25,27 @@ const popular = navigation ? flattenPages(navigation.sidebar).slice(0, 6) : [];
 const kbd = "rounded border border-border bg-muted px-1 py-0.5 font-mono";
 ---
 
-<blume-search class="contents" data-ask={askEnabled ? "" : undefined}>
+<blume-search
+  class="contents"
+  data-ask={askEnabled ? "" : undefined}
+  data-i18n-dev={s.devOnly}
+  data-i18n-empty={s.noResults}
+>
   <button
-    aria-label="Search"
+    aria-label={s.button}
     class="inline-flex h-9 min-w-0 cursor-pointer items-center gap-2 rounded-full border border-border bg-background px-3 text-muted-foreground text-sm transition-colors hover:border-foreground hover:text-foreground sm:min-w-48"
     data-blume-search-open
     type="button"
   >
     <Icon name="search" size={16} />
-    <span class="min-w-0 flex-1 text-left max-sm:hidden">Search</span>
+    <span class="min-w-0 flex-1 text-left max-sm:hidden">{s.button}</span>
     <kbd class="font-mono text-[0.7rem] max-sm:hidden" data-blume-search-kbd
       >⌘K</kbd
     >
   </button>
 
   <dialog
-    aria-label="Search docs"
+    aria-label={s.label}
     class="m-auto h-[min(480px,90vh)] w-[min(62.5rem,94vw)] flex-col overflow-hidden rounded-blume border border-border bg-background/80 p-0 text-foreground shadow-2xl outline-none backdrop-blur-xl backdrop:bg-black/30 open:flex"
     data-blume-search-dialog
   >
@@ -45,11 +54,11 @@ const kbd = "rounded border border-border bg-muted px-1 py-0.5 font-mono";
     >
       <Icon name="search" size={18} />
       <input
-        aria-label="Search docs"
+        aria-label={s.label}
         autocomplete="off"
         class="flex-1 border-0 bg-transparent text-foreground text-sm focus:outline-none [&::-webkit-search-cancel-button]:appearance-none"
         data-blume-search-input
-        placeholder="Search documentation..."
+        placeholder={s.placeholder}
         type="search"
       />
       <kbd class={`${kbd} text-[0.7rem]`}>Esc</kbd>
@@ -163,8 +172,14 @@ const kbd = "rounded border border-border bg-muted px-1 py-0.5 font-mono";
       selectedIndex = -1;
       activeSection: string | null = null;
       previewOn = true;
+      devOnlyMsg = "Search is available in the production build.";
+      noResultsMsg = "No results found.";
 
       connectedCallback() {
+        this.devOnlyMsg =
+          this.getAttribute("data-i18n-dev") || this.devOnlyMsg;
+        this.noResultsMsg =
+          this.getAttribute("data-i18n-empty") || this.noResultsMsg;
         this.dialog = this.querySelector("[data-blume-search-dialog]")!;
         this.input = this.querySelector("[data-blume-search-input]")!;
         this.grid = this.querySelector("[data-blume-search-grid]")!;
@@ -293,7 +308,7 @@ const kbd = "rounded border border-border bg-muted px-1 py-0.5 font-mono";
         if (!this.searchFn) {
           this.renderFilters([]);
           this.clearPreview();
-          this.setMessage("Search is available in the production build.");
+          this.setMessage(this.devOnlyMsg);
           return;
         }
 
@@ -323,7 +338,7 @@ const kbd = "rounded border border-border bg-muted px-1 py-0.5 font-mono";
             this.selectables.push(item);
           }
         } else if (!this.askEnabled) {
-          this.setMessage("No results found.");
+          this.setMessage(this.noResultsMsg);
         }
 
         this.finishRender();

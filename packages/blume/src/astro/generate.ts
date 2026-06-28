@@ -16,8 +16,10 @@ import { glob } from "tinyglobby";
 import { buildRawMarkdown } from "../ai/markdown.ts";
 import { buildMcpData } from "../ai/mcp/data.ts";
 import { buildMcpDiscovery, buildMcpServerCard } from "../ai/mcp/discovery.ts";
+import { EN_UI, resolveUIStrings } from "../core/i18n-ui.ts";
 import type { BlumeProject } from "../core/project-graph.ts";
 import type { ResolvedConfig } from "../core/schema.ts";
+import type { Navigation } from "../core/types.ts";
 import { buildRssFeeds, renderRssFeed } from "../deploy/rss.ts";
 import {
   buildReferenceFiles,
@@ -316,12 +318,63 @@ export const buildRuntimeData = (project: BlumeProject): string => {
     return `${editBase}/${github?.dir ? `${github.dir}/${rel}` : rel}`;
   };
 
+  const { i18n } = config;
+
+  // API reference routes (Scalar) surface as header tabs alongside the
+  // content-derived ones, so the reference stays discoverable in every locale.
+  const withReferenceTabs = (nav: Navigation): Navigation => ({
+    ...nav,
+    tabs: [...nav.tabs, ...referenceTabs(config)],
+  });
+
+  // Resolved UI dictionaries: one per locale under i18n, English baseline
+  // otherwise. Threaded into chrome so the catch-all can pick the active locale.
+  const uiByLocale = i18n
+    ? Object.fromEntries(
+        i18n.locales.map(({ code }) => [
+          code,
+          resolveUIStrings(code, {
+            defaultLocale: i18n.defaultLocale,
+            overrides: i18n.ui,
+          }),
+        ])
+      )
+    : {};
+  const defaultUi = i18n
+    ? resolveUIStrings(i18n.defaultLocale, {
+        defaultLocale: i18n.defaultLocale,
+        overrides: i18n.ui,
+      })
+    : EN_UI;
+
+  const navigationByLocale = i18n
+    ? Object.fromEntries(
+        i18n.locales.map(({ code }) => [
+          code,
+          withReferenceTabs(
+            graph.navigationByLocale[code] ?? { sidebar: [], tabs: [] }
+          ),
+        ])
+      )
+    : {};
+
   const data = {
     config: {
       banner: resolveBanner(config),
       codeWrap: config.markdown.code.wrap,
       description: config.description,
       favicon: resolveFavicon(project),
+      i18n: i18n
+        ? {
+            defaultLocale: i18n.defaultLocale,
+            hideDefaultLocalePrefix: i18n.hideDefaultLocalePrefix,
+            locales: i18n.locales.map(({ code, dir, label }) => ({
+              code,
+              dir,
+              label,
+            })),
+          }
+        : null,
       imageZoom: config.markdown.imageZoom,
       logo: resolveLogo(project),
       mcp: config.mcp.enabled
@@ -345,22 +398,26 @@ export const buildRuntimeData = (project: BlumeProject): string => {
     // CSS variables for Astro's <Font> component; matches the astro.config
     // `fonts:` entries derived from the same theme.fonts config.
     fontCssVars: configuredCssVars(config.theme.fonts),
-    // API reference routes (Scalar) surface as header tabs alongside the
-    // content-derived ones, so the reference stays discoverable.
-    navigation: {
-      ...graph.navigation,
-      tabs: [...graph.navigation.tabs, ...referenceTabs(config)],
-    },
+    navigation: withReferenceTabs(graph.navigation),
+    // Per-locale navigation; the catch-all selects the active locale's tree.
+    navigationByLocale,
     routes: manifest.routes.map((route) => ({
+      alternates: route.alternates,
       draft: route.draft,
       editUrl: editUrlFor(route.sourcePath),
+      fallback: route.fallback ?? false,
       hidden: route.hidden,
       id: route.id,
       indexable: route.indexable,
       lastModified: route.lastModified ?? null,
+      locale: route.locale,
       path: route.path,
       title: route.title,
     })),
+    // Default-locale chrome strings (English baseline when not under i18n).
+    ui: defaultUi,
+    // Per-locale chrome strings, selected by the catch-all under i18n.
+    uiByLocale,
   };
   return `${JSON.stringify(data, null, 2)}\n`;
 };

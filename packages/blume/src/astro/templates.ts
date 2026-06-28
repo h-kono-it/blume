@@ -141,6 +141,19 @@ export const astroConfigTemplate = (options: {
     ? `\n  base: ${JSON.stringify(deployment.base)},`
     : "";
 
+  // Astro's native i18n gives locale-aware helpers + `<html lang>` correctness.
+  // Blume owns getStaticPaths and materializes fallback routes in the manifest,
+  // so we deliberately omit Astro's `fallback` to keep one source of routing.
+  const i18nOption = config.i18n
+    ? `\n  i18n: ${JSON.stringify({
+        defaultLocale: config.i18n.defaultLocale,
+        locales: config.i18n.locales.map((locale) => locale.code),
+        routing: {
+          prefixDefaultLocale: !config.i18n.hideDefaultLocalePrefix,
+        },
+      })},`
+    : "";
+
   const redirectsOption =
     config.redirects.length > 0
       ? `\n  redirects: ${JSON.stringify(
@@ -212,7 +225,7 @@ export default defineConfig({
   srcDir: ${JSON.stringify(`${context.outDir}/src`)},
   outDir: ${JSON.stringify(`${context.root}/dist`)},
   publicDir: ${JSON.stringify(`${context.root}/public`)},
-  output: ${JSON.stringify(deployment.output)},${adapterOption}${siteOption}${baseOption}${redirectsOption}${fontsOption}
+  output: ${JSON.stringify(deployment.output)},${adapterOption}${siteOption}${baseOption}${redirectsOption}${i18nOption}${fontsOption}
   integrations: [${integrations.join(", ")}],
   markdown: {
     processor: blumeMarkdownProcessor(${JSON.stringify({
@@ -609,7 +622,9 @@ export const catchAllPageTemplate = (options: {
   const askImport = options.askEnabled
     ? 'import AskAI from "blume/components/islands/AskAI.astro";\n'
     : "";
-  const askSlot = options.askEnabled ? '\n  <AskAI slot="ask" />' : "";
+  const askSlot = options.askEnabled
+    ? '\n  <AskAI slot="ask" strings={ui.ask} />'
+    : "";
   const mathImport = options.mathEnabled
     ? 'import Math from "blume/components/content/Math.astro";\n'
     : "";
@@ -699,17 +714,19 @@ export function getStaticPaths() {
   return data.routes.map((route) => ({
     params: { slug: route.path === "/" ? undefined : route.path.slice(1) },
     props: {
+      alternates: route.alternates,
       editUrl: route.editUrl,
       entryId: route.id,
       indexable: route.indexable,
       lastModified: route.lastModified,
+      locale: route.locale,
       route: route.path,
       title: route.title,
     },
   }));
 }
 
-const { entryId, route, title, indexable, editUrl, lastModified } = Astro.props;
+const { entryId, route, title, indexable, editUrl, lastModified, locale, alternates } = Astro.props;
 const entry = await getEntry("docs", entryId);
 if (!entry) {
   return new Response(null, { status: 404 });
@@ -728,6 +745,54 @@ const ogImage = ogRel && base ? \`\${base}\${ogRel}\` : ogRel;
 
 const canonical =
   seo.canonical ?? (base ? \`\${base}\${route === "/" ? "" : route}\` : null);
+
+// Locale resolution. With i18n on, pick the active locale's nav + dictionary,
+// build hreflang alternates, and derive the language-switcher targets.
+const i18n = data.config.i18n;
+const localePrefix = (codeArg) =>
+  i18n && codeArg === i18n.defaultLocale && i18n.hideDefaultLocalePrefix
+    ? ""
+    : \`/\${codeArg}\`;
+const localizeRoute = (logical, codeArg) => {
+  const prefix = localePrefix(codeArg);
+  if (!prefix) {
+    return logical;
+  }
+  return logical === "/" ? prefix : \`\${prefix}\${logical}\`;
+};
+const stripLocale = (path, codeArg) => {
+  const prefix = localePrefix(codeArg);
+  return prefix && path.startsWith(prefix) ? path.slice(prefix.length) || "/" : path;
+};
+
+const navigation = i18n ? (data.navigationByLocale[locale] ?? data.navigation) : data.navigation;
+const ui = i18n ? (data.uiByLocale[locale] ?? data.ui) : data.ui;
+const localeMeta = i18n ? i18n.locales.find((l) => l.code === locale) : null;
+const dir = localeMeta?.dir ?? "ltr";
+const htmlLang = i18n ? locale : "en";
+const absolute = (path) => base + (path === "/" ? "" : path);
+
+const localeAlternates =
+  i18n && base
+    ? (alternates ?? []).map((alt) => ({ hreflang: alt.locale, href: absolute(alt.path) }))
+    : [];
+const defaultAlt = i18n ? (alternates ?? []).find((alt) => alt.locale === i18n.defaultLocale) : null;
+const xDefault = defaultAlt && base ? absolute(defaultAlt.path) : null;
+
+const logicalRoute = i18n ? stripLocale(route, locale) : route;
+const localeSwitch = i18n
+  ? i18n.locales.map((l) => {
+      const alt = (alternates ?? []).find((x) => x.locale === l.code);
+      return {
+        code: l.code,
+        current: l.code === locale,
+        dir: l.dir,
+        href: alt ? alt.path : localizeRoute(logicalRoute, l.code),
+        label: l.label,
+        untranslated: !alt,
+      };
+    })
+  : [];
 ---
 
 <RootLayout
@@ -738,7 +803,13 @@ const canonical =
   banner={data.config.banner}
   imageZoom={data.config.imageZoom}
   codeWrap={data.config.codeWrap}
-  navigation={data.navigation}
+  navigation={navigation}
+  locale={htmlLang}
+  dir={dir}
+  ui={ui}
+  localeAlternates={localeAlternates}
+  xDefault={xDefault}
+  localeSwitch={localeSwitch}
   page={{ title: seo.title ?? title, description: seo.description ?? frontmatter.description, route }}
   headings={headings}
   themeMode={data.config.theme.mode}

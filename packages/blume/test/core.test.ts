@@ -33,9 +33,12 @@ const makePage = (
   groups: [],
   headings: [],
   links: [],
+  locale: "",
   meta: pageMetaSchema.parse({}),
+  navPath: over.id,
   segments: [],
   sourcePath: `/abs/${over.id}`,
+  translationKey: over.route,
   ...over,
 });
 

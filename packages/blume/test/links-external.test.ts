@@ -17,6 +17,7 @@ const graphWith = (links: PageLink[]): ContentGraph =>
   ({
     diagnostics: [],
     navigation: { sidebar: [], tabs: [] },
+    navigationByLocale: {},
     pages: [
       {
         contentType: "doc",
@@ -25,11 +26,14 @@ const graphWith = (links: PageLink[]): ContentGraph =>
         headings: [],
         id: "a.mdx",
         links,
+        locale: "",
         meta: pageMetaSchema.parse({}),
+        navPath: "a.mdx",
         route: "/a",
         segments: [],
         sourcePath: "/abs/a.mdx",
         title: "A",
+        translationKey: "/a",
       },
     ],
     routes: new Map([["/a", "a.mdx"]]),

@@ -61,6 +61,7 @@ export const scanProject = async (
       contentRoot: context.contentRoot,
       defaultType: config.content.defaultType,
       exclude: config.content.exclude,
+      i18n: config.i18n,
       include: config.content.include,
     }),
     discoverFolderMeta(context.contentRoot),
@@ -93,6 +94,7 @@ export const scanProject = async (
 
   const graph = buildContentGraph(pages, {
     folderMeta: folderMeta.meta,
+    i18n: config.i18n,
     navigation: config.navigation,
   });
   const manifest = buildManifest({ config, context, graph });

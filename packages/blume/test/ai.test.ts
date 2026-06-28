@@ -25,11 +25,14 @@ const makePage = (
   headings: [],
   id,
   links: [],
+  locale: "",
   meta: pageMetaSchema.parse({}),
+  navPath: id,
   route,
   segments: [],
   sourcePath: join(root, id),
   title,
+  translationKey: route,
   ...over,
 });
 

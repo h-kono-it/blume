@@ -96,12 +96,25 @@ const pageOrder = (page: PageRecord, filename: string): number => {
   return numericOrder(filename);
 };
 
+/**
+ * Folder-meta lookup key for a group path. Under i18n the meta files live in
+ * the locale directory (`fr/guides/_meta.json` -> key `fr/guides`) while the
+ * nav group path is locale-stripped (`guides`), so prepend the locale prefix.
+ */
+const metaKey = (path: string, metaPrefix: string): string => {
+  if (!metaPrefix) {
+    return path;
+  }
+  return path ? `${metaPrefix}/${path}` : metaPrefix;
+};
+
 /** Apply folder meta (title/order/icon/collapsed and explicit page order). */
 const applyFolderMeta = (
   group: MutableGroup,
-  folderMeta: Map<string, FolderMeta>
+  folderMeta: Map<string, FolderMeta>,
+  metaPrefix: string
 ): void => {
-  const meta = folderMeta.get(group.path);
+  const meta = folderMeta.get(metaKey(group.path, metaPrefix));
   if (meta) {
     group.label = meta.title ?? group.label;
     group.icon = meta.icon ?? group.icon;
@@ -121,7 +134,7 @@ const applyFolderMeta = (
 
   for (const child of group.children) {
     if (child.kind === "group") {
-      applyFolderMeta(child, folderMeta);
+      applyFolderMeta(child, folderMeta, metaPrefix);
     }
   }
 };
@@ -163,7 +176,8 @@ const toNavNode = (node: MutableNode): NavNode => {
 /** Build the sidebar tree from the file system and folder meta. */
 const buildFileSystemSidebar = (
   pages: PageRecord[],
-  folderMeta: Map<string, FolderMeta>
+  folderMeta: Map<string, FolderMeta>,
+  metaPrefix: string
 ): NavNode[] => {
   const root = createGroup("", "", "", 0);
 
@@ -171,8 +185,9 @@ const buildFileSystemSidebar = (
     if (page.meta.sidebar.hidden) {
       continue;
     }
-    const parts = page.id.split("/");
-    const filename = parts.at(-1) ?? page.id;
+    // Group by the locale-stripped path so the locale dir is not a nav group.
+    const parts = page.navPath.split("/");
+    const filename = parts.at(-1) ?? page.navPath;
     const dirs = parts.slice(0, -1);
 
     let parent = root;
@@ -192,7 +207,7 @@ const buildFileSystemSidebar = (
     });
   }
 
-  applyFolderMeta(root, folderMeta);
+  applyFolderMeta(root, folderMeta, metaPrefix);
   sortNodes(root.children);
   return root.children.map(toNavNode);
 };
@@ -259,14 +274,31 @@ export const buildNavigation = (
     folderMeta: Map<string, FolderMeta>;
     tabs?: NavTab[];
     sidebar?: SidebarItemConfig[];
+    /** Locale dir prefix for folder-meta lookup (`""` for the default locale). */
+    metaPrefix?: string;
+    /**
+     * Resolve explicit-sidebar references against each page's locale-agnostic
+     * `translationKey` instead of its localized `route`. Used under i18n so a
+     * single authored sidebar maps onto every locale's pages.
+     */
+    refByLogical?: boolean;
   }
 ): Navigation => {
   const tabs = options.tabs ?? [];
+  const metaPrefix = options.metaPrefix ?? "";
 
   if (options.sidebar) {
-    const byRoute = new Map(pages.map((page) => [page.route, page]));
+    const byRoute = new Map(
+      pages.map((page) => [
+        options.refByLogical ? page.translationKey : page.route,
+        page,
+      ])
+    );
     return { sidebar: buildConfigSidebar(options.sidebar, byRoute), tabs };
   }
 
-  return { sidebar: buildFileSystemSidebar(pages, options.folderMeta), tabs };
+  return {
+    sidebar: buildFileSystemSidebar(pages, options.folderMeta, metaPrefix),
+    tabs,
+  };
 };

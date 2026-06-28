@@ -30,10 +30,13 @@ const makePage = (
   groups: [],
   headings: [],
   links: [],
+  locale: "",
   meta: pageMetaSchema.parse({}),
+  navPath: over.id,
   segments: [],
   sourcePath: `/abs/${over.id}`,
   title: over.id,
+  translationKey: over.route,
   ...over,
 });
 
@@ -41,6 +44,7 @@ const makeGraph = (pages: PageRecord[]): ContentGraph =>
   ({
     diagnostics: [],
     navigation: { sidebar: [], tabs: [] },
+    navigationByLocale: {},
     pages,
     routes: new Map(pages.map((page) => [page.route, page.id])),
   }) as ContentGraph;

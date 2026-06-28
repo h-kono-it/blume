@@ -5,8 +5,9 @@ import { extname, relative } from "pathe";
 import { glob } from "tinyglobby";
 
 import { diagnosticsFromZod } from "./diagnostics.ts";
+import { detectLocale, localizeRoute } from "./i18n.ts";
 import { pageMetaSchema } from "./schema.ts";
-import type { PageMeta } from "./schema.ts";
+import type { PageMeta, ResolvedI18nConfig } from "./schema.ts";
 import type { Diagnostic, Heading, PageLink, PageRecord } from "./types.ts";
 
 const NUMERIC_PREFIX = /^\d+[-_.]/u;
@@ -154,6 +155,7 @@ export const discoverContent = async (options: {
   include: string[];
   exclude: string[];
   defaultType: string;
+  i18n?: ResolvedI18nConfig;
 }): Promise<{ pages: PageRecord[]; diagnostics: Diagnostic[] }> => {
   const files = await glob(options.include, {
     absolute: true,
@@ -188,9 +190,22 @@ export const discoverContent = async (options: {
     }
 
     const meta = result.data;
-    const { segments, groups, route } = mapRoute(
-      meta.slug ? `${meta.slug}${ext}` : rel
-    );
+
+    // Locale comes from the file's path (a leading locale dir), not the slug —
+    // the slug is the logical, locale-agnostic path within that locale.
+    const { i18n } = options;
+    const detected = i18n ? detectLocale(rel.split("/"), i18n) : null;
+    const locale = detected?.locale ?? i18n?.defaultLocale ?? "";
+    const navPath = detected ? detected.rest.join("/") : rel;
+
+    const {
+      segments,
+      groups,
+      route: logicalRoute,
+    } = mapRoute(meta.slug ? `${meta.slug}${ext}` : navPath);
+    const route = i18n
+      ? localizeRoute(logicalRoute, locale, i18n)
+      : logicalRoute;
     const headings = extractHeadings(parsed.content);
 
     pages.push({
@@ -201,11 +216,14 @@ export const discoverContent = async (options: {
       headings,
       id: rel,
       links: extractLinks(parsed.content),
+      locale,
       meta,
+      navPath,
       route,
       segments,
       sourcePath: file,
       title: deriveTitle(meta, headings, rel),
+      translationKey: logicalRoute,
     });
   }
 
