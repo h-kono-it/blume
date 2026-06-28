@@ -7,6 +7,7 @@ import { dirname, join } from "pathe";
 import { generateRuntime } from "../src/astro/generate.ts";
 import { contentConfigTemplate } from "../src/astro/templates.ts";
 import { scanProject } from "../src/core/project-graph.ts";
+import { entriesDigest } from "../src/core/sources/cache.ts";
 import { filesystemSource } from "../src/core/sources/filesystem.ts";
 import { mdxRemoteSource } from "../src/core/sources/mdx-remote.ts";
 import { normalizeEntry } from "../src/core/sources/normalize.ts";
@@ -370,6 +371,41 @@ describe("scanProject composition", () => {
 const noop = () => {
   // intentionally empty change handler
 };
+
+const digestEntry = (ref: string, hash: string): SourceEntry => ({
+  body: { format: "md", text: "x" },
+  data: {},
+  hash,
+  ref,
+});
+
+describe("remote watch", () => {
+  it("entriesDigest is stable for unchanged entries and shifts on change", () => {
+    const a = [digestEntry("a.md", "1"), digestEntry("b.md", "2")];
+    expect(entriesDigest(a)).toBe(entriesDigest([...a]));
+    expect(entriesDigest(a)).not.toBe(
+      entriesDigest([digestEntry("a.md", "1"), digestEntry("b.md", "9")])
+    );
+  });
+
+  it("exposes watch only when a poll interval is configured", () => {
+    const base = {
+      files: ["a.mdx"],
+      include: ["**/*.mdx"],
+      name: "sdk",
+      url: "https://example.com",
+    };
+    const ctx: SourceContext = {
+      cacheDir: "/tmp/x",
+      mode: "dev",
+      projectRoot: "/tmp",
+    };
+    expect(mdxRemoteSource(base, ctx).watch).toBeUndefined();
+    expect(
+      typeof mdxRemoteSource({ ...base, pollInterval: 30 }, ctx).watch
+    ).toBe("function");
+  });
+});
 
 describe("filesystemSource watch", () => {
   it("watches an existing root and returns a disposer", async () => {

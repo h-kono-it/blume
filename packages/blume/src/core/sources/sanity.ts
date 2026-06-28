@@ -2,7 +2,12 @@ import matter from "gray-matter";
 import { join } from "pathe";
 
 import { BlumeError } from "../diagnostics.ts";
-import { hashText, loadWithCache, snapshotCache } from "./cache.ts";
+import {
+  hashText,
+  loadWithCache,
+  pollingWatch,
+  snapshotCache,
+} from "./cache.ts";
 import { slugify } from "./normalize.ts";
 import { portableTextToMarkdown } from "./portable-text.ts";
 import type { PortableTextBlock } from "./portable-text.ts";
@@ -46,6 +51,8 @@ export interface SanitySourceOptions {
   serializers?: Record<string, (block: PortableTextBlock) => string>;
   /** Read token for private datasets; defaults to `SANITY_TOKEN`. */
   token?: string;
+  /** Opt-in dev polling interval (seconds); omit to freeze for the session. */
+  pollInterval?: number;
   /** Injected for tests; otherwise built from `@sanity/client`. */
   client?: SanityClientLike;
 }
@@ -194,5 +201,8 @@ export const sanitySource = (
     prefix: options.prefix,
     read,
     staged: true,
+    watch: options.pollInterval
+      ? pollingWatch(load, options.pollInterval)
+      : undefined,
   };
 };

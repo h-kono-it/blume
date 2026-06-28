@@ -4,7 +4,12 @@ import { join } from "pathe";
 import { BlumeError } from "../diagnostics.ts";
 import type { Diagnostic } from "../types.ts";
 import { materializeAssets } from "./assets.ts";
-import { hashText, loadWithCache, snapshotCache } from "./cache.ts";
+import {
+  hashText,
+  loadWithCache,
+  pollingWatch,
+  snapshotCache,
+} from "./cache.ts";
 import { slugify } from "./normalize.ts";
 import type {
   ContentSource,
@@ -94,6 +99,8 @@ export interface NotionSourceOptions {
   properties?: NotionPropertyMap;
   /** Status value treated as published; others map to `draft`. Default `Published`. */
   publishedValue?: string;
+  /** Opt-in dev polling interval (seconds); omit to freeze for the session. */
+  pollInterval?: number;
   /** Injected for tests; otherwise built from `@notionhq/client`. */
   client?: NotionClientLike;
   /** Injected for tests; used to download images. */
@@ -391,5 +398,8 @@ export const notionSource = (
     prefix: options.prefix,
     read,
     staged: true,
+    watch: options.pollInterval
+      ? pollingWatch(load, options.pollInterval)
+      : undefined,
   };
 };

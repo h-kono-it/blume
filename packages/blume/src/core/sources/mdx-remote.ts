@@ -1,7 +1,12 @@
 import matter from "gray-matter";
 
 import { BlumeError } from "../diagnostics.ts";
-import { hashText, loadWithCache, snapshotCache } from "./cache.ts";
+import {
+  hashText,
+  loadWithCache,
+  pollingWatch,
+  snapshotCache,
+} from "./cache.ts";
 import type {
   ContentSource,
   SourceContext,
@@ -20,6 +25,8 @@ export interface MdxRemoteSourceOptions {
   /** Enumerate a GitHub repo subtree via the git-trees API. */
   github?: { owner: string; repo: string; ref: string; path: string };
   include: string[];
+  /** Opt-in dev polling interval (seconds); omit to freeze for the session. */
+  pollInterval?: number;
   /** Injected for tests; defaults to the global `fetch`. */
   fetchImpl?: typeof fetch;
 }
@@ -197,5 +204,8 @@ export const mdxRemoteSource = (
     prefix: options.prefix,
     read,
     staged: true,
+    watch: options.pollInterval
+      ? pollingWatch(load, options.pollInterval)
+      : undefined,
   };
 };

@@ -175,6 +175,8 @@ const mdxRemoteSourceSchema = z
       .optional(),
     /** Glob patterns applied to enumerated refs. */
     include: z.array(z.string()).default(["**/*.{md,mdx}"]),
+    /** Opt-in dev polling interval (seconds); omit to freeze for the session. */
+    pollInterval: z.number().positive().optional(),
     /** Namespaces the source's routes under `/<prefix>/`. */
     prefix: z.string().optional(),
     type: z.literal("mdx-remote"),
@@ -199,6 +201,8 @@ const sanitySourceSchema = z.object({
     })
     .strict()
     .optional(),
+  /** Opt-in dev polling interval (seconds); omit to freeze for the session. */
+  pollInterval: z.number().positive().optional(),
   prefix: z.string().optional(),
   projectId: z.string(),
   /** GROQ query selecting the documents to import. */
@@ -209,6 +213,8 @@ const sanitySourceSchema = z.object({
 /** A Notion database; pages become entries, blocks become MDX. */
 const notionSourceSchema = z.object({
   database: z.string(),
+  /** Opt-in dev polling interval (seconds); omit to freeze for the session. */
+  pollInterval: z.number().positive().optional(),
   prefix: z.string().optional(),
   /** Notion property names mapped onto Blume meta. */
   properties: z

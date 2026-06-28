@@ -15,6 +15,44 @@ export const hashText = (text: string): string => {
   return hash.toString(36);
 };
 
+/** A stable digest of a source's entries, for change detection while polling. */
+export const entriesDigest = (entries: SourceEntry[]): string =>
+  hashText(
+    entries
+      .map((entry) => `${entry.ref}:${entry.hash ?? hashText(entry.body.text)}`)
+      .join("|")
+  );
+
+/**
+ * Build an opt-in polling watcher for a remote source: re-`load()` on an
+ * interval and fire `onChange` only when the entry digest changes, so a remote
+ * source can hot-reload in dev without refetching the world on every keystroke.
+ */
+export const pollingWatch =
+  (
+    load: () => Promise<SourceLoadResult>,
+    intervalSeconds: number
+  ): ((onChange: () => void) => () => void) =>
+  (onChange) => {
+    let last = "";
+    const tick = async (): Promise<void> => {
+      try {
+        const { entries } = await load();
+        const next = entriesDigest(entries);
+        if (last && next !== last) {
+          onChange();
+        }
+        last = next;
+      } catch {
+        // Ignore transient poll failures; the cache keeps serving last-known-good.
+      }
+    };
+    const timer = setInterval(() => {
+      void tick();
+    }, intervalSeconds * 1000);
+    return () => clearInterval(timer);
+  };
+
 /** A per-source snapshot of the last successful fetch, for offline tolerance. */
 export interface SnapshotCache {
   read: () => Promise<SourceEntry[]>;

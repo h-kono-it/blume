@@ -63,6 +63,7 @@ const buildSource = (
         dataset: def.dataset,
         fields: def.fields,
         name,
+        pollInterval: def.pollInterval,
         prefix: def.prefix,
         projectId: def.projectId,
         query: def.query,
@@ -75,6 +76,7 @@ const buildSource = (
       {
         database: def.database,
         name,
+        pollInterval: def.pollInterval,
         prefix: def.prefix,
         properties: def.properties,
         publishedValue: def.publishedValue,
@@ -88,6 +90,7 @@ const buildSource = (
       github: def.github,
       include: def.include,
       name,
+      pollInterval: def.pollInterval,
       prefix: def.prefix,
       url: def.url,
     },

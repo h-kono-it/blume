@@ -83,7 +83,10 @@ snapshot with a warning rather than failing the build. The cache lives inside
 `.blume/` and is regenerated, never committed.
 
 In dev, remote content is fetched once and frozen for the session; restart the
-dev server to refresh it. Local filesystem sources hot-reload as usual.
+dev server to refresh it. Local filesystem sources hot-reload as usual. To poll
+a remote source for changes instead, set `pollInterval` (seconds) on it — the
+dev server re-fetches on that interval and reloads only when the content
+actually changes. Leave it unset to avoid hitting the API while you work.
 
 ## Sanity
 
