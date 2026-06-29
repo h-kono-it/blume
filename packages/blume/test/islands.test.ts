@@ -17,6 +17,8 @@ const FILES: Record<string, string> = {
   "islands/Counter.tsx": "export default function Counter() { return null; }",
   "islands/Eager.tsx":
     'export const client = "load";\nexport default function Eager() {}',
+  "islands/Toggle.svelte": "<button>toggle</button>",
+  "islands/Widget.vue": "<template><div /></template>",
   // Nested duplicate of <Counter> — should be ignored with a warning.
   "islands/nested/Counter.tsx": "export default function Counter() {}",
   // Lowercase filename can't be a JSX tag — should be skipped.
@@ -50,6 +52,13 @@ describe("discoverIslands", () => {
   it("reads an explicit client mode without executing the file", async () => {
     const result = await discoverIslands(root);
     expect(byName(result).get("Eager")?.client).toBe("load");
+  });
+
+  it("infers react / vue / svelte from the file extension", async () => {
+    const map = byName(await discoverIslands(root));
+    expect(map.get("Counter")?.framework).toBe("react");
+    expect(map.get("Widget")?.framework).toBe("vue");
+    expect(map.get("Toggle")?.framework).toBe("svelte");
   });
 
   it("reads a mode declared with a type annotation", async () => {

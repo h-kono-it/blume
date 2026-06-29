@@ -82,11 +82,19 @@ const ADAPTER_OPTIONS: Record<string, string> = {
 export const runtimeDependencies = (options: {
   config: ResolvedConfig;
   needsReact: boolean;
+  needsVue?: boolean;
+  needsSvelte?: boolean;
 }): string[] => {
-  const { config, needsReact } = options;
+  const { config, needsReact, needsSvelte, needsVue } = options;
   const deps = ["@astrojs/mdx"];
   if (needsReact) {
     deps.push("@astrojs/react");
+  }
+  if (needsVue) {
+    deps.push("@astrojs/vue");
+  }
+  if (needsSvelte) {
+    deps.push("@astrojs/svelte");
   }
   // The Scalar integration is only declared when an API reference is configured,
   // so projects that don't use it never pull it into the runtime.
@@ -118,6 +126,8 @@ export const astroConfigTemplate = (options: {
   context: ProjectContext;
   config: ResolvedConfig;
   needsReact: boolean;
+  needsVue?: boolean;
+  needsSvelte?: boolean;
   pages: BlumePageRoute[];
   contentRoutes: string[];
   dataPath: string;
@@ -125,7 +135,7 @@ export const astroConfigTemplate = (options: {
   searchClientPath: string;
 }): string => {
   const { context, config, needsReact, pages, dataPath, themePath } = options;
-  const { contentRoutes, searchClientPath } = options;
+  const { contentRoutes, needsSvelte, needsVue, searchClientPath } = options;
   const { deployment } = config;
   const server = deployment.output === "server";
 
@@ -197,9 +207,13 @@ export const astroConfigTemplate = (options: {
     ? `import { defineConfig, fontProviders } from "astro/config";`
     : `import { defineConfig } from "astro/config";`;
 
-  // React is only wired in when the project actually uses React islands. The
-  // core theme is Astro-first and ships no client JS.
+  // Framework renderers are only wired in when an island (or Ask AI, for React)
+  // needs them. The core theme is Astro-first and ships no client JS.
   const reactImport = needsReact ? `import react from "@astrojs/react";\n` : "";
+  const vueImport = needsVue ? `import vue from "@astrojs/vue";\n` : "";
+  const svelteImport = needsSvelte
+    ? `import svelte from "@astrojs/svelte";\n`
+    : "";
   const blumeImport = `import { blumeIntegration } from "blume/astro";\n`;
 
   // Twoslash runs first, before the always-on transformers, but only on fences
@@ -219,6 +233,12 @@ export const astroConfigTemplate = (options: {
   if (needsReact) {
     integrations.push("react()");
   }
+  if (needsVue) {
+    integrations.push("vue()");
+  }
+  if (needsSvelte) {
+    integrations.push("svelte()");
+  }
   // Always mounted: injects user pages (a no-op when there are none) and wires
   // up dev-server `Accept: text/markdown` negotiation over the content routes.
   integrations.push(
@@ -230,7 +250,7 @@ ${defineConfigImport}
 import mdx from "@astrojs/mdx";
 import tailwindcss from "@tailwindcss/vite";
 import { blumeMarkdownProcessor, blumeMdxProcessor, blumeShikiTransformers } from "blume/markdown";
-${twoslashImport}${reactImport}${blumeImport}${adapterImport}
+${twoslashImport}${reactImport}${vueImport}${svelteImport}${blumeImport}${adapterImport}
 export default defineConfig({
   root: ${JSON.stringify(context.outDir)},
   srcDir: ${JSON.stringify(`${context.outDir}/src`)},

@@ -6,8 +6,10 @@ import {
   changelogIndexTemplate,
   islandMapTemplate,
   islandWrapperTemplate,
+  runtimeDependencies,
   userComponentsTemplate,
 } from "../src/astro/templates.ts";
+import { blumeConfigSchema } from "../src/core/schema.ts";
 
 const island = (over: Partial<IslandSpec> = {}): IslandSpec => ({
   client: "visible",
@@ -78,6 +80,32 @@ describe("islandWrapperTemplate", () => {
     expect(islandWrapperTemplate(island({ client: "only" }))).toContain(
       '<Island client:only="react" {...Astro.props}>'
     );
+  });
+
+  it("uses the island's framework for client:only (Vue)", () => {
+    expect(
+      islandWrapperTemplate(island({ client: "only", framework: "vue" }))
+    ).toContain('<Island client:only="vue" {...Astro.props}>');
+  });
+});
+
+describe("runtimeDependencies", () => {
+  const config = blumeConfigSchema.parse({});
+
+  it("adds the Vue/Svelte integrations only when an island needs them", () => {
+    expect(
+      runtimeDependencies({ config, needsReact: false, needsVue: true })
+    ).toContain("@astrojs/vue");
+    expect(
+      runtimeDependencies({ config, needsReact: false, needsSvelte: true })
+    ).toContain("@astrojs/svelte");
+  });
+
+  it("omits framework integrations when no island needs them", () => {
+    const deps = runtimeDependencies({ config, needsReact: false });
+    expect(deps).not.toContain("@astrojs/vue");
+    expect(deps).not.toContain("@astrojs/svelte");
+    expect(deps).not.toContain("@astrojs/react");
   });
 });
 

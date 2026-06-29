@@ -101,6 +101,33 @@ const ensureDepsLink = async (outDir: string): Promise<void> => {
   await symlink(BLUME_NODE_MODULES, link, "junction");
 };
 
+/** Astro integration package each non-React island framework needs installed. */
+const ISLAND_FRAMEWORK_DEPS: Record<string, string> = {
+  svelte: "@astrojs/svelte",
+  vue: "@astrojs/vue",
+};
+
+/**
+ * Warn when a Vue/Svelte island is present but its Astro integration isn't
+ * installed — Vite would otherwise fail opaquely on the generated config import.
+ * React ships with Blume, so it never needs this.
+ */
+const islandFrameworkWarnings = (
+  frameworks: Set<string>,
+  root: string
+): string[] => {
+  const warnings: string[] = [];
+  for (const framework of frameworks) {
+    const dep = ISLAND_FRAMEWORK_DEPS[framework];
+    if (dep && !canResolveFrom(root, dep)) {
+      warnings.push(
+        `Islands use ${framework}, which needs "${dep}". Install it (e.g. \`npm install ${dep} ${framework}\`).`
+      );
+    }
+  }
+  return warnings;
+};
+
 /** Read a file's contents, or return an empty string if it is absent. */
 const readOptional = async (path: string | null): Promise<string> => {
   if (!path) {
@@ -603,7 +630,15 @@ export const generateRuntime = async (
     readOptional(context.themeFile),
     discoverIslands(context.root),
   ]);
-  const needsReact = detectedReact || askEnabled;
+  // Each island's framework enables its Astro renderer. React also switches on
+  // for any project `.tsx`/`.jsx` and for Ask AI; Vue/Svelte are island-driven.
+  const islandFrameworks = new Set(
+    islandDiscovery.islands.map((island) => island.framework)
+  );
+  const needsReact =
+    detectedReact || askEnabled || islandFrameworks.has("react");
+  const needsVue = islandFrameworks.has("vue");
+  const needsSvelte = islandFrameworks.has("svelte");
 
   // The hosted MCP server. The `.well-known` discovery docs are injected as
   // prerendered routes alongside user pages; the server endpoint itself is a
@@ -625,6 +660,8 @@ export const generateRuntime = async (
         context,
         dataPath,
         needsReact,
+        needsSvelte,
+        needsVue,
         pages,
         searchClientPath,
         themePath,
@@ -632,7 +669,9 @@ export const generateRuntime = async (
     ),
     write(
       join(out, "package.json"),
-      runtimePackageTemplate(runtimeDependencies({ config, needsReact }))
+      runtimePackageTemplate(
+        runtimeDependencies({ config, needsReact, needsSvelte, needsVue })
+      )
     ),
     write(join(out, "tsconfig.json"), runtimeTsconfigTemplate()),
     write(join(srcDir, "env.d.ts"), envTemplate()),
@@ -790,6 +829,10 @@ export const generateRuntime = async (
       );
     }
   }
+
+  // React ships with Blume; Vue/Svelte islands need their Astro integration
+  // installed by the project. Warn early rather than let Vite fail to resolve it.
+  warnings.push(...islandFrameworkWarnings(islandFrameworks, context.root));
   if (hasReferences(config)) {
     const references = await buildReferenceFiles({
       config,
