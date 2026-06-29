@@ -1,0 +1,127 @@
+---
+// "Write Markdown. Render components." — MDX source on the left, the rendered
+// output (package-install tabs + a callout) on the right.
+import { copyIcon, icons } from "./shared.ts";
+
+// Declared as a string and rendered through an Astro expression so the
+// Markdown inside auto-escapes (no hand-written entities).
+const showcaseSource = `---
+title: Installation
+---
+
+Install the package:
+
+\`\`\`package-install
+blume
+\`\`\`
+
+:::tip Zero config
+Search, theming, and navigation
+work out of the box.
+:::`;
+const packageManagers = ["npm", "pnpm", "yarn", "bun"];
+---
+
+<!-- Write Markdown. Render components. -->
+<section
+  class="rounded-blume border border-border bg-muted/20 px-6 py-16 sm:px-12 sm:py-20"
+>
+  <div class="mx-auto max-w-2xl text-center">
+    <h2 class="text-balance font-medium text-3xl tracking-tight sm:text-4xl">
+      Write Markdown. Render components.
+    </h2>
+    <p class="mt-4 text-balance text-muted-foreground">
+      Directives become callouts, a package name becomes install tabs, and fenced
+      blocks become highlighted code — no imports, no JSX to manage.
+    </p>
+  </div>
+  <div class="mt-12 grid items-stretch gap-4 lg:grid-cols-2">
+    <!-- Source -->
+    <div class="overflow-hidden rounded-blume border border-border bg-background">
+      <div
+        class="flex items-center gap-2 border-border border-b bg-muted/40 px-4 py-2.5 text-[11px] text-muted-foreground"
+      >
+        <svg
+          class="size-3.5"
+          fill="none"
+          height="14"
+          stroke="currentColor"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          stroke-width="2"
+          viewBox="0 0 24 24"
+          width="14"
+          ><path d="M14 2v4a2 2 0 0 0 2 2h4"></path><path
+            d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7z"
+          ></path></svg
+        >
+        <span class="font-mono">installation.mdx</span>
+      </div>
+      <pre
+        class="overflow-x-auto p-5 font-mono text-foreground text-xs leading-relaxed sm:text-[13px]"><code>{showcaseSource}</code></pre>
+    </div>
+    <!-- Rendered -->
+    <div class="rounded-blume border border-border bg-background p-5 sm:p-6">
+      <p class="text-[11px] text-muted-foreground">Rendered output</p>
+      <h3 class="mt-1 font-semibold text-foreground text-lg tracking-tight">
+        Installation
+      </h3>
+      <p class="mt-3 text-muted-foreground text-sm">Install the package:</p>
+      <div class="mt-3 overflow-hidden rounded-blume border border-border">
+        <div
+          class="flex items-center gap-4 border-border border-b bg-muted/40 px-4 text-xs"
+        >
+          {
+            packageManagers.map((pm, i) => (
+              <span
+                class={`border-b-2 py-2 ${i === 0 ? "border-accent text-foreground" : "border-transparent text-muted-foreground"}`}
+              >
+                {pm}
+              </span>
+            ))
+          }
+        </div>
+        <div
+          class="flex items-center justify-between px-4 py-3 font-mono text-foreground text-xs"
+        >
+          <span><span class="text-muted-foreground">npm</span> install blume</span
+          >
+          <svg
+            class="size-3.5 text-muted-foreground"
+            fill="none"
+            height="14"
+            stroke="currentColor"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            viewBox="0 0 24 24"
+            width="14"
+            set:html={copyIcon}
+          ></svg>
+        </div>
+      </div>
+      <div
+        class="mt-4 flex gap-3 rounded-blume border-accent border-l-2 bg-accent/5 p-4"
+      >
+        <svg
+          class="mt-0.5 size-4 shrink-0 text-accent"
+          fill="none"
+          height="16"
+          stroke="currentColor"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          stroke-width="2"
+          viewBox="0 0 24 24"
+          width="16"
+          set:html={icons.sparkle}
+        ></svg>
+        <div>
+          <p class="font-medium text-foreground text-sm">Zero config</p>
+          <p class="mt-1 text-muted-foreground text-sm">
+            Search, theming, and navigation work out of the box.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>

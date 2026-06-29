@@ -1,0 +1,406 @@
+---
+// A theme-aware browser window used by the homepage "Batteries included"
+// section. The same component renders in the sticky desktop graphic (crossfaded
+// per feature) and inline on mobile, so each `kind` lives in exactly one place.
+// It mirrors the hero product preview: app header + a three-pane docs layout
+// (sidebar · content · on-this-page). Only the content morphs.
+interface Props {
+  kind: string;
+  logo?: string | null;
+}
+const { kind, logo } = Astro.props;
+
+const sparkle =
+  '<path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3z"/>';
+const searchIcon = '<circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>';
+const rocket =
+  '<path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/><path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/><path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/>';
+const sliders =
+  '<line x1="4" x2="4" y1="21" y2="14"/><line x1="4" x2="4" y1="10" y2="3"/><line x1="12" x2="12" y1="21" y2="12"/><line x1="12" x2="12" y1="8" y2="3"/><line x1="20" x2="20" y1="21" y2="16"/><line x1="20" x2="20" y1="12" y2="3"/><line x1="2" x2="6" y1="14" y2="14"/><line x1="10" x2="14" y1="8" y2="8"/><line x1="18" x2="22" y1="16" y2="16"/>';
+const fileText =
+  '<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M16 13H8"/><path d="M16 17H8"/>';
+
+// The docs sidebar groups; the active item and right-rail outline change per
+// feature. The `api` kind swaps this sidebar for OpenAPI endpoints (see below).
+const navGroups = [
+  { items: ["Introduction", "Quickstart", "Deployment"], label: "Docs" },
+  { items: ["Components", "Syntax", "Navigation"], label: "Content" },
+  { items: ["AI", "Search", "Theming"], label: "Configuration" },
+];
+const meta = {
+  api: {
+    active: "API",
+    crumb: "Reference",
+    heading: "Get pet by ID",
+    toc: ["Parameters", "Responses", "Schema"],
+  },
+  components: {
+    active: "Components",
+    crumb: "Content",
+    heading: "Components",
+    toc: ["Card", "Steps", "Tabs", "Accordion"],
+  },
+  page: {
+    active: "Introduction",
+    crumb: "Docs",
+    heading: "Introduction",
+    toc: ["Why Blume", "What's included", "Next steps"],
+  },
+  search: {
+    active: "Search",
+    crumb: "Configuration",
+    heading: "Search",
+    toc: ["Providers", "Shortcuts", "Indexing"],
+  },
+};
+const view = meta[kind as keyof typeof meta] ?? meta.page;
+
+const searchResults = [
+  { hint: "Get started in minutes", title: "Quickstart" },
+  { hint: "Static or server output", title: "Deployment" },
+  { hint: "30+ components, no imports", title: "Components" },
+];
+
+// For the `api` kind the sidebar swaps to OpenAPI endpoints (Scalar-style).
+const apiGroups = [
+  {
+    items: [
+      { method: "GET", path: "/pet/{id}" },
+      { method: "POST", path: "/pet" },
+      { method: "DELETE", path: "/pet/{id}" },
+    ],
+    label: "Pet",
+  },
+  {
+    items: [
+      { method: "GET", path: "/store/inventory" },
+      { method: "POST", path: "/store/order" },
+    ],
+    label: "Store",
+  },
+];
+const apiEndpoint = "/pet/{id}";
+const apiResponse = `{
+  "id": 7,
+  "name": "Rex",
+  "status": "available"
+}`;
+---
+
+<div class="flex h-full flex-col">
+  {/* App header */}
+  <div
+    class="flex items-center justify-between border-border border-b px-4 py-2.5"
+  >
+    <div class="flex items-center gap-4">
+      <span class="flex items-center gap-1.5 font-medium text-foreground text-sm">
+        {
+          logo ? (
+            <span
+              aria-hidden="true"
+              class="inline-flex h-4 items-center text-accent [&>svg]:h-4 [&>svg]:w-auto"
+              set:html={logo}
+            />
+          ) : (
+            <span class="size-3.5 rounded-sm bg-accent" />
+          )
+        }
+        Blume
+      </span>
+      <nav class="hidden items-center gap-3 text-[11px] text-muted-foreground sm:flex">
+        <span>Home</span>
+        <span class={kind === "api" ? "" : "text-foreground"}>Docs</span>
+        <span class={kind === "api" ? "text-foreground" : ""}>API</span>
+      </nav>
+    </div>
+    <span
+      class="hidden items-center gap-2 rounded-full border border-border px-3 py-1 text-[11px] text-muted-foreground sm:flex"
+    >
+      <svg
+        class="size-3"
+        fill="none"
+        height="12"
+        stroke="currentColor"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        stroke-width="2"
+        viewBox="0 0 24 24"
+        width="12"
+        set:html={searchIcon}
+      />
+      Search
+      <span class="ml-2 rounded border border-border px-1 font-mono">⌘K</span>
+    </span>
+  </div>
+
+  {/* Three-pane docs body */}
+  <div
+    class="grid min-h-[332px] flex-1 grid-cols-1 sm:grid-cols-[148px_1fr] lg:grid-cols-[148px_1fr_140px]"
+  >
+    {/* Sidebar */}
+    <aside class="hidden border-border border-r p-4 text-[11px] sm:block">
+      {
+        kind === "api" ? (
+          apiGroups.map((group) => (
+            <div class="mb-4 last:mb-0">
+              <p class="font-medium text-foreground">{group.label}</p>
+              <ul class="mt-2 space-y-2">
+                {group.items.map((ep) => (
+                  <li class="flex items-center gap-2">
+                    <span
+                      class={`w-9 shrink-0 font-mono font-semibold text-[9px] ${ep.method === "GET" ? "text-accent" : ep.method === "POST" ? "text-[#3b82f6]" : "text-[#ef4444]"}`}
+                    >
+                      {ep.method}
+                    </span>
+                    <span
+                      class={`truncate ${ep.method === "GET" && ep.path === "/pet/{id}" ? "text-foreground" : "text-muted-foreground"}`}
+                    >
+                      {ep.path}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))
+        ) : (
+          navGroups.map((group) => (
+            <div class="mb-4 last:mb-0">
+              <p class="font-medium text-foreground">{group.label}</p>
+              <ul class="mt-2 space-y-1.5 text-muted-foreground">
+                {group.items.map((item) => (
+                  <li class={item === view.active ? "text-accent" : ""}>{item}</li>
+                ))}
+              </ul>
+            </div>
+          ))
+        )
+      }
+    </aside>
+
+    {/* Content (morphs per feature) */}
+    <div class="min-w-0 p-5">
+      <p class="text-[11px] text-muted-foreground">{view.crumb}</p>
+      <h4 class="mt-1 font-semibold text-foreground text-xl tracking-tight">
+        {view.heading}
+      </h4>
+
+      {
+        kind === "page" && (
+          <div>
+            <p class="mt-2 text-muted-foreground text-xs leading-relaxed">
+              Drop Markdown into a folder and ship a production-grade docs site —
+              navigation is inferred from your files.
+            </p>
+            <div class="mt-4 grid grid-cols-2 gap-3">
+              <div class="rounded-blume border border-border p-3">
+                <svg
+                  class="size-4 text-accent"
+                  fill="none"
+                  height="16"
+                  stroke="currentColor"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  viewBox="0 0 24 24"
+                  width="16"
+                  set:html={rocket}
+                />
+                <p class="mt-2 font-medium text-foreground text-xs">Quickstart</p>
+                <p class="mt-0.5 text-[11px] text-muted-foreground">
+                  Ship your first page
+                </p>
+              </div>
+              <div class="rounded-blume border border-border p-3">
+                <svg
+                  class="size-4 text-accent"
+                  fill="none"
+                  height="16"
+                  stroke="currentColor"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  viewBox="0 0 24 24"
+                  width="16"
+                  set:html={sliders}
+                />
+                <p class="mt-2 font-medium text-foreground text-xs">
+                  Configuration
+                </p>
+                <p class="mt-0.5 text-[11px] text-muted-foreground">
+                  Theme, search, deploy
+                </p>
+              </div>
+            </div>
+            <div class="mt-3 flex gap-2 rounded-blume border-accent border-l-2 bg-accent/5 p-3">
+              <svg
+                class="mt-px size-3.5 shrink-0 text-accent"
+                fill="none"
+                height="14"
+                stroke="currentColor"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                viewBox="0 0 24 24"
+                width="14"
+                set:html={sparkle}
+              />
+              <p class="text-[11px] text-foreground leading-relaxed">
+                <span class="font-medium">Tip</span> — there's no starter to
+                clone. The framework is the template.
+              </p>
+            </div>
+          </div>
+        )
+      }
+
+      {
+        kind === "api" && (
+          <div>
+            <div class="mt-2 flex items-center gap-2">
+              <span class="rounded bg-accent/10 px-1.5 py-0.5 font-mono font-semibold text-[10px] text-accent">
+                GET
+              </span>
+              <span class="font-mono text-[11px] text-muted-foreground">
+                {apiEndpoint}
+              </span>
+            </div>
+            <p class="mt-3 text-muted-foreground text-xs leading-relaxed">
+              Returns a single pet by its ID — rendered straight from your OpenAPI
+              spec, with a live “Try it” playground.
+            </p>
+            <p class="mt-4 font-medium text-[11px] text-foreground">
+              Path parameters
+            </p>
+            <div class="mt-2 flex items-center gap-2 rounded-blume border border-border px-3 py-2 text-[11px]">
+              <span class="font-mono text-foreground">id</span>
+              <span class="text-muted-foreground">integer</span>
+              <span class="ml-auto text-[10px] text-accent">required</span>
+            </div>
+            <p class="mt-4 font-medium text-[11px] text-foreground">Response</p>
+            <div class="mt-2 overflow-hidden rounded-blume border border-border">
+              <div class="flex items-center gap-2 border-border border-b bg-muted/40 px-3 py-1.5 text-[10px]">
+                <span class="font-medium text-accent">200</span>
+                <span class="text-muted-foreground">application/json</span>
+              </div>
+              <pre class="overflow-x-auto px-3 py-2 font-mono text-[10px] text-muted-foreground"><code>{apiResponse}</code></pre>
+            </div>
+          </div>
+        )
+      }
+
+      {
+        kind === "components" && (
+          <div class="space-y-3">
+            <p class="mt-2 text-muted-foreground text-xs leading-relaxed">
+              30+ accessible components, usable in any .mdx page with nothing to
+              import.
+            </p>
+            <div class="flex gap-2 rounded-blume border-accent border-l-2 bg-accent/5 p-3">
+              <svg
+                class="mt-px size-3.5 shrink-0 text-accent"
+                fill="none"
+                height="14"
+                stroke="currentColor"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                viewBox="0 0 24 24"
+                width="14"
+                set:html={sparkle}
+              />
+              <p class="text-[11px] text-foreground leading-relaxed">
+                <span class="font-medium">Tip</span> — every component is
+                React-free and theme-aware.
+              </p>
+            </div>
+            <div class="grid grid-cols-2 gap-2">
+              <div class="rounded-blume border border-border p-3">
+                <span class="font-medium text-foreground text-xs">Card</span>
+                <p class="mt-0.5 text-[10px] text-muted-foreground">
+                  Linked preview
+                </p>
+              </div>
+              <div class="rounded-blume border border-border p-3">
+                <span class="font-medium text-foreground text-xs">Steps</span>
+                <p class="mt-0.5 text-[10px] text-muted-foreground">
+                  Ordered guide
+                </p>
+              </div>
+            </div>
+            <div class="overflow-hidden rounded-blume border border-border">
+              <div class="flex items-center justify-between border-border border-b bg-muted/40 px-3 py-1.5 text-[10px] text-muted-foreground">
+                <span class="font-mono">components.mdx</span>
+              </div>
+              <pre class="overflow-x-auto px-3 py-2 font-mono text-[10px] text-muted-foreground"><code>&lt;Tabs&gt; · &lt;Accordion&gt; · &lt;FileTree&gt;</code></pre>
+            </div>
+          </div>
+        )
+      }
+
+      {
+        kind === "search" && (
+          <div>
+            <p class="mt-2 text-muted-foreground text-xs leading-relaxed">
+              Local search runs in dev and production with no hosted index — swap
+              providers with one line.
+            </p>
+            <div class="mt-4 flex items-center gap-2 rounded-blume border border-border px-3 py-2.5 text-muted-foreground text-xs">
+              <svg
+                class="size-3.5"
+                fill="none"
+                height="14"
+                stroke="currentColor"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                viewBox="0 0 24 24"
+                width="14"
+                set:html={searchIcon}
+              />
+              <span class="flex-1">Search docs…</span>
+              <span class="rounded border border-border px-1 font-mono text-[10px]">
+                ⌘K
+              </span>
+            </div>
+            <div class="mt-3 space-y-1">
+              {searchResults.map((result) => (
+                <div class="flex items-center gap-2.5 rounded-blume px-2 py-2 first:bg-muted">
+                  <svg
+                    class="size-3.5 shrink-0 text-muted-foreground"
+                    fill="none"
+                    height="14"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    viewBox="0 0 24 24"
+                    width="14"
+                    set:html={fileText}
+                  />
+                  <span class="font-medium text-foreground text-xs">
+                    {result.title}
+                  </span>
+                  <span class="truncate text-[11px] text-muted-foreground">
+                    {result.hint}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )
+      }
+    </div>
+
+    {/* On this page */}
+    <aside class="hidden border-border border-l p-4 text-[11px] lg:block">
+      <p class="font-medium text-foreground">On this page</p>
+      <ul class="mt-2 space-y-1.5 text-muted-foreground">
+        {
+          view.toc.map((item, index) => (
+            <li class={index === 0 ? "text-foreground" : ""}>{item}</li>
+          ))
+        }
+      </ul>
+    </aside>
+  </div>
+</div>
