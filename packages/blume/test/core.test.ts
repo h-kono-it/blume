@@ -91,7 +91,8 @@ describe("config schema", () => {
 
   it("nests og, rss, and structured data under seo", () => {
     const { seo } = blumeConfigSchema.parse({});
-    expect(seo.og.enabled).toBeFalsy();
+    // Left unset by the schema; loadConfig resolves it against deployment.site.
+    expect(seo.og.enabled).toBeUndefined();
     expect(seo.rss.enabled).toBeTruthy();
     expect(seo.rss.types).toStrictEqual(["blog", "changelog"]);
     expect(seo.structuredData).toBeTruthy();

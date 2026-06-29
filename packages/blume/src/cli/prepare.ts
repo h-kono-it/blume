@@ -9,6 +9,8 @@ export interface PrepareOptions {
   root: string;
   mode?: BuildMode;
   strict?: boolean;
+  /** Local dev server URL, used as the `deployment.site` fallback (dev only). */
+  devServerUrl?: string;
   /** Render drafts and fetch unpublished CMS content. */
   preview?: boolean;
   /** Force remote sources to re-fetch instead of serving the cached snapshot. */
@@ -25,6 +27,7 @@ export const prepareProject = async (
   let project: BlumeProject;
   try {
     project = await scanProject(options.root, {
+      devServerUrl: options.devServerUrl,
       mode: options.mode,
       preview: options.preview,
       refresh: options.refresh,

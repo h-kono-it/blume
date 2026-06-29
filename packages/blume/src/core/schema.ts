@@ -589,7 +589,13 @@ const redirectSchema = z
 
 const ogConfigSchema = z
   .object({
-    enabled: z.boolean().default(false),
+    /**
+     * Generate a per-page Open Graph image. Defaults to on once a deployment
+     * site URL is known (set or auto-detected) and off otherwise, since
+     * `og:image` must be absolute to be useful to crawlers — resolved in
+     * `loadConfig`. An explicit value here always wins.
+     */
+    enabled: z.boolean().optional(),
   })
   .strict();
 

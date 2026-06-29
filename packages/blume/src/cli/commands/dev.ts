@@ -26,7 +26,13 @@ export const devCommand = defineCommand({
   async run({ args }) {
     const root = process.cwd();
     const preview = args.preview ?? false;
+    // Astro's dev server defaults to 4321 when no port is passed. Feeding the
+    // resolved URL in as the `deployment.site` fallback lets site-gated features
+    // (OG images, canonicals, sitemap) work locally without configuring a site.
+    const port = args.port ? Number(args.port) : 4321;
+    const devServerUrl = `http://localhost:${port}`;
     const project = await prepareProject({
+      devServerUrl,
       mode: "dev",
       preview,
       root,
@@ -52,7 +58,11 @@ export const devCommand = defineCommand({
       }
       timer = setTimeout(async () => {
         try {
-          const next = await scanProject(root, { mode: "dev", preview });
+          const next = await scanProject(root, {
+            devServerUrl,
+            mode: "dev",
+            preview,
+          });
           await generateRuntime(next);
         } catch (error) {
           logger.error(`Regeneration failed: ${(error as Error).message}`);

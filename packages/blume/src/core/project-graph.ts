@@ -43,11 +43,18 @@ export interface BlumeProject {
  */
 export const scanProject = async (
   root: string,
-  options: { mode?: BuildMode; preview?: boolean; refresh?: boolean } = {}
+  options: {
+    devServerUrl?: string;
+    mode?: BuildMode;
+    preview?: boolean;
+    refresh?: boolean;
+  } = {}
 ): Promise<BlumeProject> => {
   const mode = options.mode ?? "dev";
   const preview = options.preview ?? false;
-  const { config } = await loadConfig(root);
+  const { config } = await loadConfig(root, {
+    devServerUrl: options.devServerUrl,
+  });
   const context = resolveProjectContext(root, config);
 
   // Each source validates itself (e.g. the filesystem source checks its root

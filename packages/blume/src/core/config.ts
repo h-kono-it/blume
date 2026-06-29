@@ -26,7 +26,15 @@ const importConfigModule = createModuleLoader();
  * Load and validate the project config. When no config file exists, schema
  * defaults produce a fully resolved config so the zero-boilerplate path works.
  */
-export const loadConfig = async (root: string): Promise<ConfigLoadResult> => {
+export const loadConfig = async (
+  root: string,
+  /**
+   * Supplied only by `blume dev`: the local dev server URL, used as the
+   * `deployment.site` fallback when none is configured or detected. Builds
+   * never pass it, so production output can't end up pointing at localhost.
+   */
+  options: { devServerUrl?: string } = {}
+): Promise<ConfigLoadResult> => {
   const configFile = findConfigFile(root);
 
   let raw: unknown = {};
@@ -59,8 +67,22 @@ export const loadConfig = async (root: string): Promise<ConfigLoadResult> => {
     );
   }
 
+  // Resolve the canonical site URL, then SEO defaults that depend on it.
+  // Precedence: explicit config > platform env (Vercel/Netlify/Cloudflare, via
+  // applyDeploymentEnv) > the local dev server URL (dev only).
+  const config = applyDeploymentEnv(parsed.data);
+  const site = config.deployment.site ?? options.devServerUrl;
+
+  // OG images need an absolute `og:image`, so they default on once a site URL
+  // is known and off otherwise. An explicit `seo.og.enabled` always wins.
+  const ogEnabled = config.seo.og.enabled ?? Boolean(site);
+
   return {
-    config: applyDeploymentEnv(parsed.data),
+    config: {
+      ...config,
+      deployment: { ...config.deployment, site },
+      seo: { ...config.seo, og: { ...config.seo.og, enabled: ogEnabled } },
+    },
     configFile,
     diagnostics: [],
   };
