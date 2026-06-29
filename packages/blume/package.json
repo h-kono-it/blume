@@ -29,6 +29,7 @@
     "./markdown": "./src/markdown/index.ts",
     "./components": "./src/components/index.ts",
     "./components/*": "./src/components/*",
+    "./core/*": "./src/core/*",
     "./sources/*": "./src/core/sources/*",
     "./theme/*": "./src/theme/*",
     "./package.json": "./package.json"

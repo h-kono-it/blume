@@ -58,15 +58,24 @@ See [Custom Pages](/docs/advanced/custom-pages) for the full guide.
 
 ## Registry
 
-Install Blume-maintained components as **source** in your project — you own the
-code and can edit it freely:
+`blume add` copies a Blume-maintained component into your project as **source** —
+you own it and can edit it freely. Run it with no arguments to list what's
+available:
 
 ```bash
-blume add feedback
+blume add
 ```
 
-The component is copied into your project rather than imported from the package,
-so it's yours to change.
+Install a widget, or any built-in layout slot you want to customize — the
+header, sidebar, breadcrumbs, table of contents, or pagination:
+
+```bash
+blume add pagination
+```
+
+The copy imports the rest of the framework from `blume/*`, so it renders
+exactly like the built-in until you change it. `blume add` prints the
+`defineComponents` snippet to register it under the matching layout slot.
 
 ## Eject
 
