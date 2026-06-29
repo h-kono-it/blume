@@ -1,7 +1,10 @@
 ---
-// Analytics scripts injected into <head>. Mirrors the inline-snippet house style
-// used for the banner/theme/JSON-LD scripts. Loads ONLY in production builds so
-// `blume dev` stays clean and local traffic never reaches your analytics.
+import VercelAnalytics from "@vercel/analytics/astro";
+
+// Analytics scripts injected into <head>. PostHog and custom providers use the
+// inline-snippet house style (banner/theme/JSON-LD); Vercel uses its official
+// Astro component. Loads ONLY in production builds so `blume dev` stays clean
+// and local traffic never reaches your analytics.
 interface AnalyticsScript {
   attributes?: Record<string, string>;
   content?: string;
@@ -20,11 +23,10 @@ interface Props {
 const { analytics } = Astro.props;
 const enabled = import.meta.env.PROD && Boolean(analytics);
 
-// Vercel Web Analytics: a queue stub plus the first-party script Vercel serves
-// at /_vercel/insights once the project has Web Analytics enabled.
+// Vercel Web Analytics: rendered via the official @vercel/analytics/astro
+// component, which injects the first-party script Vercel serves at
+// /_vercel/insights once Web Analytics is enabled for the project.
 const vercelEnabled = enabled && analytics?.vercel === true;
-const vercelStub =
-  "window.va=window.va||function(){(window.vaq=window.vaq||[]).push(arguments);};";
 
 // PostHog: the official array.js loader snippet, keyed off config. The host
 // defaults to PostHog Cloud US; EU/self-hosted users override `posthog.host`.
@@ -51,14 +53,7 @@ const inlineScripts = customScripts
   .map((script) => ({ attributes: script.attributes ?? {}, content: script.content }));
 ---
 
-{
-  vercelEnabled && (
-    <>
-      <script is:inline set:html={vercelStub} />
-      <script is:inline defer src="/_vercel/insights/script.js" />
-    </>
-  )
-}
+{vercelEnabled && <VercelAnalytics />}
 {posthogSnippet && <script is:inline set:html={posthogSnippet} />}
 {externalScripts.map((attrs) => <script is:inline {...attrs} />)}
 {
