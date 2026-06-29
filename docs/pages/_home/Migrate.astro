@@ -1,6 +1,6 @@
 ---
-// "Migrate in one command." — bring an existing Mintlify, Fumadocs, or
-// Starlight site into Blume. The copy buttons use the page-level delegated
+// "Migrate in one command." — bring an existing Mintlify, Fumadocs, Starlight,
+// or Nextra site into Blume. The copy buttons use the page-level delegated
 // `data-blume-copy-install` handler in index.astro.
 import { copyIcon, icons } from "./shared.ts";
 
@@ -17,6 +17,18 @@ const tools = [
     icon: icons.fileCode,
     title: "From Fumadocs",
   },
+  {
+    body: "Your src/content/docs collection lands straight into place — Markdown, MDX, and Markdoc pages all come across with their frontmatter untouched, ready to render through Blume's components.",
+    command: "npx blume migrate starlight",
+    icon: icons.star,
+    title: "From Starlight",
+  },
+  {
+    body: "Your Nextra pages come across as Blume MDX and every _meta file becomes a typed meta.ts — navigation order and frontmatter intact. Run blume dev and your docs are live.",
+    command: "npx blume migrate nextra",
+    icon: icons.fileText,
+    title: "From Nextra",
+  },
 ];
 ---
 
@@ -32,7 +44,7 @@ const tools = [
       no rebuild from scratch.
     </p>
   </div>
-  <div class="mt-12 grid gap-4 lg:grid-cols-2">
+  <div class="mt-12 grid gap-4 sm:grid-cols-2">
     {
       tools.map((tool) => (
         <div class="rounded-blume border border-border p-6">
@@ -89,13 +101,4 @@ const tools = [
       ))
     }
   </div>
-  <p
-    class="mx-auto mt-6 max-w-xl text-balance text-center text-muted-foreground text-sm"
-  >
-    Coming from Starlight?
-    {" "}
-    <code class="font-mono text-foreground text-[13px]"
-      >npx blume migrate starlight</code
-    > brings it over too.
-  </p>
 </section>
