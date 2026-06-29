@@ -103,6 +103,6 @@ the bundled docs in the installed package:
 node_modules/blume/docs
 ```
 
-Start with `node_modules/blume/docs/content/docs/index.mdx` (Introduction) and
-`01-quickstart.mdx`, then browse the `configuration/`, `content/`, and
-`reference/` sections for specifics.
+Start with `node_modules/blume/docs/index.mdx` (Introduction) and
+`node_modules/blume/docs/01-quickstart.mdx`, then browse the `configuration/`,
+`content/`, `reference/`, and `advanced/` sections for specifics.

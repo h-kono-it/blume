@@ -14,7 +14,8 @@
     "typecheck": "turbo run typecheck",
     "check": "ultracite check",
     "fix": "ultracite fix",
-    "prepare": "husky"
+    "bundle-docs": "node packages/blume/scripts/bundle-docs.mjs",
+    "prepare": "husky && node packages/blume/scripts/bundle-docs.mjs"
   },
   "devDependencies": {
     "@ai-sdk/openai-compatible": "^1.0.41",
