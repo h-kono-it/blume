@@ -46,11 +46,13 @@ when you need them.
 
 ### AI-ready out of the box
 
-Every Blume site can emit [`llms.txt` and `llms-full.txt`](/docs/configuration/ai) so coding
-agents and chat assistants can read your docs the way users do. Add an optional
-**Ask AI** assistant to answer questions directly from your content — no hosted
-service required, and no markup to hand-author. Your Markdown is the source of
-truth for both humans and models.
+Every Blume site speaks fluent machine. It emits [`llms.txt` and
+`llms-full.txt`](/docs/configuration/ai), serves any page's raw Markdown by
+appending `.md` to its URL, and gives readers **Copy as Markdown** and **Open in
+chat** actions on every page. Add an optional in-page **Ask AI** assistant, or
+host an [**MCP server**](/docs/configuration/ai#mcp-server) so coding agents like
+Claude Code and Cursor can search and read your docs directly — no scraping, no
+hosted service. Your Markdown is the source of truth for both humans and models.
 
 ### Zero configuration — even the template
 
@@ -60,12 +62,23 @@ files, [search](/docs/configuration/search) works in dev and production without 
 service, and theming is a handful of tokens. Everything has a sensible default;
 configuration is something you reach for, not something you start with.
 
+### Type-safe to the core
+
+Your [`blume.config.ts`](/docs/configuration) and every
+[`meta.ts`](/docs/content/meta) are real TypeScript — validated by a schema and
+authored with `defineConfig` and `defineMeta`. Your editor autocompletes every
+option and catches typos, invalid values, and missing fields as you type, long
+before a build. Configuration is code you can refactor, compute, and trust — not
+loosely-typed YAML.
+
 ## Everything included
 
 - **Components** — callouts, cards, steps, tabs, accordions, badges, file trees,
   and parameter tables, usable in MDX with [no imports](/docs/content/components).
 - **Local search** — Orama works in dev and production; Pagefind is one flag away
   for large sites. No hosted index.
+- **AI** — [`llms.txt`, raw Markdown URLs, Copy as Markdown, Open in chat, an
+  Ask AI assistant, and a hosted MCP server](/docs/configuration/ai).
 - **Navigation** — inferred from files, refined with `meta.ts` or config.
 - **SEO** — metadata, Open Graph images, RSS feeds, and JSON-LD, [built in](/docs/configuration/seo).
 - **Customization** — component overrides, React islands, custom pages, theme
