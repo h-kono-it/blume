@@ -34,6 +34,7 @@ import { tailwindEntryTemplate } from "../theme/entry.ts";
 import { buildFontsCss, configuredCssVars } from "../theme/fonts.ts";
 import { buildThemeCss } from "../theme/palette.ts";
 import { twoslashCss } from "../theme/twoslash.ts";
+import { discoverIslands } from "./islands.ts";
 import { discoverPages } from "./pages.ts";
 import {
   askEndpointTemplate,
@@ -42,6 +43,8 @@ import {
   changelogIndexTemplate,
   contentConfigTemplate,
   envTemplate,
+  islandMapTemplate,
+  islandWrapperTemplate,
   mcpEndpointTemplate,
   mcpPageFile,
   mixedbreadSearchEndpointTemplate,
@@ -594,10 +597,11 @@ export const generateRuntime = async (
   const askEnabled = config.ai.ask?.enabled ?? false;
   const exportPdf = config.export.pdf;
   const exportEpub = config.export.epub;
-  const [pages, detectedReact, userTheme] = await Promise.all([
+  const [pages, detectedReact, userTheme, islandDiscovery] = await Promise.all([
     context.pagesRoot ? discoverPages(context.pagesRoot) : Promise.resolve([]),
     detectNeedsReact(context.root),
     readOptional(context.themeFile),
+    discoverIslands(context.root),
   ]);
   const needsReact = detectedReact || askEnabled;
 
@@ -650,6 +654,10 @@ export const generateRuntime = async (
       userComponentsTemplate(context.componentsFile)
     ),
     write(
+      join(srcDir, "generated", "islands.ts"),
+      islandMapTemplate(islandDiscovery.islands)
+    ),
+    write(
       themePath,
       tailwindEntryTemplate({
         configTokens: `${buildThemeCss(config.theme)}${buildFontsCss(config.theme.fonts)}`,
@@ -662,6 +670,18 @@ export const generateRuntime = async (
       })
     ),
   ]);
+
+  // Per-island hydration wrappers for the `islands/` convention. The map module
+  // (written above, always) imports these; orphans from removed islands are
+  // pruned at the end of the pass.
+  await Promise.all(
+    islandDiscovery.islands.map((island) =>
+      write(
+        join(srcDir, "generated", "islands", `${island.name}.astro`),
+        islandWrapperTemplate(island)
+      )
+    )
+  );
 
   if (askEnabled) {
     await write(
@@ -759,7 +779,7 @@ export const generateRuntime = async (
 
   // API/AsyncAPI reference pages (Scalar). One self-contained page per source,
   // mounted on its configured route and regenerated each run.
-  const warnings: string[] = [...mcp.warnings];
+  const warnings: string[] = [...mcp.warnings, ...islandDiscovery.warnings];
 
   // The new provider SDKs are optional peers; warn (rather than fail opaquely in
   // Vite) when the configured provider's package isn't installed.
