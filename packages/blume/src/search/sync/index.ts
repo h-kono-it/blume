@@ -32,22 +32,14 @@ export const syncSearchProvider = async (
   reporter.start(`Syncing ${records.length} record(s) to ${search.provider}`);
 
   try {
-    switch (search.provider) {
-      case "algolia": {
-        await syncAlgolia(records, search.algolia);
-        break;
-      }
-      case "orama-cloud": {
-        await syncOramaCloud(records, search.oramaCloud);
-        break;
-      }
-      case "typesense": {
-        await syncTypesense(records, search.typesense);
-        break;
-      }
-      default: {
-        return;
-      }
+    // The `syncs` guard above admits only these three hosted providers, so an
+    // if-chain stays exhaustive without a dead `default` branch.
+    if (search.provider === "algolia") {
+      await syncAlgolia(records, search.algolia);
+    } else if (search.provider === "orama-cloud") {
+      await syncOramaCloud(records, search.oramaCloud);
+    } else if (search.provider === "typesense") {
+      await syncTypesense(records, search.typesense);
     }
     reporter.success(
       `Synced ${records.length} record(s) to ${search.provider}`

@@ -215,4 +215,406 @@ describe("starlight unit mappers", () => {
     expect(i18n?.parser).toBe("dir");
     expect(i18n?.locales).toContainEqual({ code: "fr", label: "Français" });
   });
+
+  it("falls back when defaultLocale is missing, absent, or no locales", () => {
+    expect(starlightI18n({ locales: {} })).toBeUndefined();
+    expect(starlightI18n({})).toBeUndefined();
+
+    // `defaultLocale` not among the locales falls back to the first entry's code,
+    // and a locale without `lang` keys off its directory segment.
+    const noRoot = starlightI18n({
+      defaultLocale: "de",
+      locales: {
+        en: { label: "English", lang: "en" },
+        fr: { label: "Français" },
+      },
+    });
+    expect(noRoot?.defaultLocale).toBe("en");
+    expect(noRoot?.locales).toContainEqual({ code: "fr", label: "Français" });
+
+    // `root` with no `lang` resolves to `en`; `defaultLocale: "root"` maps to it.
+    const rootDefault = starlightI18n({
+      defaultLocale: "root",
+      locales: {
+        es: { label: "Español", lang: "es" },
+        root: { label: "English" },
+      },
+    });
+    expect(rootDefault?.defaultLocale).toBe("en");
+  });
+});
+
+describe("mapStarlightConfig field mappers", () => {
+  it("maps logos, favicons, object socials, edit-link fallback, sidebars, themes, and head", () => {
+    const warnings: string[] = [];
+    const config = mapStarlightConfig(
+      {
+        description: "Desc",
+        // GitLab base URL never matches the GitHub edit pattern → dropped.
+        editLink: { baseUrl: "https://gitlab.com/acme/repo/edit/main/" },
+        expressiveCode: {
+          styleOverrides: { borderRadius: "0" },
+          themes: ["github-light", "github-dark"],
+        },
+        favicon: "favicon.png",
+        head: [
+          { attrs: { content: "Hi", name: "og:title" }, tag: "meta" },
+          { attrs: { content: "website", property: "og:type" }, tag: "meta" },
+          { attrs: { rel: "icon" }, tag: "link" },
+          "noise",
+        ],
+        logo: { alt: "Brand", src: "logo.svg" },
+        sidebar: [
+          "guides/quickstart",
+          { label: "External", link: "https://example.com" },
+          { link: "https://bare.example.com" },
+          {
+            items: [
+              { slug: "nested/one" },
+              { label: "Two", slug: "nested/two" },
+            ],
+            label: "Group",
+          },
+          { slug: "solo" },
+          { badge: "skip" },
+          42,
+          {
+            autogenerate: { directory: "ref" },
+            badge: "New",
+            collapsed: true,
+            label: "Ref",
+          },
+        ],
+        social: {
+          discord: "https://discord.gg/x",
+          github: "https://github.com/acme/repo",
+        },
+        title: "T",
+      },
+      warnings
+    );
+
+    expect(config.description).toBe("Desc");
+    expect(config.logo).toEqual({
+      alt: "Brand",
+      dark: "logo.svg",
+      light: "logo.svg",
+    });
+    expect(config.favicon).toBe("favicon.png");
+    expect(config.footer?.socials).toEqual({
+      discord: "https://discord.gg/x",
+      github: "https://github.com/acme/repo",
+    });
+    // editLink failed to parse, so github falls back to the social github URL.
+    expect(config.github).toEqual({ owner: "acme", repo: "repo" });
+    expect(config.markdown?.codeBlocks?.theme).toEqual({
+      dark: "github-dark",
+      light: "github-light",
+    });
+    expect(config.seo?.metatags).toEqual({
+      "og:title": "Hi",
+      "og:type": "website",
+    });
+
+    const sidebar = config.navigation?.sidebar ?? [];
+    expect(sidebar).toContainEqual("/guides/quickstart");
+    expect(sidebar).toContainEqual({
+      href: "https://example.com",
+      label: "External",
+    });
+    expect(sidebar).toContainEqual({
+      href: "https://bare.example.com",
+      label: "https://bare.example.com",
+    });
+    expect(sidebar).toContainEqual("/solo");
+    expect(sidebar).toContainEqual({
+      badge: "New",
+      collapsed: true,
+      label: "Ref",
+      root: "ref",
+    });
+
+    expect(warnings.some((w) => w.includes("logo"))).toBe(true);
+    expect(warnings.some((w) => w.includes("favicon"))).toBe(true);
+    expect(warnings.some((w) => w.includes("styleOverrides"))).toBe(true);
+    expect(warnings.some((w) => w.includes("head entry"))).toBe(true);
+    expect(warnings.some((w) => w.includes("unsupported shape"))).toBe(true);
+    expect(blumeConfigSchema.safeParse(config).success).toBe(true);
+  });
+
+  it("handles social arrays with malformed and incomplete entries", () => {
+    const config = mapStarlightConfig(
+      {
+        social: [
+          { href: "https://github.com", icon: "github" },
+          { href: "https://x.com/acme", icon: "twitter.com" },
+          { icon: "discord" },
+          "not-an-object",
+        ],
+        title: "S",
+      },
+      []
+    );
+    expect(config.footer?.socials?.github).toBe("https://github.com");
+    // A bare github.com URL has no owner/repo → no github config is derived.
+    expect(config.github).toBeUndefined();
+    // The `.com` suffix is stripped from the social key.
+    expect(config.footer?.socials?.twitter).toBe("https://x.com/acme");
+  });
+
+  it("maps logo light/dark, drops empty logos, and resolves code themes", () => {
+    const warnings: string[] = [];
+
+    const darkLight = mapStarlightConfig(
+      {
+        logo: { alt: "Brand", dark: "dark.svg", light: "light.svg" },
+        title: "L",
+      },
+      warnings
+    );
+    expect(darkLight.logo).toEqual({
+      alt: "Brand",
+      dark: "dark.svg",
+      light: "light.svg",
+    });
+
+    const emptyLogo = mapStarlightConfig(
+      { logo: { href: "/x" }, title: "L" },
+      []
+    );
+    expect(emptyLogo.logo).toBeUndefined();
+
+    const disabledCode = mapStarlightConfig(
+      { expressiveCode: false, title: "L" },
+      warnings
+    );
+    expect(disabledCode.markdown).toBeUndefined();
+    expect(warnings.some((w) => w.includes("expressiveCode is disabled"))).toBe(
+      true
+    );
+
+    const noThemes = mapStarlightConfig(
+      { expressiveCode: { themes: [] }, title: "L" },
+      []
+    );
+    expect(noThemes.markdown).toBeUndefined();
+
+    // Theme names without "light"/"dark" markers fall back to first/second.
+    const fallbackThemes = mapStarlightConfig(
+      { expressiveCode: { themes: ["dracula", "nord"] }, title: "L" },
+      []
+    );
+    expect(fallbackThemes.markdown?.codeBlocks?.theme).toEqual({
+      dark: "dracula",
+      light: "nord",
+    });
+  });
+
+  it("warns on computed title, dropped options, absolute favicons, and empty head", () => {
+    const warnings: string[] = [];
+    const config = mapStarlightConfig(
+      {
+        components: { Header: "./Header.astro" },
+        customCss: ["./styles.css"],
+        favicon: "/favicon.svg",
+        head: [{ attrs: { rel: "icon" }, tag: "link" }],
+        lastUpdated: true,
+        plugins: ["starlight-links-validator"],
+        routeMiddleware: "./middleware.ts",
+        title: { en: "Docs" },
+      },
+      warnings
+    );
+
+    // A per-locale/computed title isn't a literal string → default + warning.
+    expect(config.title).toBe("Documentation");
+    expect(config.favicon).toBe("/favicon.svg");
+    expect(config.lastModified).toBe(true);
+    // A head with no usable <meta> tags yields no seo config.
+    expect(config.seo).toBeUndefined();
+    expect(warnings.some((w) => w.includes("per-locale or computed"))).toBe(
+      true
+    );
+    expect(warnings.some((w) => w.includes("customCss"))).toBe(true);
+    expect(warnings.some((w) => w.includes("component overrides"))).toBe(true);
+    expect(warnings.some((w) => w.includes("plugins"))).toBe(true);
+    expect(warnings.some((w) => w.includes("routeMiddleware"))).toBe(true);
+  });
+});
+
+describe("normalizeStarlightPageMeta edge cases", () => {
+  it("maps sidebar fields, lastUpdated dates, pagination, and invalid input", () => {
+    const fields = normalizeStarlightPageMeta({
+      sidebar: { hidden: true, label: "Nav", order: 3 },
+      title: "P",
+    });
+    expect(fields.data.sidebar).toEqual({
+      hidden: true,
+      label: "Nav",
+      order: 3,
+    });
+
+    // A sidebar object with no recognized fields is dropped entirely.
+    const emptySidebar = normalizeStarlightPageMeta({
+      sidebar: {},
+      title: "P",
+    });
+    expect(emptySidebar.data.sidebar).toBeUndefined();
+
+    const dateMeta = normalizeStarlightPageMeta({
+      lastUpdated: new Date("2024-01-02T00:00:00.000Z"),
+      title: "P",
+    });
+    expect(dateMeta.data.lastModified).toBe("2024-01-02T00:00:00.000Z");
+
+    const stringMeta = normalizeStarlightPageMeta({
+      lastUpdated: "2024-05-06",
+      title: "P",
+    });
+    expect(stringMeta.data.lastModified).toBe("2024-05-06");
+
+    const pagination = normalizeStarlightPageMeta({ prev: false, title: "P" });
+    expect(pagination.data.hideFooterPagination).toBe(true);
+
+    // Input that fails the Starlight schema still strips unknown keys.
+    const invalid = normalizeStarlightPageMeta({ pagefind: "nope" });
+    expect(invalid.removed).toContain("pagefind");
+  });
+});
+
+describe("loadStarlightConfig astro.config parsing", () => {
+  it("reads options when whitespace separates starlight( and its object", async () => {
+    const root = await project({
+      "astro.config.mjs": `import { defineConfig } from "astro/config";
+import starlight from "@astrojs/starlight";
+
+export default defineConfig({
+  integrations: [
+    starlight(
+      {
+        title: "Spaced",
+      }
+    ),
+  ],
+});
+`,
+      "src/content/docs/index.md": "# Home\n",
+    });
+    const result = await migrateStarlight(root);
+    const config = await readFile(join(root, "blume.config.ts"), "utf-8");
+    expect(config).toContain('"title": "Spaced"');
+    expect(result.moved).toBe(1);
+  });
+
+  it("warns when no starlight() call is present", async () => {
+    const root = await project({
+      "astro.config.mjs": `import { defineConfig } from "astro/config";
+
+export default defineConfig({ integrations: [] });
+`,
+    });
+    const result = await migrateStarlight(root);
+    expect(result.warnings.some((w) => w.includes("starlight() call"))).toBe(
+      true
+    );
+  });
+
+  it("warns when the starlight() options are a non-literal reference", async () => {
+    const root = await project({
+      "astro.config.mjs": `import { defineConfig } from "astro/config";
+import starlight from "@astrojs/starlight";
+
+const options = { title: "X" };
+
+export default defineConfig({ integrations: [starlight(options)] });
+`,
+    });
+    const result = await migrateStarlight(root);
+    expect(
+      result.warnings.some((w) => w.includes("statically read the starlight()"))
+    ).toBe(true);
+  });
+
+  it("warns when the starlight() options object is unterminated", async () => {
+    const root = await project({
+      "astro.config.mjs": `import { defineConfig } from "astro/config";
+import starlight from "@astrojs/starlight";
+
+export default defineConfig({ integrations: [starlight({ title: "Trunc"`,
+    });
+    const result = await migrateStarlight(root);
+    expect(
+      result.warnings.some((w) => w.includes("statically read the starlight()"))
+    ).toBe(true);
+  });
+
+  it("treats empty starlight() options as a default config", async () => {
+    const root = await project({
+      "astro.config.mjs": `import { defineConfig } from "astro/config";
+import starlight from "@astrojs/starlight";
+
+export default defineConfig({ integrations: [starlight()] });
+`,
+      "src/content/docs/index.md": "# Home\n",
+    });
+    const result = await migrateStarlight(root);
+    const config = await readFile(join(root, "blume.config.ts"), "utf-8");
+    expect(config).toContain('"title": "Documentation"');
+    expect(
+      result.warnings.some(
+        (w) => w.includes("starlight() call") || w.includes("statically read")
+      )
+    ).toBe(false);
+  });
+});
+
+describe("migrateStarlight project integration", () => {
+  it("maps locales onto i18n and warns about the locale count", async () => {
+    const root = await project({
+      "astro.config.mjs": `import { defineConfig } from "astro/config";
+import starlight from "@astrojs/starlight";
+
+export default defineConfig({
+  integrations: [
+    starlight({
+      defaultLocale: "root",
+      locales: {
+        fr: { label: "Français", lang: "fr" },
+        root: { label: "English", lang: "en" },
+      },
+      title: "Docs",
+    }),
+  ],
+});
+`,
+      "src/content/docs/index.md": "# Home\n",
+    });
+    const result = await migrateStarlight(root);
+    const config = await readFile(join(root, "blume.config.ts"), "utf-8");
+    expect(config).toContain('"i18n"');
+    expect(config).toContain('"defaultLocale": "en"');
+    expect(result.warnings.some((w) => w.includes("locale(s) to i18n"))).toBe(
+      true
+    );
+  });
+
+  it("flags unsupported components and aliased asset references", async () => {
+    const root = await project({
+      "astro.config.mjs": ASTRO_CONFIG,
+      "src/content/docs/steps.mdx": `---
+title: Walkthrough
+---
+import { Steps } from "@astrojs/starlight/components";
+
+<Steps>
+1. First
+</Steps>
+
+![diagram](~/assets/diagram.png)
+`,
+    });
+    const result = await migrateStarlight(root);
+    expect(result.warnings.some((w) => w.includes("Steps"))).toBe(true);
+    expect(result.warnings.some((w) => w.includes("aliases"))).toBe(true);
+  });
 });

@@ -11,6 +11,8 @@ import {
   detectLocale,
   i18nDiagnostics,
   i18nEnabled,
+  localeCodes,
+  localeDir,
   localePrefix,
   localizeRoute,
   resolveFallbackLocale,
@@ -155,6 +157,24 @@ describe("i18n helpers", () => {
   it("reports whether i18n is enabled", () => {
     expect(i18nEnabled(config())).toBe(true);
     expect(i18nEnabled(blumeConfigSchema.parse({}))).toBe(false);
+  });
+
+  it("lists configured locale codes, default first", () => {
+    expect(localeCodes(i18nOf())).toStrictEqual(["en", "fr"]);
+  });
+
+  it("resolves a locale's text direction, defaulting to ltr", () => {
+    const i18n = i18nOf({
+      defaultLocale: "en",
+      locales: [
+        { code: "en", label: "English" },
+        { code: "ar", dir: "rtl", label: "العربية" },
+      ],
+    });
+    expect(localeDir("ar", i18n)).toBe("rtl");
+    expect(localeDir("en", i18n)).toBe("ltr");
+    // An unknown code falls back to ltr.
+    expect(localeDir("zz", i18n)).toBe("ltr");
   });
 });
 

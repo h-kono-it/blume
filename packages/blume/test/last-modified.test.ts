@@ -1,10 +1,13 @@
 import { afterAll, describe, expect, it } from "bun:test";
+import { execFileSync } from "node:child_process";
+import { realpathSync } from "node:fs";
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 
 import { dirname, join } from "pathe";
 
 import {
+  gitLastModifiedTimes,
   parseGitLog,
   resolveLastModifiedConfig,
 } from "../src/core/last-modified.ts";
@@ -13,6 +16,16 @@ import { scanProject } from "../src/core/project-graph.ts";
 // The byte `git log --format=%x00…` prefixes each date line with.
 const nul = String.fromCodePoint(0);
 const dateLine = (iso: string): string => `${nul}${iso}`;
+
+const runGit = (root: string, args: string[]): void => {
+  execFileSync("git", ["-C", root, ...args], { stdio: "ignore" });
+};
+
+const initRepo = (root: string): void => {
+  runGit(root, ["init"]);
+  runGit(root, ["config", "user.email", "test@blume.dev"]);
+  runGit(root, ["config", "user.name", "Blume Test"]);
+};
 
 describe("resolveLastModifiedConfig", () => {
   it("disables on false", () => {
@@ -106,5 +119,49 @@ describe("scanProject lastModified", () => {
     expect(project.manifest.routes[0]?.lastModified).toBe(
       "2020-01-02T00:00:00.000Z"
     );
+  });
+});
+
+describe("gitLastModifiedTimes", () => {
+  const dirs: string[] = [];
+
+  // `realpathSync` canonicalizes the temp dir (macOS routes `/var` through
+  // `/private/var`) so the paths we pass match `git rev-parse --show-toplevel`.
+  const makeRepoDir = async (): Promise<string> => {
+    const root = realpathSync(await mkdtemp(join(tmpdir(), "blume-gitmod-")));
+    dirs.push(root);
+    return root;
+  };
+
+  afterAll(async () => {
+    await Promise.all(
+      dirs.map((dir) => rm(dir, { force: true, recursive: true }))
+    );
+  });
+
+  it("reads the most recent commit date for a tracked file", async () => {
+    const root = await makeRepoDir();
+    const contentRoot = join(root, "docs");
+    const tracked = join(contentRoot, "index.md");
+    await mkdir(contentRoot, { recursive: true });
+    await writeFile(tracked, "# Home\n");
+    initRepo(root);
+    runGit(root, ["add", "-A"]);
+    runGit(root, ["-c", "commit.gpgsign=false", "commit", "-m", "add docs"]);
+
+    const untracked = join(contentRoot, "missing.md");
+    const times = gitLastModifiedTimes(root, contentRoot, [tracked, untracked]);
+
+    expect(times.get(tracked)).toMatch(/^\d{4}-\d{2}-\d{2}T/u);
+    // A path with no commit history is simply absent from the map.
+    expect(times.has(untracked)).toBe(false);
+  });
+
+  it("returns an empty map outside a git repository", async () => {
+    const root = await makeRepoDir();
+    const times = gitLastModifiedTimes(root, join(root, "docs"), [
+      join(root, "docs", "index.md"),
+    ]);
+    expect(times.size).toBe(0);
   });
 });

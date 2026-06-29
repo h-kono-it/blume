@@ -124,6 +124,24 @@ describe("buildLlmsFiles — full", () => {
   });
 });
 
+const sitelessProject = (): BlumeProject =>
+  ({
+    config: blumeConfigSchema.parse({ title: "Docs" }),
+    graph: {
+      pages: [makePage("a.md", "/a", "Alpha", { description: "First" })],
+    },
+    manifest: { routes: [{ path: "/a", sourcePath: join(root, "a.md") }] },
+  }) as unknown as BlumeProject;
+
+describe("buildLlmsFiles — without a deployment site", () => {
+  it("emits root-relative links when no site is configured", async () => {
+    const { full, index } = await buildLlmsFiles(sitelessProject());
+    expect(index).toContain("- [Alpha](/a): First");
+    expect(full).toContain("Source: /a");
+    expect(index).not.toContain("https://");
+  });
+});
+
 describe("buildRawMarkdown", () => {
   it("maps every route to its raw (frontmatter-included) source", async () => {
     const raw = await buildRawMarkdown(project());

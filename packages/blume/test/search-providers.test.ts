@@ -9,9 +9,15 @@ import type { BlumeProject } from "../src/core/project-graph.ts";
 import { blumeConfigSchema } from "../src/core/schema.ts";
 import { serverFeatures } from "../src/core/server-features.ts";
 import type { SearchDocument } from "../src/search/documents.ts";
-import { toSearchRecords } from "../src/search/documents.ts";
+import {
+  buildSearchDocuments,
+  toSearchRecords,
+} from "../src/search/documents.ts";
 import { searchProviderMeta } from "../src/search/providers.ts";
+import { syncAlgolia } from "../src/search/sync/algolia.ts";
 import { syncSearchProvider } from "../src/search/sync/index.ts";
+import { syncOramaCloud } from "../src/search/sync/orama-cloud.ts";
+import { syncTypesense } from "../src/search/sync/typesense.ts";
 
 const parse = (search: Record<string, unknown>) =>
   blumeConfigSchema.parse({ search });
@@ -269,6 +275,83 @@ describe("syncSearchProvider", () => {
       expect(log.calls.warn[0]).toContain(`${env} is not set`);
     });
   }
+});
+
+// Each hosted sync throws (rather than silently skipping) when its config block
+// is absent, so the dispatcher's catch can surface a clear warning.
+describe("hosted sync config guards", () => {
+  // A config whose provider is "none" carries no hosted-provider blocks, so
+  // each block reads back as undefined.
+  const noBlocks = parse({ provider: "none" }).search;
+
+  it("throws when the algolia config block is missing", async () => {
+    await expect(syncAlgolia([], noBlocks.algolia)).rejects.toThrow(
+      "search.algolia config is missing."
+    );
+  });
+
+  it("throws when the orama-cloud config block is missing", async () => {
+    await expect(syncOramaCloud([], noBlocks.oramaCloud)).rejects.toThrow(
+      "search.oramaCloud config is missing."
+    );
+  });
+
+  it("throws when the orama-cloud index id is absent", async () => {
+    await expect(syncOramaCloud([], {})).rejects.toThrow(
+      "indexId is required to sync"
+    );
+  });
+
+  it("throws when the typesense config block is missing", async () => {
+    await expect(syncTypesense([], noBlocks.typesense)).rejects.toThrow(
+      "search.typesense config is missing."
+    );
+  });
+});
+
+describe("buildSearchDocuments — localized sidebars", () => {
+  it("derives the section and breadcrumb from a locale's sidebar", async () => {
+    const project = {
+      config: blumeConfigSchema.parse({}),
+      graph: {
+        navigationByLocale: {
+          en: {
+            sidebar: [
+              {
+                children: [
+                  {
+                    kind: "page",
+                    label: "Intro",
+                    pageId: "x",
+                    route: "/intro",
+                  },
+                ],
+                kind: "group",
+                label: "Guides",
+              },
+            ],
+          },
+        },
+        pages: [],
+      },
+      manifest: {
+        routes: [
+          {
+            id: "x",
+            indexable: true,
+            locale: "en",
+            path: "/intro",
+            title: "Intro",
+          },
+        ],
+      },
+    } as unknown as BlumeProject;
+
+    const [doc] = await buildSearchDocuments(project);
+    expect(doc?.route).toBe("/intro");
+    expect(doc?.section).toBe("Guides");
+    expect(doc?.breadcrumb).toStrictEqual(["Guides"]);
+  });
 });
 
 describe("serverFeatures", () => {

@@ -93,6 +93,52 @@ describe("parseNextraMeta", () => {
   it("returns null when no object literal is found", () => {
     expect(parseNextraMeta("export const meta = 1;\n", ".js")).toBeNull();
   });
+
+  it("reads JSON object entries with display, href, and newWindow", () => {
+    const entries = parseNextraMeta(
+      JSON.stringify({
+        link: {
+          display: "hidden",
+          href: "https://example.com",
+          newWindow: true,
+        },
+      }),
+      ".json"
+    );
+    const entry = entries?.[0];
+    expect(entry?.display).toBe("hidden");
+    expect(entry?.href).toBe("https://example.com");
+    expect(entry?.newWindow).toBe(true);
+  });
+
+  it("flags JSON entries whose value is neither a string nor an object", () => {
+    const entries = parseNextraMeta(JSON.stringify({ count: 42 }), ".json");
+    expect(entries?.[0]?.slug).toBe("count");
+    expect(entries?.[0]?.unparseable).toBe(true);
+  });
+
+  it("returns null for malformed JSON", () => {
+    expect(parseNextraMeta("{ not json", ".json")).toBeNull();
+  });
+
+  it("returns null when the JSON root is not a plain object", () => {
+    expect(parseNextraMeta("[1, 2, 3]", ".json")).toBeNull();
+  });
+
+  it("returns null when the default export is not an object literal", () => {
+    expect(parseNextraMeta("export default 42;\n", ".js")).toBeNull();
+  });
+
+  it("reads object fields, honoring newWindow:false and skipping expressions", () => {
+    const entries = parseNextraMeta(
+      `export default {\n  link: { newWindow: false, title: someVar, type: "page" },\n};\n`,
+      ".ts"
+    );
+    const entry = entries?.[0];
+    expect(entry?.newWindow).toBe(false);
+    expect(entry?.type).toBe("page");
+    expect(entry?.title).toBeUndefined();
+  });
 });
 
 describe("toBlumeFolderMeta", () => {
@@ -125,6 +171,23 @@ describe("toBlumeFolderMeta", () => {
     expect(conversion.folderTitles.guides).toBe("Guides");
     expect(conversion.warnings.some((w) => w.includes("separator"))).toBe(true);
     expect(conversion.warnings.some((w) => w.includes("External"))).toBe(true);
+  });
+
+  it("drops navbar menu entries with a warning", () => {
+    const conversion = toBlumeFolderMeta(
+      [
+        {
+          slug: "products",
+          title: "Products",
+          type: "menu",
+          unparseable: false,
+        },
+      ],
+      { hasDir: () => false, hasPage: () => false }
+    );
+
+    expect(conversion.folderMeta.pages).toBeUndefined();
+    expect(conversion.warnings.some((w) => w.includes("menu"))).toBe(true);
   });
 });
 
@@ -216,5 +279,71 @@ describe("migrateNextra end to end", () => {
     expect(result.moved).toBe(0);
     const config = await readFile(join(root, "blume.config.ts"), "utf-8");
     expect(config).toContain('"title": "Documentation"');
+  });
+
+  it("relocates _meta files it cannot parse and reports them", async () => {
+    const root = await project({
+      "pages/_meta.js": "export const meta = 1;\n",
+      "pages/index.mdx": "# Home\n",
+    });
+
+    const result = await migrateNextra(root);
+
+    expect(result.moved).toBe(1);
+    expect(existsSync(join(root, "docs", "_meta.js"))).toBe(true);
+    expect(existsSync(join(root, "pages", "_meta.js"))).toBe(false);
+    expect(result.warnings.some((w) => w.includes("Could not parse"))).toBe(
+      true
+    );
+  });
+
+  it("warns on subfolder top-nav entries and skips empty folder meta", async () => {
+    const root = await project({
+      "pages/guides/_meta.json": JSON.stringify({
+        external: { type: "page" },
+        ghost: "Ghost",
+      }),
+      "pages/guides/intro.mdx": "# Intro\n",
+    });
+
+    const result = await migrateNextra(root);
+
+    expect(result.moved).toBe(1);
+    expect(existsSync(join(root, "docs", "guides", "meta.ts"))).toBe(false);
+    expect(result.warnings.some((w) => w.includes("top-nav"))).toBe(true);
+  });
+
+  it("skips pages and unparseable metas whose destination already exists", async () => {
+    const root = await project({
+      "docs/_meta.js": "// already here\n",
+      "docs/index.mdx": "# Existing\n",
+      "pages/_meta.js": "export const meta = 1;\n",
+      "pages/index.mdx": "# Home\n",
+    });
+
+    const result = await migrateNextra(root);
+
+    expect(result.moved).toBe(0);
+    expect(result.warnings.some((w) => w.includes("Skipped index.mdx"))).toBe(
+      true
+    );
+    expect(result.warnings.some((w) => w.includes("Skipped _meta.js"))).toBe(
+      true
+    );
+    const kept = await readFile(join(root, "docs", "index.mdx"), "utf-8");
+    expect(kept).toContain("# Existing");
+  });
+
+  it("reports dropped frontmatter keys and unsupported components", async () => {
+    const root = await project({
+      "pages/index.mdx":
+        '---\ntitle: Home\n"og:image": /og.png\n---\n\n<Steps>\nStep one\n</Steps>\n',
+    });
+
+    const result = await migrateNextra(root);
+
+    expect(result.moved).toBe(1);
+    expect(result.warnings.some((w) => w.includes("og:image"))).toBe(true);
+    expect(result.warnings.some((w) => w.includes("Steps"))).toBe(true);
   });
 });

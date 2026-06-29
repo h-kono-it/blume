@@ -1,5 +1,5 @@
-import { afterAll, describe, expect, it } from "bun:test";
-import { mkdtemp, rm } from "node:fs/promises";
+import { afterAll, describe, expect, it, mock } from "bun:test";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 
 import { join } from "pathe";
@@ -8,7 +8,7 @@ import { blumeConfigSchema } from "../src/core/schema.ts";
 import { notionSource } from "../src/core/sources/notion.ts";
 import type { NotionClientLike } from "../src/core/sources/notion.ts";
 import { resolveSources } from "../src/core/sources/resolve.ts";
-import type { SourceContext } from "../src/core/sources/types.ts";
+import type { SourceContext, SourceEntry } from "../src/core/sources/types.ts";
 import type { ProjectContext } from "../src/core/types.ts";
 
 const dirs: string[] = [];
@@ -235,6 +235,175 @@ describe("notionSource", () => {
     // Status is "Published" in the fixture, but without publishedValue the
     // adapter never infers draft — nothing is filtered.
     expect(entries[0]?.data.draft).toBeUndefined();
+  });
+});
+
+describe("notionSource (block + property edge cases)", () => {
+  const richPage = {
+    id: "rich",
+    last_edited_time: "2024-06-01T00:00:00Z",
+    properties: {
+      Name: { title: [rich("Rich Page")], type: "title" },
+    },
+  };
+
+  const richBlocks: Record<string, unknown[]> = {
+    rich: [
+      { heading_1: { rich_text: [rich("H1")] }, id: "h1", type: "heading_1" },
+      { heading_3: { rich_text: [rich("H3")] }, id: "h3", type: "heading_3" },
+      {
+        bulleted_list_item: { rich_text: [rich("first")] },
+        id: "b1",
+        type: "bulleted_list_item",
+      },
+      {
+        bulleted_list_item: { rich_text: [rich("second")] },
+        id: "b2",
+        type: "bulleted_list_item",
+      },
+      {
+        id: "n1",
+        numbered_list_item: { rich_text: [rich("step")] },
+        type: "numbered_list_item",
+      },
+      {
+        id: "td1",
+        to_do: { checked: true, rich_text: [rich("done")] },
+        type: "to_do",
+      },
+      { id: "q1", quote: { rich_text: [rich("wisdom")] }, type: "quote" },
+      { divider: {}, id: "d1", type: "divider" },
+      {
+        id: "ann",
+        paragraph: {
+          rich_text: [
+            rich("c", { code: true }),
+            rich("i", { italic: true }),
+            rich("s", { strikethrough: true }),
+          ],
+        },
+        type: "paragraph",
+      },
+      {
+        callout: { rich_text: [rich("just text")] },
+        id: "callout-empty",
+        type: "callout",
+      },
+      { id: "weird", synced_block: {}, type: "synced_block" },
+    ],
+  };
+
+  const richClient = (): NotionClientLike =>
+    ({
+      blocks: {
+        children: {
+          list: ({ block_id }: { block_id: string }) =>
+            Promise.resolve({
+              has_more: false,
+              next_cursor: null,
+              results: richBlocks[block_id] ?? [],
+            }),
+        },
+      },
+      databases: {
+        query: () =>
+          Promise.resolve({
+            has_more: false,
+            next_cursor: null,
+            results: [richPage],
+          }),
+      },
+    }) as unknown as NotionClientLike;
+
+  it("renders every leaf block type and inline annotation", async () => {
+    const source = notionSource(
+      { client: richClient(), database: "db1", fetchImpl, name: "handbook" },
+      await ctxFor()
+    );
+    const { entries } = await source.load();
+    const body = entries[0]?.body.text ?? "";
+    expect(body).toContain("# H1");
+    expect(body).toContain("### H3");
+    expect(body).toContain("1. step");
+    expect(body).toContain("- [x] done");
+    expect(body).toContain("> wisdom");
+    expect(body).toContain("---");
+    expect(body).toContain("`c`");
+    expect(body).toContain("*i*");
+    expect(body).toContain("~~s~~");
+    // Consecutive bullet items stay in one tight list (single newline between).
+    expect(body).toContain("- first\n- second");
+  });
+
+  it("renders a childless callout and notes unsupported container blocks", async () => {
+    const source = notionSource(
+      { client: richClient(), database: "db1", fetchImpl, name: "handbook" },
+      await ctxFor()
+    );
+    const { entries } = await source.load();
+    const body = entries[0]?.body.text ?? "";
+    expect(body).toContain("<Callout>\njust text\n</Callout>");
+    expect(body).toContain("{/* unsupported Notion block: synced_block */}");
+  });
+
+  it("uses an explicit title property name", async () => {
+    const source = notionSource(
+      {
+        client: richClient(),
+        database: "db1",
+        fetchImpl,
+        name: "handbook",
+        properties: { title: "Name" },
+      },
+      await ctxFor()
+    );
+    const { entries } = await source.load();
+    expect(entries[0]?.data.title).toBe("Rich Page");
+    expect(entries[0]?.ref).toBe("rich-page.mdx");
+  });
+
+  it("read() serves the staged raw, then falls back to the cache for unknown refs", async () => {
+    const source = notionSource(
+      { client: richClient(), database: "db1", fetchImpl, name: "handbook" },
+      await ctxFor()
+    );
+    await source.load();
+    const raw = await source.read?.("rich-page.mdx");
+    expect(raw).toContain("title: Rich Page");
+    const missing = await source.read?.("nope.mdx");
+    expect(missing).toBe("");
+  });
+
+  it("falls back to the cache and warns offline when the SDK is missing", async () => {
+    mock.module("@notionhq/client", () => {
+      throw new Error("Cannot find package '@notionhq/client'");
+    });
+    const dir = await tempDir();
+    const cacheDir = join(dir, "cache");
+    await mkdir(cacheDir, { recursive: true });
+    const seed: SourceEntry[] = [
+      {
+        body: { format: "mdx", text: "# Cached" },
+        data: { title: "Cached" },
+        raw: "---\ntitle: Cached\n---\n# Cached",
+        ref: "cached.mdx",
+      },
+    ];
+    await writeFile(join(cacheDir, "entries.json"), JSON.stringify(seed));
+    const source = notionSource(
+      { database: "db1", name: "handbook" },
+      {
+        assetsBaseUrl: "/blume-assets/handbook",
+        assetsDir: join(dir, "assets"),
+        cacheDir,
+        mode: "build",
+        projectRoot: dir,
+      }
+    );
+    const { diagnostics, entries } = await source.load();
+    expect(entries).toHaveLength(1);
+    expect(diagnostics.map((d) => d.code)).toContain("BLUME_SOURCE_OFFLINE");
+    expect(diagnostics[0]?.message).toContain("@notionhq/client");
   });
 });
 

@@ -1,4 +1,4 @@
-import { afterAll, describe, expect, it } from "bun:test";
+import { afterAll, describe, expect, it, mock } from "bun:test";
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 
@@ -195,6 +195,109 @@ describe("sanitySource", () => {
     const { entries, diagnostics } = await source.load();
     expect(entries).toHaveLength(1);
     expect(diagnostics.map((d) => d.code)).toContain("BLUME_SOURCE_OFFLINE");
+  });
+});
+
+describe("sanitySource (field + client resolution edge cases)", () => {
+  it("returns undefined for a dot path that runs through a non-object", async () => {
+    const source = sanitySource(
+      {
+        client: clientReturning([{ _id: "x", meta: "not-an-object" }]),
+        dataset: "production",
+        fields: { title: "meta.title" },
+        name: "guides",
+        projectId: "p1",
+        query: "*",
+      },
+      ctxFor(await tempDir())
+    );
+    const { entries } = await source.load();
+    // getPath walked into the string `meta` and bailed → no title resolved.
+    expect(entries[0]?.data.title).toBeUndefined();
+    expect(entries[0]?.ref).toBe("x.md");
+  });
+
+  it("skips images whose asset ref is malformed", async () => {
+    const source = sanitySource(
+      {
+        client: clientReturning([
+          {
+            _id: "x",
+            body: [{ _type: "image", asset: { _ref: "image-broken" } }],
+          },
+        ]),
+        dataset: "production",
+        name: "guides",
+        projectId: "p1",
+        query: "*",
+      },
+      ctxFor(await tempDir())
+    );
+    const { entries } = await source.load();
+    expect(entries[0]?.body.text).not.toContain("cdn.sanity.io");
+  });
+
+  it("read() serves the staged raw, then falls back to the cache for unknown refs", async () => {
+    const source = sanitySource(
+      {
+        client: clientReturning([
+          { _id: "abc", slug: { current: "getting-started" }, title: "Hi" },
+        ]),
+        dataset: "production",
+        name: "guides",
+        projectId: "p1",
+        query: "*",
+      },
+      ctxFor(await tempDir())
+    );
+    await source.load();
+    const raw = await source.read?.("getting-started.md");
+    expect(raw).toContain("title: Hi");
+    const missing = await source.read?.("nope.md");
+    expect(missing).toBe("");
+  });
+
+  // Registered before the working-SDK test below so this is the first
+  // `mock.module` for the specifier (a re-registered throwing factory would
+  // run eagerly and fail at registration).
+  it("falls back to the cache and warns offline when the SDK is missing", async () => {
+    mock.module("@sanity/client", () => {
+      throw new Error("Cannot find package '@sanity/client'");
+    });
+    const cacheDir = await tempDir();
+    const seed: SourceEntry[] = [
+      {
+        body: { format: "md", text: "# Cached" },
+        data: { title: "Cached" },
+        raw: "---\ntitle: Cached\n---\n# Cached",
+        ref: "cached.md",
+      },
+    ];
+    await mkdir(cacheDir, { recursive: true });
+    await writeFile(join(cacheDir, "entries.json"), JSON.stringify(seed));
+    const source = sanitySource(
+      { dataset: "production", name: "guides", projectId: "p1", query: "*" },
+      ctxFor(cacheDir)
+    );
+    const { diagnostics, entries } = await source.load();
+    expect(entries).toHaveLength(1);
+    expect(diagnostics.map((d) => d.code)).toContain("BLUME_SOURCE_OFFLINE");
+    expect(diagnostics[0]?.message).toContain("@sanity/client");
+  });
+
+  it("constructs a Sanity client from the SDK when none is injected", async () => {
+    mock.module("@sanity/client", () => ({
+      createClient: () => ({
+        fetch: () =>
+          Promise.resolve([{ _id: "made", body: [], title: "Made" }]),
+      }),
+    }));
+    const source = sanitySource(
+      { dataset: "production", name: "guides", projectId: "p1", query: "*" },
+      ctxFor(await tempDir())
+    );
+    const { entries } = await source.load();
+    expect(entries[0]?.data.title).toBe("Made");
   });
 });
 

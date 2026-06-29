@@ -180,4 +180,44 @@ describe("buildNavigation — explicit config sidebar", () => {
     expect(nav.tabs).toStrictEqual(tabs);
     expect(nav.sidebar).toStrictEqual([]);
   });
+
+  it("resolves a group's root ref to a real page route", () => {
+    const sidebar: SidebarItemConfig[] = [
+      { items: ["/bar"], label: "Group", root: "/foo" },
+    ];
+    const nav = buildNavigation(pages, { folderMeta: empty, sidebar });
+    const group = asGroup(nav.sidebar[0]);
+    // routeForRef maps the ref through byRoute to the page's route.
+    expect(group.route).toBe("/foo");
+  });
+
+  it("renders a root-only item as a page, matched or unmatched", () => {
+    const sidebar: SidebarItemConfig[] = [
+      { label: "Matched", root: "/foo" },
+      { label: "Unmatched", root: "/missing" },
+    ];
+    const nav = buildNavigation(pages, { folderMeta: empty, sidebar });
+
+    const matched = asPage(nav.sidebar[0]);
+    expect(matched.label).toBe("Matched");
+    expect(matched.route).toBe("/foo");
+    expect(matched.pageId).toBe("foo.md");
+
+    const unmatched = asPage(nav.sidebar[1]);
+    expect(unmatched.route).toBe("/missing");
+    expect(unmatched.pageId).toBe("");
+  });
+
+  it("builds per-path sidebar variants from config", () => {
+    const nav = buildNavigation(pages, {
+      folderMeta: empty,
+      sidebar: ["index"],
+      sidebarVariants: [{ items: ["/bar"], path: "/section" }],
+    });
+    expect(nav.sidebarVariants).toHaveLength(1);
+    expect(nav.sidebarVariants[0]?.path).toBe("/section");
+    expect(labels(nav.sidebarVariants[0]?.sidebar ?? [])).toStrictEqual([
+      "Bar",
+    ]);
+  });
 });

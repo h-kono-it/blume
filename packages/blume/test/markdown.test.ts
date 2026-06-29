@@ -6,8 +6,15 @@ import {
   directiveToCalloutPlugin,
 } from "../src/markdown/directives.ts";
 import { headingAnchorPlugin } from "../src/markdown/heading-anchors.ts";
-import { blumeShikiTransformers } from "../src/markdown/index.ts";
-import { parseInlineLang } from "../src/markdown/inline-code.ts";
+import {
+  blumeMarkdownProcessor,
+  blumeMdxProcessor,
+  blumeShikiTransformers,
+} from "../src/markdown/index.ts";
+import {
+  inlineCodeHighlightPlugin,
+  parseInlineLang,
+} from "../src/markdown/inline-code.ts";
 import { languageIconTransformer } from "../src/markdown/language-icon.ts";
 import { mathPlugin } from "../src/markdown/math.ts";
 import {
@@ -547,5 +554,180 @@ describe("mermaidPlugin", () => {
     const node = { lang: "js", type: "code", value: "1" };
     const result = captureReplacement((ctx) => mermaidPlugin().code(node, ctx));
     expect(result).toBeUndefined();
+  });
+});
+
+/** A hast context reporting a parent tag (or none) and the node's own text. */
+const inlineCtx = (parentTag: string | undefined, text: string) => ({
+  parent: () => (parentTag === undefined ? undefined : { tagName: parentTag }),
+  textContent: () => text,
+});
+
+describe("inlineCodeHighlightPlugin", () => {
+  const plugin = inlineCodeHighlightPlugin();
+  const { visit } = plugin.element;
+
+  it("is named and filters to <code> elements", () => {
+    expect(plugin.name).toBe("blume:inline-code");
+    expect(plugin.element.filter).toStrictEqual(["code"]);
+  });
+
+  it("skips a <code> nested in a <pre> (a fenced block)", async () => {
+    const result = await visit(
+      { type: "element" },
+      inlineCtx("pre", "const x = 1{:ts}")
+    );
+    expect(result).toBeUndefined();
+  });
+
+  it("highlights inline code carrying a {:lang} marker", async () => {
+    const result = await visit(
+      { type: "element" },
+      inlineCtx(undefined, "useState(){:ts}")
+    );
+    expect(result?.tagName).toBe("code");
+    expect(result?.properties?.className).toStrictEqual(["blume-inline-code"]);
+    expect(result?.children?.length).toBeGreaterThan(0);
+  });
+
+  it("leaves inline code without a marker untouched", async () => {
+    const result = await visit(
+      { type: "element" },
+      inlineCtx(undefined, "useState()")
+    );
+    expect(result).toBeUndefined();
+  });
+
+  it("leaves inline code with an unknown language untouched", async () => {
+    const result = await visit(
+      { type: "element" },
+      inlineCtx(undefined, "x{:notalang}")
+    );
+    expect(result).toBeUndefined();
+  });
+});
+
+/** Build a processor's renderer and return the HTML for a source string. */
+const renderTo = async (
+  processor: ReturnType<typeof blumeMarkdownProcessor>,
+  source: string
+): Promise<string> => {
+  const renderer = await processor.createRenderer({});
+  const result = await renderer.render(source);
+  return result.code;
+};
+
+describe("markdown processors", () => {
+  it("wires inline highlighting and heading anchors for .md", async () => {
+    const html = await renderTo(
+      blumeMarkdownProcessor({ inline: true }),
+      "## Title\n\n`x{:ts}`"
+    );
+    expect(html).toContain("blume-inline-code");
+    expect(html).toContain("blume-heading-anchor");
+  });
+
+  it("drops both hast plugins when inline and anchors are off", async () => {
+    const html = await renderTo(
+      blumeMarkdownProcessor({ headingAnchors: false, inline: false }),
+      "## Title\n\n`x{:ts}`"
+    );
+    expect(html).not.toContain("blume-inline-code");
+    expect(html).not.toContain("blume-heading-anchor");
+    // The id still lands so the TOC and in-page links resolve.
+    expect(html).toContain('id="title"');
+  });
+
+  it("parses math in .mdx only when enabled", async () => {
+    const withMath = await renderTo(
+      blumeMdxProcessor({ math: true }),
+      "Eq $a^2$ end"
+    );
+    const withoutMath = await renderTo(
+      blumeMdxProcessor({ math: false }),
+      "Eq $a^2$ end"
+    );
+    expect(withMath).not.toContain("$a^2$");
+    expect(withoutMath).toContain("$a^2$");
+  });
+
+  it("renders .mdx through the shared inline + anchor feature set", async () => {
+    const html = await renderTo(
+      blumeMdxProcessor({ inline: true }),
+      "`y{:js}`\n\n## Heading"
+    );
+    expect(html).toContain("blume-inline-code");
+    expect(html).toContain("blume-heading-anchor");
+  });
+});
+
+describe("toPackageCommands (verb and flag normalization)", () => {
+  it("recognizes every add alias", () => {
+    for (const verb of ["add", "i", "in", "install"]) {
+      expect(toPackageCommands(`pnpm ${verb} react`).npm).toBe(
+        "npm install react"
+      );
+    }
+  });
+
+  it("recognizes init alongside create", () => {
+    expect(toPackageCommands("pnpm init").pnpm).toBe("pnpm create");
+  });
+
+  it("maps every exec alias to each manager's runner", () => {
+    expect(toPackageCommands("pnpm exec astro").pnpm).toBe("pnpm dlx astro");
+    expect(toPackageCommands("pnpm dlx astro").yarn).toBe("yarn dlx astro");
+    expect(toPackageCommands("bun x astro").bun).toBe("bunx astro");
+  });
+
+  it("recognizes every remove alias", () => {
+    for (const verb of ["remove", "rm", "un", "uninstall"]) {
+      expect(toPackageCommands(`pnpm ${verb} lodash`).pnpm).toBe(
+        "pnpm remove lodash"
+      );
+    }
+  });
+
+  it("runs an unknown subcommand as a script", () => {
+    expect(toPackageCommands("npm test").yarn).toBe("yarn run test");
+  });
+
+  it("strips redundant --save / -S flags", () => {
+    expect(toPackageCommands("npm install --save react").pnpm).toBe(
+      "pnpm add react"
+    );
+    expect(toPackageCommands("npm install -S react").pnpm).toBe(
+      "pnpm add react"
+    );
+  });
+
+  it("treats blank input and a bare manager as install-all", () => {
+    expect(toPackageCommands("   ").npm).toBe("npm install");
+    expect(toPackageCommands("npm").npm).toBe("npm install");
+  });
+});
+
+describe("headingAnchorPlugin (frontmatter interpolation)", () => {
+  it("resolves a frontmatter expression via Satteri's collector", () => {
+    const node = {
+      children: [{ type: "mdxTextExpression", value: "frontmatter.title" }],
+      properties: {},
+      tagName: "h2",
+      type: "element",
+    };
+    const ctx = {
+      data: { astro: { frontmatter: { title: "Real Title" } } },
+      setProperty(
+        target: { properties?: Record<string, unknown> },
+        key: string,
+        value: unknown
+      ) {
+        target.properties = { ...target.properties, [key]: value };
+      },
+      textContent: textOf,
+    };
+    const result = headingAnchorPlugin().element.visit(node, ctx);
+    expect(result?.properties?.id).toBe("real-title");
+    expect(result?.children?.[0]?.properties?.href).toBe("#real-title");
   });
 });

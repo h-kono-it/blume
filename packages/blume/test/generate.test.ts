@@ -1,11 +1,26 @@
-import { afterEach, beforeEach, describe, expect, it } from "bun:test";
+import {
+  afterAll,
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+} from "bun:test";
 import { existsSync } from "node:fs";
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
+import { fileURLToPath } from "node:url";
 
 import { dirname, join, normalize } from "pathe";
 
-import { pruneOrphans } from "../src/astro/generate.ts";
+import {
+  buildRuntimeData,
+  collectStaged,
+  detectNeedsReact,
+  generateRuntime,
+  pruneOrphans,
+} from "../src/astro/generate.ts";
+import { scanProject } from "../src/core/project-graph.ts";
 
 let srcDir: string;
 
@@ -48,5 +63,427 @@ describe("pruneOrphans", () => {
 
     expect(existsSync(join(srcDir, "env.d.ts"))).toBe(true);
     expect(existsSync(join(srcDir, "pages", "index.astro"))).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Shared fixtures: write a temp content project, then scan it into a
+// BlumeProject. Temp dirs start with `blume-` and are cleaned up afterAll.
+// ---------------------------------------------------------------------------
+
+const projectDirs: string[] = [];
+
+/** The Blume package root, used to nest a project beside its node_modules. */
+const PKG_ROOT = fileURLToPath(new URL("..", import.meta.url));
+
+afterAll(async () => {
+  await Promise.all(
+    projectDirs.map((dir) => rm(dir, { force: true, recursive: true }))
+  );
+});
+
+const writeProject = async (files: Record<string, string>): Promise<string> => {
+  const root = await mkdtemp(join(tmpdir(), "blume-gen-"));
+  projectDirs.push(root);
+  await Promise.all(
+    Object.entries(files).map(async ([rel, content]) => {
+      const abs = join(root, rel);
+      await mkdir(dirname(abs), { recursive: true });
+      await writeFile(abs, content, "utf-8");
+    })
+  );
+  return root;
+};
+
+const STAGED_CONFIG = `export default {
+  content: {
+    sources: [
+      { root: "docs", type: "filesystem" },
+      {
+        source: {
+          load: () =>
+            Promise.resolve({
+              diagnostics: [],
+              entries: [
+                {
+                  body: { format: "mdx", text: "# Guide\\n" },
+                  data: { title: "Guide" },
+                  raw: "---\\ntitle: Guide\\n---\\n# Guide\\n",
+                  ref: "guide.mdx",
+                },
+              ],
+            }),
+          name: "remote",
+          staged: true,
+        },
+        type: "custom",
+      },
+    ],
+  },
+};
+`;
+
+const scanStaged = async () =>
+  await scanProject(
+    await writeProject({
+      "blume.config.ts": STAGED_CONFIG,
+      "docs/index.md": "# Home\n",
+    })
+  );
+
+describe("detectNeedsReact", () => {
+  it("is false for a markdown-only project", async () => {
+    const root = await writeProject({ "docs/index.md": "# Home\n" });
+    expect(await detectNeedsReact(root)).toBe(false);
+  });
+
+  it("is true when the project has a tsx/jsx file", async () => {
+    const root = await writeProject({
+      "docs/index.md": "# Home\n",
+      "islands/Counter.tsx": "export default () => null;\n",
+    });
+    expect(await detectNeedsReact(root)).toBe(true);
+  });
+});
+
+describe("collectStaged", () => {
+  it("collects staged page bodies keyed by entry id", async () => {
+    const project = await scanStaged();
+    const staged = collectStaged(project);
+    expect(staged.get("remote/guide.mdx")).toContain("# Guide");
+  });
+
+  it("returns an empty map when no source is staged", async () => {
+    const project = await scanProject(
+      await writeProject({ "docs/index.md": "# Home\n" })
+    );
+    expect(collectStaged(project).size).toBe(0);
+  });
+});
+
+describe("buildRuntimeData", () => {
+  it("serializes a minimal project with feature defaults off", async () => {
+    const project = await scanProject(
+      await writeProject({ "docs/index.md": "# Home\n" })
+    );
+    const data = JSON.parse(buildRuntimeData(project));
+    expect(data.config.title).toBe("Documentation");
+    expect(data.config.i18n).toBeNull();
+    expect(data.config.repoUrl).toBeNull();
+    expect(data.config.banner).toBeNull();
+    expect(data.config.logo).toBeNull();
+    expect(data.config.mcp).toBeNull();
+    expect(data.config.og.enabled).toBe(false);
+    expect(data.config.search.provider).toBe("orama");
+    expect(data.config.favicon.href.startsWith("data:image/png")).toBe(true);
+    expect(data.navigationByLocale).toEqual({});
+    expect(data.uiByLocale).toEqual({});
+    expect(data.feeds).toEqual([]);
+    const home = data.routes.find(
+      (route: { editUrl: string | null; path: string }) => route.path === "/"
+    );
+    expect(home.editUrl).toBeNull();
+  });
+
+  it("resolves github edit urls, repo url, banner, logo, mcp and og", async () => {
+    const project = await scanProject(
+      await writeProject({
+        "blume.config.ts": `export default {
+  banner: { content: "Hello", dismissible: true, id: "promo", link: { href: "/x", text: "Go" } },
+  deployment: { site: "https://example.com" },
+  github: { owner: "acme", repo: "docs" },
+  logo: { alt: "Logo", dark: "/dark.png", href: "/home", light: "/light.png" },
+  mcp: { enabled: true, name: "Docs MCP" },
+};
+`,
+        "docs/index.md": "# Home\n",
+      })
+    );
+    const data = JSON.parse(buildRuntimeData(project));
+    expect(data.config.repoUrl).toBe("https://github.com/acme/docs");
+    const home = data.routes.find(
+      (route: { editUrl: string | null; path: string }) => route.path === "/"
+    );
+    expect(home.editUrl).toBe(
+      "https://github.com/acme/docs/edit/main/docs/index.md"
+    );
+    expect(data.config.banner).toEqual({
+      content: "Hello",
+      dismissible: true,
+      key: "promo",
+      link: { href: "/x", text: "Go" },
+    });
+    expect(data.config.logo).toEqual({
+      alt: "Logo",
+      dark: "/dark.png",
+      href: "/home",
+      light: "/light.png",
+    });
+    expect(data.config.mcp).toEqual({ name: "Docs MCP", route: "/mcp" });
+    expect(data.config.og.enabled).toBe(true);
+    expect(data.config.site).toBe("https://example.com");
+  });
+
+  it("threads per-locale ui and navigation under i18n", async () => {
+    const project = await scanProject(
+      await writeProject({
+        "blume.config.ts": `export default {
+  i18n: {
+    defaultLocale: "en",
+    fallbackLocale: "en",
+    locales: [
+      { code: "en", label: "English" },
+      { code: "fr", dir: "ltr", label: "Français" },
+    ],
+  },
+};
+`,
+        "docs/index.md": "# Home\n",
+      })
+    );
+    const data = JSON.parse(buildRuntimeData(project));
+    expect(data.config.i18n.defaultLocale).toBe("en");
+    expect(data.config.i18n.fallbackLocale).toBe("en");
+    expect(
+      data.config.i18n.locales.map((locale: { code: string }) => locale.code)
+    ).toEqual(["en", "fr"]);
+    expect(Object.keys(data.uiByLocale)).toEqual(["en", "fr"]);
+    expect(Object.keys(data.navigationByLocale)).toEqual(["en", "fr"]);
+  });
+
+  it("inlines a single-file SVG logo", async () => {
+    const project = await scanProject(
+      await writeProject({
+        "blume.config.ts": 'export default { logo: "/logo.svg" };\n',
+        "docs/index.md": "# Home\n",
+        "public/logo.svg": '<svg id="brand"></svg>',
+      })
+    );
+    const data = JSON.parse(buildRuntimeData(project));
+    expect(data.config.logo.svg).toContain('id="brand"');
+    expect(data.config.logo.href).toBe("/");
+  });
+
+  it("falls back to an <img> logo when the SVG file is absent", async () => {
+    const project = await scanProject(
+      await writeProject({
+        "blume.config.ts": 'export default { logo: "/missing.svg" };\n',
+        "docs/index.md": "# Home\n",
+      })
+    );
+    const data = JSON.parse(buildRuntimeData(project));
+    expect(data.config.logo.svg).toBeUndefined();
+    expect(data.config.logo.light).toBe("/missing.svg");
+  });
+
+  it("normalizes a string banner and inlines a root favicon", async () => {
+    const project = await scanProject(
+      await writeProject({
+        "blume.config.ts": 'export default { banner: "Heads up" };\n',
+        "docs/index.md": "# Home\n",
+        "icon.png": "FAKEPNG",
+      })
+    );
+    const data = JSON.parse(buildRuntimeData(project));
+    expect(data.config.banner).toEqual({
+      content: "Heads up",
+      dismissible: false,
+      key: "Heads up",
+    });
+    expect(data.config.favicon.href.startsWith("data:image/png;base64,")).toBe(
+      true
+    );
+  });
+
+  it("references a public favicon by url", async () => {
+    const project = await scanProject(
+      await writeProject({
+        "docs/index.md": "# Home\n",
+        "public/favicon.svg": "<svg></svg>",
+      })
+    );
+    const data = JSON.parse(buildRuntimeData(project));
+    expect(data.config.favicon).toEqual({
+      href: "/favicon.svg",
+      type: "image/svg+xml",
+    });
+  });
+});
+
+const KITCHEN_SINK: Record<string, string> = {
+  "blume.config.ts": `export default {
+  ai: { ask: { enabled: true } },
+  deployment: { site: "https://example.com" },
+  export: true,
+  github: { dir: "site", owner: "acme", repo: "docs" },
+  logo: "/logo.svg",
+  markdown: { math: true },
+  mcp: { enabled: true },
+  openapi: { enabled: true, spec: "./openapi.json" },
+  redirects: [{ from: "/old", to: "/new" }],
+};
+`,
+  "docs/blog/post.md":
+    "---\ntitle: Post\ntype: blog\ndate: 2024-01-01\n---\n# Post\n",
+  "docs/changelog/v1.md":
+    "---\ntitle: v1\ntype: changelog\nchangelog:\n  date: 2024-02-01\n---\n# v1\n",
+  "docs/index.md": "# Home\n",
+  "islands/Counter.tsx":
+    'export const client = "load";\nexport default function Counter() { return null; }\n',
+  "openapi.json": JSON.stringify({
+    info: { title: "API", version: "1" },
+    openapi: "3.0.0",
+    paths: {},
+  }),
+  "pages/extra.astro": "<h1>Extra</h1>\n",
+  "public/icon.svg": '<svg xmlns="http://www.w3.org/2000/svg"></svg>',
+  "public/logo.svg": '<svg xmlns="http://www.w3.org/2000/svg"><rect /></svg>',
+  "theme.css": ":root {\n  --x: 1;\n}\n",
+};
+
+describe("generateRuntime", () => {
+  it("writes the full runtime for a feature-rich project", async () => {
+    const project = await scanProject(await writeProject(KITCHEN_SINK));
+    const out = project.context.outDir;
+    const result = await generateRuntime(project);
+    const has = (rel: string): boolean => existsSync(join(out, rel));
+
+    // Structural files.
+    expect(has("astro.config.mjs")).toBe(true);
+    expect(has("package.json")).toBe(true);
+    expect(has("tsconfig.json")).toBe(true);
+    expect(has("src/env.d.ts")).toBe(true);
+    expect(has("src/content.config.ts")).toBe(true);
+    expect(has("src/pages/[...slug].astro")).toBe(true);
+    expect(has("src/generated/components.ts")).toBe(true);
+    expect(has("src/generated/islands.ts")).toBe(true);
+
+    // Feature-gated files.
+    expect(has("src/pages/api/ask.ts")).toBe(true);
+    expect(has("src/pages/og/[...slug].png.ts")).toBe(true);
+    expect(has("src/pages/changelog.astro")).toBe(true);
+    expect(has("src/pages/blume-search.json.ts")).toBe(true);
+    expect(has("src/generated/search.json")).toBe(true);
+    expect(has("src/pages/[section]/rss.xml.ts")).toBe(true);
+    expect(has("src/generated/rss.json")).toBe(true);
+    expect(has("src/pages/mcp.ts")).toBe(true);
+    expect(has("src/blume-mcp/discovery.ts")).toBe(true);
+    expect(has("src/blume-mcp/server-card.ts")).toBe(true);
+    expect(has("src/generated/mcp-data.json")).toBe(true);
+    expect(has("src/pages/reference.astro")).toBe(true);
+    expect(has("src/generated/islands/Counter.astro")).toBe(true);
+    expect(has("src/generated/data.json")).toBe(true);
+    expect(has("blume.manifest.json")).toBe(true);
+    // ensureDepsLink symlinked the package's node_modules into .blume.
+    expect(has("node_modules")).toBe(true);
+
+    expect(result.structuralChange).toBe(true);
+    expect(result.warnings.some((w) => w.includes("@orama/orama"))).toBe(true);
+
+    // The catch-all wires in Math + AskAI for this project.
+    const catchAll = await readFile(
+      join(out, "src/pages/[...slug].astro"),
+      "utf-8"
+    );
+    expect(catchAll).toContain("Math.astro");
+    expect(catchAll).toContain("AskAI.astro");
+  });
+
+  it("rewrites nothing on a second identical pass", async () => {
+    const root = await writeProject(KITCHEN_SINK);
+    await generateRuntime(await scanProject(root));
+    // Second pass: every structural file is byte-identical, so nothing changes
+    // and ensureDepsLink takes its already-resolvable early return.
+    const second = await generateRuntime(await scanProject(root));
+    expect(second.structuralChange).toBe(false);
+  });
+
+  it("resolves Astro natively without a node_modules symlink when hoisted", async () => {
+    // A project nested under the package resolves Astro from the package's own
+    // node_modules, so ensureDepsLink takes its already-resolvable early return
+    // and never symlinks dependencies into .blume.
+    const root = await mkdtemp(join(PKG_ROOT, "blume-gen-native-"));
+    projectDirs.push(root);
+    await mkdir(join(root, "docs"), { recursive: true });
+    await writeFile(join(root, "docs", "index.md"), "# Home\n", "utf-8");
+    await generateRuntime(await scanProject(root));
+    expect(existsSync(join(root, ".blume", "node_modules"))).toBe(false);
+  });
+
+  it("leaves an existing .blume/node_modules untouched", async () => {
+    const root = await writeProject({ "docs/index.md": "# Home\n" });
+    const out = join(root, ".blume");
+    await mkdir(join(out, "node_modules"), { recursive: true });
+    await generateRuntime(await scanProject(root));
+    expect(existsSync(join(out, "node_modules"))).toBe(true);
+  });
+
+  it("skips the MCP server when a content page owns its route", async () => {
+    const project = await scanProject(
+      await writeProject({
+        "blume.config.ts": "export default { mcp: { enabled: true } };\n",
+        "docs/index.md": "# Home\n",
+        "docs/mcp.md": "# MCP\n",
+      })
+    );
+    const result = await generateRuntime(project);
+    expect(
+      result.warnings.some((w) => w.includes("already used by a content page"))
+    ).toBe(true);
+    expect(existsSync(join(project.context.outDir, "src/pages/mcp.ts"))).toBe(
+      false
+    );
+  });
+
+  it("writes the mixedbread proxy endpoint for the server provider", async () => {
+    const project = await scanProject(
+      await writeProject({
+        "blume.config.ts": `export default { deployment: { output: "server" }, search: { mixedbread: { storeId: "store_7" }, provider: "mixedbread" } };
+`,
+        "docs/index.md": "# Home\n",
+      })
+    );
+    const out = project.context.outDir;
+    await generateRuntime(project);
+    expect(existsSync(join(out, "src/pages/api/search.ts"))).toBe(true);
+    const client = await readFile(
+      join(out, "src/generated/search-client.ts"),
+      "utf-8"
+    );
+    expect(client).toContain("api/search");
+    // A server provider ships no static index.
+    expect(existsSync(join(out, "src/generated/search.json"))).toBe(false);
+  });
+
+  it("warns when Vue/Svelte islands lack their Astro integration", async () => {
+    const project = await scanProject(
+      await writeProject({
+        "docs/index.md": "# Home\n",
+        "islands/Box.svelte": "<div></div>\n",
+        "islands/Widget.vue": "<template><div /></template>\n",
+      })
+    );
+    const out = project.context.outDir;
+    const result = await generateRuntime(project);
+    expect(result.warnings.some((w) => w.includes("@astrojs/vue"))).toBe(true);
+    expect(result.warnings.some((w) => w.includes("@astrojs/svelte"))).toBe(
+      true
+    );
+    expect(existsSync(join(out, "src/generated/islands/Widget.astro"))).toBe(
+      true
+    );
+    expect(existsSync(join(out, "src/generated/islands/Box.astro"))).toBe(true);
+  });
+
+  it("materializes staged content into .blume/content", async () => {
+    const project = await scanStaged();
+    const out = project.context.outDir;
+    await generateRuntime(project);
+    expect(existsSync(join(out, "content/remote/guide.mdx"))).toBe(true);
+    const contentConfig = await readFile(
+      join(out, "src/content.config.ts"),
+      "utf-8"
+    );
+    expect(contentConfig).toContain("const staged = defineCollection(");
   });
 });

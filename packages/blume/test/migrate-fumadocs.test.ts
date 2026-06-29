@@ -76,6 +76,16 @@ describe("translateFumadocsMeta", () => {
     expect(warnings.some((w) => w.includes("link"))).toBe(true);
     expect(warnings.some((w) => w.includes("description"))).toBe(true);
   });
+
+  it("ignores non-object meta and non-string page entries", () => {
+    expect(translateFumadocsMeta(null).meta).toEqual({});
+    expect(translateFumadocsMeta([1, 2]).meta).toEqual({});
+
+    const { meta } = translateFumadocsMeta({
+      pages: ["index", 5, "  ", "guides"],
+    });
+    expect(meta.pages).toEqual(["index", "guides"]);
+  });
 });
 
 describe("normalizeFumadocsPageMeta", () => {
@@ -150,6 +160,81 @@ describe("rewriteFumadocsTabs", () => {
     expect(out).toContain('<Tab title="One">first</Tab>');
     expect(out).toContain('<Tab title="Two">second</Tab>');
   });
+
+  it("keeps a Tab that already declares its own title", () => {
+    const out = rewriteFumadocsTabs(
+      `<Tabs items={['npm']}>\n<Tab title="Keep">a</Tab>\n</Tabs>`
+    );
+    expect(out).toContain('<Tab title="Keep">a</Tab>');
+  });
+
+  it("leaves value-less tabs untitled when there are no items", () => {
+    const out = rewriteFumadocsTabs(
+      `<Tabs>\n<Tab>a</Tab>\n<Tab>b</Tab>\n</Tabs>`
+    );
+    expect(out).toContain("<Tabs>");
+    expect(out).toContain("<Tab>a</Tab>");
+    expect(out).not.toContain("title=");
+  });
+
+  it("ignores a non-expression items attribute", () => {
+    const out = rewriteFumadocsTabs(
+      `<Tabs items="oops">\n<Tab value="x">a</Tab>\n</Tabs>`
+    );
+    expect(out).toContain('items="oops"');
+    expect(out).toContain('<Tab title="x">a</Tab>');
+  });
+
+  it("drops items from a self-closing Tabs tag", () => {
+    expect(rewriteFumadocsTabs("<Tabs items={['a', 'b']} />")).toBe("<Tabs />");
+  });
+
+  it("leaves an unterminated Tabs open tag untouched", () => {
+    const src = "before <Tabs items={[ unterminated";
+    expect(rewriteFumadocsTabs(src)).toBe(src);
+  });
+
+  it("leaves a Tabs block with no closing tag untouched", () => {
+    const src = `<Tabs items={['a']}>\n<Tab>a</Tab>`;
+    expect(rewriteFumadocsTabs(src)).toBe(src);
+  });
+
+  it("leaves a Tab with an unterminated open tag untouched", () => {
+    const out = rewriteFumadocsTabs(
+      `<Tabs items={['a']}>\n<Tab value={oops\n</Tabs>`
+    );
+    expect(out).toContain("<Tab value={oops");
+  });
+
+  it("skips nested tab groups when titling the outer tabs", () => {
+    const out = rewriteFumadocsTabs(
+      [
+        "<Tabs items={['Outer A', 'Outer B']}>",
+        '<Tab value="a">',
+        "<Tabs items={['Inner']}>",
+        '<Tab value="x">deep</Tab>',
+        "</Tabs>",
+        "</Tab>",
+        '<Tab value="b">two</Tab>',
+        "</Tabs>",
+      ].join("\n")
+    );
+    expect(out).toContain('<Tab title="a">');
+    expect(out).toContain('<Tab title="x">deep</Tab>');
+    expect(out).toContain('<Tab title="b">two</Tab>');
+    expect(out).not.toContain("items=");
+  });
+
+  it("passes a malformed nested Tabs (unterminated open tag) through intact", () => {
+    const out = rewriteFumadocsTabs(
+      `<Tabs items={['x']}>\n<Tabs items={[\n<Tab value="z">z</Tab>\n</Tabs>\n</Tabs>`
+    );
+    // The outer group is still normalized (its items prop is dropped)...
+    expect(out.startsWith("<Tabs>")).toBe(true);
+    // ...while the broken inner group is left untouched rather than corrupted.
+    expect(out).toContain("<Tabs items={[");
+    expect(out).toContain('<Tab value="z">z</Tab>');
+  });
 });
 
 describe("stripFumadocsImports", () => {
@@ -197,6 +282,20 @@ describe("inlineFumadocsIncludes", () => {
     expect(result.content).toContain("<include>");
     expect(result.warnings.some((w) => w.includes("not found"))).toBe(true);
   });
+
+  it("ignores an empty include and reports a circular one", async () => {
+    const root = await project({
+      "_self.mdx": "---\ntitle: Self\n---\n\n<include>./_self.mdx</include>\n",
+      "page.mdx": "<include></include>\n\n<include>./_self.mdx</include>\n",
+    });
+
+    const result = await inlineFumadocsIncludes(
+      await readFile(join(root, "page.mdx"), "utf-8"),
+      { filePath: join(root, "page.mdx") }
+    );
+
+    expect(result.warnings.some((w) => w.includes("Circular"))).toBe(true);
+  });
 });
 
 describe("loadFumadocsConfig", () => {
@@ -216,6 +315,43 @@ describe("loadFumadocsConfig", () => {
       type: "filesystem",
     });
     expect(warnings.some((w) => w.includes("/docs"))).toBe(true);
+  });
+
+  it("serves from the site root when the loader baseUrl is '/'", async () => {
+    const root = await project({
+      "lib/source.ts":
+        'export const source = loader({ baseUrl: "/", source });\n',
+      "package.json": JSON.stringify({ name: "root-docs" }),
+    });
+
+    const { config, warnings } = await loadFumadocsConfig(root);
+
+    expect(config.title).toBe("Root Docs");
+    expect(config.content).toBeUndefined();
+    expect(warnings.some((w) => w.includes("site root"))).toBe(true);
+  });
+
+  it("defaults the title to Documentation when no name is usable", async () => {
+    const missing = await loadFumadocsConfig(
+      await project({ "package.json": "{}" })
+    );
+    expect(missing.config.title).toBe("Documentation");
+
+    const blank = await loadFumadocsConfig(
+      await project({ "package.json": JSON.stringify({ name: "   " }) })
+    );
+    expect(blank.config.title).toBe("Documentation");
+
+    const scoped = await loadFumadocsConfig(
+      await project({ "package.json": JSON.stringify({ name: "@scope/" }) })
+    );
+    expect(scoped.config.title).toBe("Documentation");
+  });
+
+  it("defaults the title to Documentation for an unparseable package.json", async () => {
+    const root = await project({ "package.json": "{ not json" });
+    const { config } = await loadFumadocsConfig(root);
+    expect(config.title).toBe("Documentation");
   });
 });
 
@@ -275,5 +411,65 @@ describe("migrateFumadocs end to end", () => {
     expect(result.warnings.some((w) => w.includes("separator"))).toBe(true);
     expect(result.warnings.some((w) => w.includes("full"))).toBe(true);
     expect(result.warnings.some((w) => w.includes("/docs"))).toBe(true);
+  });
+
+  it("writes a default config when there is no content/docs", async () => {
+    const root = await project({ "README.md": "# Hi\n" });
+
+    const result = await migrateFumadocs(root);
+
+    expect(result.moved).toBe(0);
+    const config = await readFile(join(root, "blume.config.ts"), "utf-8");
+    expect(config).toContain('"title": "Documentation"');
+    expect(
+      result.warnings.some((w) => w.includes("No Fumadocs content directory"))
+    ).toBe(true);
+  });
+
+  it("skips pages and metas whose destinations already exist", async () => {
+    const root = await project({
+      "content/docs/bad/meta.json": "{ not json",
+      "content/docs/index.mdx": "# Source\n",
+      "content/docs/meta.json": JSON.stringify({
+        pages: ["index"],
+        title: "Docs",
+      }),
+      "docs/bad/meta.json": "// existing\n",
+      "docs/index.mdx": "# Existing\n",
+      "docs/meta.ts": "// existing\n",
+    });
+
+    const result = await migrateFumadocs(root);
+
+    expect(result.moved).toBe(0);
+    expect(result.warnings.some((w) => w.includes("Skipped index.mdx"))).toBe(
+      true
+    );
+    expect(result.warnings.some((w) => w.includes("Skipped meta.json"))).toBe(
+      true
+    );
+    expect(
+      result.warnings.some((w) => w.includes("Skipped bad/meta.json"))
+    ).toBe(true);
+    const kept = await readFile(join(root, "docs", "index.mdx"), "utf-8");
+    expect(kept).toContain("# Existing");
+  });
+
+  it("relocates unparseable metas, flags unsupported components, keeps leftovers", async () => {
+    const root = await project({
+      "content/docs/bad/meta.json": "{ broken",
+      "content/docs/index.mdx": '# Home\n\n<ImageZoom src="/x.png" />\n',
+      "content/docs/notes.txt": "leftover\n",
+    });
+
+    const result = await migrateFumadocs(root);
+
+    expect(result.moved).toBe(1);
+    expect(existsSync(join(root, "docs", "bad", "meta.json"))).toBe(true);
+    expect(result.warnings.some((w) => w.includes("Could not parse"))).toBe(
+      true
+    );
+    expect(result.warnings.some((w) => w.includes("ImageZoom"))).toBe(true);
+    expect(result.warnings.some((w) => w.includes("Kept"))).toBe(true);
   });
 });

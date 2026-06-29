@@ -1,0 +1,8 @@
+[test]
+# Tests write throwaway fixtures (configs, content trees, meta files) into
+# `os.tmpdir()` under a `blume-*` prefix; bun instruments those generated files
+# and pollutes the coverage table with non-source paths, so drop anything that
+# lives in such a temp dir. `**/test/**` keeps the suites themselves out of the
+# report. No real source path has a `blume-` segment, so the glob is safe.
+coveragePathIgnorePatterns = ["**/test/**", "**/blume-*/**"]
+coverageThreshold = { lines = 0.98, functions = 0.98 }

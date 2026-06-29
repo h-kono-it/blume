@@ -140,4 +140,33 @@ describe("validateLinks — external link probing", () => {
     expect(diagnostics).toHaveLength(2);
     expect(calls).toHaveLength(1);
   });
+
+  it("aborts a hung request when the timeout fires", async () => {
+    const realSetTimeout = globalThis.setTimeout;
+    const realFetch = globalThis.fetch;
+    // Fire the abort timer synchronously so the controller trips before fetch
+    // settles, exercising the `setTimeout(() => controller.abort())` guard.
+    globalThis.setTimeout = ((handler: () => void) => {
+      handler();
+      return 0 as unknown as ReturnType<typeof setTimeout>;
+    }) as typeof globalThis.setTimeout;
+    globalThis.fetch = ((_input: RequestInfo | URL, init?: RequestInit) => {
+      if (init?.signal?.aborted) {
+        const error = new Error("aborted");
+        error.name = "AbortError";
+        return Promise.reject(error);
+      }
+      return Promise.resolve(new Response(null, { status: 200 }));
+    }) as unknown as typeof fetch;
+    try {
+      const diagnostics = await check([link("https://hung.example")]);
+      expect(byUrl(diagnostics, "hung.example")?.severity).toBe("warning");
+      expect(byUrl(diagnostics, "hung.example")?.message).toContain(
+        "request timed out"
+      );
+    } finally {
+      globalThis.setTimeout = realSetTimeout;
+      globalThis.fetch = realFetch;
+    }
+  });
 });

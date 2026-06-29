@@ -2,6 +2,7 @@ import { describe, expect, it } from "bun:test";
 
 import { blumeConfigSchema } from "../src/core/schema.ts";
 import { tailwindEntryTemplate } from "../src/theme/entry.ts";
+import type { FontsConfig } from "../src/theme/fonts.ts";
 import {
   buildFontEntries,
   buildFontsCss,
@@ -43,6 +44,59 @@ describe("buildThemeCss", () => {
     expect(css).toContain(":root {");
     expect(css).toContain("--blume-accent: oklch(0.6 0.12 195);");
     expect(css).toContain("--blume-radius: 0.75rem;");
+  });
+});
+
+describe("buildThemeCss — backgrounds and dark mode", () => {
+  it("emits the radial-gradient background decoration", () => {
+    const css = buildThemeCss(themeOf({ backgroundDecoration: "gradient" }));
+    expect(css).toContain("--blume-background-decoration: radial-gradient");
+    expect(css).toContain("--blume-background-decoration-repeat: no-repeat");
+  });
+
+  it("emits the grid background decoration", () => {
+    const css = buildThemeCss(themeOf({ backgroundDecoration: "grid" }));
+    expect(css).toContain("--blume-background-decoration: linear-gradient");
+    expect(css).toContain("--blume-background-decoration-size: 2rem 2rem");
+  });
+
+  it("emits the windows background decoration", () => {
+    const css = buildThemeCss(themeOf({ backgroundDecoration: "windows" }));
+    expect(css).toContain("--blume-background-decoration-size: 7rem 4.5rem");
+  });
+
+  it("wraps a background image in url() and resolves the action color", () => {
+    const css = buildThemeCss(
+      themeOf({
+        action: "green",
+        background: "oklch(0.99 0 0)",
+        backgroundImage: "/bg.png",
+      })
+    );
+    expect(css).toContain('--blume-background-image: url("/bg.png");');
+    expect(css).toContain("--blume-action: oklch(0.6 0.16 150);");
+    expect(css).toContain("--blume-action-foreground: oklch(1 0 0);");
+    expect(css).toContain("--blume-background: oklch(0.99 0 0);");
+  });
+
+  it("emits a dark-theme block when any dark token is set", () => {
+    const css = buildThemeCss(
+      themeOf({
+        accentDark: "purple",
+        backgroundDark: "oklch(0.2 0 0)",
+        backgroundImageDark: "/dark.png",
+      })
+    );
+    expect(css).toContain(':root[data-theme="dark"] {');
+    expect(css).toContain("--blume-accent: oklch(0.58 0.2 290);");
+    expect(css).toContain("--blume-background: oklch(0.2 0 0);");
+    expect(css).toContain('--blume-background-image: url("/dark.png");');
+  });
+
+  it("omits the dark-theme block when no dark token is set", () => {
+    expect(buildThemeCss(themeOf({ accent: "blue" }))).not.toContain(
+      'data-theme="dark"'
+    );
   });
 });
 
@@ -133,6 +187,16 @@ describe("configuredCssVars", () => {
     expect(
       configuredCssVars({ body: "inter", display: "inter", mono: "geist-mono" })
     ).toStrictEqual(["--blume-ff-inter", "--blume-ff-geist-mono"]);
+  });
+});
+
+describe("font builders without a fonts config", () => {
+  // An unset `theme.fonts` arrives as undefined; all three builders no-op.
+  const absent: { fonts?: FontsConfig } = {};
+  it("returns no entries, css, or preload vars when fonts is undefined", () => {
+    expect(buildFontEntries(absent.fonts)).toStrictEqual([]);
+    expect(buildFontsCss(absent.fonts)).toBe("");
+    expect(configuredCssVars(absent.fonts)).toStrictEqual([]);
   });
 });
 

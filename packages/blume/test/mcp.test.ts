@@ -1,5 +1,10 @@
-import { describe, expect, it } from "bun:test";
+import { afterAll, describe, expect, it } from "bun:test";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
 
+import { dirname, join } from "pathe";
+
+import { buildMcpData } from "../src/ai/mcp/data.ts";
 import type { McpData } from "../src/ai/mcp/data.ts";
 import {
   buildMcpDiscovery,
@@ -7,6 +12,8 @@ import {
 } from "../src/ai/mcp/discovery.ts";
 import { createMcpFetchHandler } from "../src/ai/mcp/server.ts";
 import { MCP_TOOLS } from "../src/ai/mcp/tools.ts";
+import { scanProject } from "../src/core/project-graph.ts";
+import type { BlumeProject } from "../src/core/project-graph.ts";
 import { buildOramaIndex, queryOramaIndex } from "../src/search/orama-index.ts";
 
 const DATA: McpData = {
@@ -238,5 +245,114 @@ describe("discovery documents", () => {
       servers: { url: string }[];
     };
     expect(discovery.servers[0]?.url).toBe("/mcp");
+  });
+});
+
+describe("unknown tool", () => {
+  it("reports an error for an unregistered tool name", async () => {
+    const { isError, text } = await callTool("bogus_tool");
+    expect(isError).toBe(true);
+    expect(text).toContain("Unknown tool: bogus_tool");
+  });
+});
+
+const scanDirs: string[] = [];
+
+const scanFixture = async (
+  files: Record<string, string>
+): Promise<BlumeProject> => {
+  const root = await mkdtemp(join(tmpdir(), "blume-mcp-"));
+  scanDirs.push(root);
+  await Promise.all(
+    Object.entries(files).map(async ([rel, content]) => {
+      const abs = join(root, rel);
+      await mkdir(dirname(abs), { recursive: true });
+      await writeFile(abs, content);
+    })
+  );
+  return await scanProject(root);
+};
+
+afterAll(async () => {
+  await Promise.all(
+    scanDirs.map((dir) => rm(dir, { force: true, recursive: true }))
+  );
+});
+
+describe("buildMcpData", () => {
+  it("builds a snapshot, honoring config and filtering hidden routes", async () => {
+    const project = await scanFixture({
+      "blume.config.ts":
+        'export default { deployment: { site: "https://docs.example.com" }, mcp: { enabled: true, instructions: "Be concise.", name: "Custom MCP" }, title: "Project Title" };',
+      "docs/guides/install.md":
+        "---\ntitle: Installation\ndescription: How to install\n---\n# Installation\n\nInstall it now.\n",
+      "docs/index.md":
+        "---\ntitle: Home\ndescription: The home page\n---\n# Home\n\nWelcome to the docs.\n",
+      "docs/secret.md":
+        "---\ntitle: Secret\nsidebar:\n  hidden: true\n---\n# Secret\n\nHidden content.\n",
+    });
+
+    const data = await buildMcpData(project);
+
+    // Config-derived metadata: explicit mcp.name/instructions/site win.
+    expect(data.name).toBe("Custom MCP");
+    expect(data.instructions).toBe("Be concise.");
+    expect(data.site).toBe("https://docs.example.com");
+    expect(typeof data.version).toBe("string");
+    expect(data.version).toBe(project.manifest.blumeVersion);
+
+    // Navigation is passed through from the graph verbatim.
+    expect(data.navigation).toBe(project.graph.navigation);
+
+    // Hidden routes are excluded from the route list and search documents.
+    const routePaths = data.routes.map((route) => route.route).toSorted();
+    expect(routePaths).toStrictEqual(["/", "/guides/install"]);
+    expect(routePaths).not.toContain("/secret");
+
+    // Route entries carry the page description and a normalized lastModified.
+    const install = data.routes.find(
+      (route) => route.route === "/guides/install"
+    );
+    expect(install).toMatchObject({
+      contentType: "doc",
+      description: "How to install",
+      indexable: true,
+      lastModified: null,
+      title: "Installation",
+    });
+
+    // Documents are mapped down to the four MCP fields and skip hidden pages.
+    const doc = data.documents.find(
+      (entry) => entry.route === "/guides/install"
+    );
+    expect(doc).toBeDefined();
+    expect(Object.keys(doc ?? {}).toSorted()).toStrictEqual([
+      "content",
+      "description",
+      "route",
+      "title",
+    ]);
+    expect(doc?.title).toBe("Installation");
+    expect(data.documents.some((entry) => entry.route === "/secret")).toBe(
+      false
+    );
+
+    // `pages` maps every route (hidden included) to its raw source Markdown.
+    expect(data.pages["/guides/install"]).toContain("# Installation");
+    expect(data.pages["/guides/install"]).toContain("title: Installation");
+    expect(data.pages["/secret"]).toContain("Hidden content.");
+  });
+
+  it("falls back to config.title for the name and null for the site", async () => {
+    const project = await scanFixture({
+      "blume.config.ts": 'export default { title: "Fallback Title" };',
+      "docs/index.md": "---\ntitle: Home\n---\n# Home\n\nHi.\n",
+    });
+
+    const data = await buildMcpData(project);
+
+    expect(data.name).toBe("Fallback Title");
+    expect(data.instructions).toBeUndefined();
+    expect(data.site).toBeNull();
   });
 });
