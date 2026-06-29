@@ -16,7 +16,13 @@ const link = (target: string): PageLink => ({ column: 1, line: 1, target });
 const graphWith = (links: PageLink[]): ContentGraph =>
   ({
     diagnostics: [],
-    navigation: { sidebar: [], tabs: [] },
+    navigation: {
+      chromeVariants: [],
+      selectors: [],
+      sidebar: [],
+      sidebarVariants: [],
+      tabs: [],
+    },
     navigationByLocale: {},
     pages: [
       {

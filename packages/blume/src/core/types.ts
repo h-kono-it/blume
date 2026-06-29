@@ -1,4 +1,4 @@
-import type { PageMeta, ResolvedConfig } from "./schema.ts";
+import type { DirectoryMode, PageMeta, ResolvedConfig } from "./schema.ts";
 
 /** Severity levels for Blume diagnostics. */
 export type DiagnosticSeverity = "error" | "warning" | "info";
@@ -118,14 +118,19 @@ export type NavNode =
       kind: "page";
       label: string;
       route: string;
+      description?: string;
       icon?: string;
       badge?: string;
+      deprecated?: boolean;
       pageId: string;
     }
   | {
       kind: "group";
       label: string;
+      badge?: string;
+      directory?: DirectoryMode;
       icon?: string;
+      route?: string;
       collapsed?: boolean;
       children: NavNode[];
     };
@@ -135,12 +140,46 @@ export interface NavTab {
   label: string;
   path: string;
   icon?: string;
+  items?: NavSelectorItem[];
+}
+
+/** A selectable navigation option inside a tab menu or top selector. */
+export interface NavSelectorItem {
+  label: string;
+  path: string;
+  description?: string;
+  icon?: string;
+  tag?: string;
+}
+
+/** Top-level Mintlify-style partition selectors. */
+export interface NavSelector {
+  label: string;
+  kind: "dropdown" | "language" | "product" | "version";
+  items: NavSelectorItem[];
+}
+
+/** Sidebar tree used when the current route belongs to a nav partition. */
+export interface NavSidebarVariant {
+  path: string;
+  sidebar: NavNode[];
+}
+
+/** Chrome overrides used when the current route belongs to a nav partition. */
+export interface NavChromeVariant {
+  path: string;
+  banner?: ResolvedConfig["banner"];
+  footer?: ResolvedConfig["footer"];
+  navbar?: ResolvedConfig["navbar"];
 }
 
 /** The complete navigation model derived from the content graph. */
 export interface Navigation {
   tabs: NavTab[];
+  selectors: NavSelector[];
+  chromeVariants: NavChromeVariant[];
   sidebar: NavNode[];
+  sidebarVariants: NavSidebarVariant[];
   /** Repo URL for the header link, or null when hidden (`navigation.repo`). */
   repoUrl?: string | null;
 }

@@ -423,7 +423,13 @@ export const buildRuntimeData = (project: BlumeProject): string => {
         i18n.locales.map(({ code }) => [
           code,
           withReferenceTabs(
-            graph.navigationByLocale[code] ?? { sidebar: [], tabs: [] }
+            graph.navigationByLocale[code] ?? {
+              chromeVariants: [],
+              selectors: [],
+              sidebar: [],
+              sidebarVariants: [],
+              tabs: [],
+            }
           ),
         ])
       )

@@ -28,6 +28,8 @@ const DATA: McpData = {
   ],
   name: "Test Docs",
   navigation: {
+    chromeVariants: [],
+    selectors: [],
     sidebar: [
       {
         kind: "page",
@@ -36,6 +38,7 @@ const DATA: McpData = {
         route: "/guides/install",
       },
     ],
+    sidebarVariants: [],
     tabs: [{ label: "Guides", path: "/guides/install" }],
   },
   pages: {

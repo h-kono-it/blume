@@ -44,7 +44,13 @@ const makePage = (
 const makeGraph = (pages: PageRecord[]): ContentGraph =>
   ({
     diagnostics: [],
-    navigation: { sidebar: [], tabs: [] },
+    navigation: {
+      chromeVariants: [],
+      selectors: [],
+      sidebar: [],
+      sidebarVariants: [],
+      tabs: [],
+    },
     navigationByLocale: {},
     pages,
     routes: new Map(pages.map((page) => [page.route, page.id])),

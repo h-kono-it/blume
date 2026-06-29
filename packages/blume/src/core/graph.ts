@@ -88,23 +88,32 @@ export const buildContentGraph = (
       }
 
       navigationByLocale[code] = buildNavigation(localePages, {
+        chromeVariants: options.navigation.chromeVariants,
         folderMeta: options.folderMeta,
         metaPrefix: code === i18n.defaultLocale ? "" : code,
         refByLogical: true,
+        selectors: options.navigation.selectors,
         sharedFolderMeta: options.sharedFolderMeta,
         sidebar: options.navigation.sidebar,
+        sidebarVariants: options.navigation.sidebarVariants,
         tabs,
       });
     }
     navigation = navigationByLocale[i18n.defaultLocale] ?? {
+      chromeVariants: [],
+      selectors: [],
       sidebar: [],
+      sidebarVariants: [],
       tabs: [],
     };
   } else {
     navigation = buildNavigation(pages, {
+      chromeVariants: options.navigation.chromeVariants,
       folderMeta: options.folderMeta,
+      selectors: options.navigation.selectors,
       sharedFolderMeta: options.sharedFolderMeta,
       sidebar: options.navigation.sidebar,
+      sidebarVariants: options.navigation.sidebarVariants,
       tabs: options.navigation.tabs,
     });
   }

@@ -32,12 +32,20 @@ ${options.sources.map((source) => `@source "${source}";`).join("\n")}
 
 :root {
   --blume-background: oklch(1 0 0);
+  --blume-background-decoration: none;
+  --blume-background-decoration-repeat: no-repeat;
+  --blume-background-decoration-size: auto;
+  --blume-background-image: none;
+  --blume-background-image-repeat: no-repeat;
+  --blume-background-image-size: cover;
   --blume-foreground: oklch(0.145 0 0);
   --blume-muted: oklch(0.965 0 0);
   --blume-muted-foreground: oklch(0.54 0 0);
   --blume-border: oklch(0.88 0.006 260 / 0.72);
   --blume-accent: oklch(0.145 0 0);
   --blume-accent-foreground: oklch(1 0 0);
+  --blume-action: var(--blume-accent);
+  --blume-action-foreground: var(--blume-accent-foreground);
   --blume-code-background: oklch(0.99 0 0);
   /* Shiki notation transformers: line/word highlight, diff add/remove. */
   --blume-code-highlight: oklch(0.55 0.16 255 / 0.1);
@@ -82,12 +90,20 @@ ${options.sources.map((source) => `@source "${source}";`).join("\n")}
 
 :root[data-theme="dark"] {
   --blume-background: oklch(0.085 0 0);
+  --blume-background-decoration: none;
+  --blume-background-decoration-repeat: no-repeat;
+  --blume-background-decoration-size: auto;
+  --blume-background-image: none;
+  --blume-background-image-repeat: no-repeat;
+  --blume-background-image-size: cover;
   --blume-foreground: oklch(0.96 0 0);
   --blume-muted: oklch(0.16 0 0);
   --blume-muted-foreground: oklch(0.68 0 0);
   --blume-border: oklch(0.24 0 0 / 0.8);
   --blume-accent: oklch(0.96 0 0);
   --blume-accent-foreground: oklch(0.085 0 0);
+  --blume-action: var(--blume-accent);
+  --blume-action-foreground: var(--blume-accent-foreground);
   --blume-code-background: oklch(0.12 0 0);
   /* Brighter tints read better over the dark code surface. */
   --blume-code-highlight: oklch(0.7 0.14 255 / 0.16);
@@ -108,6 +124,8 @@ ${options.sources.map((source) => `@source "${source}";`).join("\n")}
   --color-border: var(--blume-border);
   --color-accent: var(--blume-accent);
   --color-accent-foreground: var(--blume-accent-foreground);
+  --color-action: var(--blume-action);
+  --color-action-foreground: var(--blume-action-foreground);
   --color-code: var(--blume-code-background);
   --radius-blume: var(--blume-radius);
   --font-sans: var(--blume-font-body);
@@ -133,6 +151,18 @@ ${options.sources.map((source) => `@source "${source}";`).join("\n")}
     outline: 2px solid var(--blume-accent);
     outline-offset: 2px;
     border-radius: 2px;
+  }
+  body {
+    background-attachment: fixed, fixed;
+    background-image:
+      var(--blume-background-image), var(--blume-background-decoration);
+    background-position: center top, top center;
+    background-repeat:
+      var(--blume-background-image-repeat),
+      var(--blume-background-decoration-repeat);
+    background-size:
+      var(--blume-background-image-size),
+      var(--blume-background-decoration-size);
   }
   @media (prefers-reduced-motion: reduce) {
     html {
@@ -246,6 +276,12 @@ ${options.sources.map((source) => `@source "${source}";`).join("\n")}
   text-decoration-style: dotted;
   text-decoration-thickness: 1px;
   text-underline-offset: 0.2em;
+}
+
+.prose :where(a[data-blume-card]) {
+  color: inherit;
+  font-weight: inherit;
+  text-decoration: none;
 }
 
 .prose :where(hr) {
