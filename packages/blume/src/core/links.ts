@@ -38,6 +38,8 @@ interface ExternalRef extends LinkSite {
 interface LinkContext {
   anchors: Map<string, Set<string>>;
   publicDir: string | null;
+  /** Normalized `redirect.from` paths — valid targets that resolve at runtime. */
+  redirects: Set<string>;
   routes: Set<string>;
 }
 
@@ -129,16 +131,22 @@ const checkPathLink = (
   }
 
   const route = toRoute(resolved);
-  if (!ctx.routes.has(route)) {
-    return {
-      ...site,
-      code: "BLUME_BROKEN_LINK",
-      message: `Broken link to ${target}: no page resolves to ${route}.`,
-      severity: "error",
-      suggestion: "Check the path, or create the target page.",
-    };
+  if (ctx.routes.has(route)) {
+    return fragment ? checkAnchor(route, fragment, site, ctx) : null;
   }
-  return fragment ? checkAnchor(route, fragment, site, ctx) : null;
+  // A configured `redirect.from` resolves at runtime, so it's a valid target.
+  // Its destination (and any anchor there) is validated on its own page, so we
+  // don't follow the redirect to check the fragment here.
+  if (ctx.redirects.has(route)) {
+    return null;
+  }
+  return {
+    ...site,
+    code: "BLUME_BROKEN_LINK",
+    message: `Broken link to ${target}: no page resolves to ${route}.`,
+    severity: "error",
+    suggestion: "Check the path, or create the target page.",
+  };
 };
 
 /** Probe a URL with the given method, normalizing failures to a result. */
@@ -298,11 +306,19 @@ const classifyLink = (
  */
 export const validateLinks = async (
   graph: ContentGraph,
-  options: { publicDir: string | null; checkExternal?: boolean }
+  options: {
+    publicDir: string | null;
+    checkExternal?: boolean;
+    /** Configured redirects; their `from` paths count as valid link targets. */
+    redirects?: { from: string }[];
+  }
 ): Promise<Diagnostic[]> => {
   const ctx: LinkContext = {
     anchors: buildAnchorIndex(graph.pages),
     publicDir: options.publicDir,
+    redirects: new Set(
+      (options.redirects ?? []).map((redirect) => toRoute(redirect.from))
+    ),
     routes: new Set(graph.routes.keys()),
   };
   const diagnostics: Diagnostic[] = [];

@@ -39,6 +39,7 @@ export const validateCommand = defineCommand({
         ...(await validateLinks(project.graph, {
           checkExternal: Boolean(args.external),
           publicDir: existsSync(publicDir) ? publicDir : null,
+          redirects: project.config.redirects,
         }))
       );
     } catch (error) {

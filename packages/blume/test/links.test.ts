@@ -96,6 +96,29 @@ describe(validateLinks, () => {
     expect(diagnostics).toHaveLength(0);
   });
 
+  it("accepts a link to a configured redirect's `from` path", async () => {
+    // `/providers` has no page (it redirects to `/providers/openai` at runtime),
+    // so it must not be flagged broken.
+    const diagnostics = await validateLinks(
+      makeGraph([
+        makePage({ id: "a.mdx", links: [link("/providers")], route: "/a" }),
+        makePage({ id: "openai.mdx", route: "/providers/openai" }),
+      ]),
+      { publicDir: null, redirects: [{ from: "/providers" }] }
+    );
+    expect(diagnostics).toHaveLength(0);
+  });
+
+  it("still flags a link matching neither a route nor a redirect", async () => {
+    const diagnostics = await validateLinks(
+      makeGraph([
+        makePage({ id: "a.mdx", links: [link("/nope")], route: "/a" }),
+      ]),
+      { publicDir: null, redirects: [{ from: "/providers" }] }
+    );
+    expect(diagnostics[0]?.code).toBe("BLUME_BROKEN_LINK");
+  });
+
   it("resolves relative links against the page's directory", async () => {
     const diagnostics = await validate([
       makePage({
