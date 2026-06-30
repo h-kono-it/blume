@@ -46,7 +46,11 @@ const paneStyle = `height:${paneHeight}px`;
     // CodeGroup, switching one Component must not switch the others.
     <Tabs hash={false} sync={false}>
       <Tab
-        class="flex items-center justify-center overflow-auto"
+        // `not-prose`: the preview lives inside the page's `.prose` wrapper, so
+        // without this the typography styles bleed into the live component
+        // (headings, links, lists, spacing). The Code pane below keeps prose on
+        // purpose — that's what styles the highlighted source.
+        class="not-prose flex items-center justify-center overflow-auto"
         style={paneStyle}
         title="Preview"
       >
