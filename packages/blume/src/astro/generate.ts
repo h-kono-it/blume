@@ -1054,10 +1054,19 @@ export const generateRuntime = async (
     ...exampleDiscovery.warnings,
   ];
 
-  // The new provider SDKs are optional peers; warn (rather than fail opaquely in
-  // Vite) when the configured provider's package isn't installed.
+  // Provider SDKs are optional peers; warn (rather than fail opaquely in Vite)
+  // when the configured provider's package isn't installed. A dep is available
+  // if the project installed it (resolves from the root) OR Blume ships it
+  // (resolves from the Blume package — the same set the `.blume` deps link
+  // exposes to the build). Resolving from the project root alone falsely flagged
+  // a shipped SDK like Orama (the default provider) as missing whenever it
+  // wasn't hoisted into the project, e.g. under isolated linkers. We resolve
+  // from each package's real location rather than through the `.blume` junction,
+  // which can't be traversed reliably for store-symlinked deps.
   for (const dep of searchProviderMeta(config.search.provider).runtimeDeps) {
-    if (!canResolveFrom(context.root, dep)) {
+    if (
+      !(canResolveFrom(context.root, dep) || canResolveFrom(packageRoot(), dep))
+    ) {
       warnings.push(
         `Search provider "${config.search.provider}" needs "${dep}", which isn't installed. Run \`npm install ${dep}\` (or your package manager's equivalent).`
       );

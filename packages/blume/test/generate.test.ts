@@ -434,7 +434,10 @@ describe("generateRuntime", () => {
     expect(has("node_modules")).toBe(true);
 
     expect(result.structuralChange).toBe(true);
-    expect(result.warnings.some((w) => w.includes("@orama/orama"))).toBe(true);
+    // Orama (the default provider) ships with Blume, so even though this temp
+    // project's root can't resolve `@orama/orama`, the build reaches it through
+    // Blume's own deps — the preflight checks there too and stays quiet.
+    expect(result.warnings.some((w) => w.includes("@orama/orama"))).toBe(false);
 
     // The catch-all wires in Math + AskAI for this project.
     const catchAll = await readFile(
