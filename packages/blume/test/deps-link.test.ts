@@ -200,16 +200,58 @@ describe("ensureDepsLink", () => {
     );
   });
 
-  it("leaves a split layout (integration hoisted away from astro) untouched", async () => {
+  it("warns (without linking) on a split layout the symlink can't fix", async () => {
     // Blume's astro is nested but @astrojs/mdx is hoisted beside the shadowing
     // astro — no single directory holds a consistent set, so a symlink can't
     // fix it. We leave it for a root `overrides`/`resolutions` pin rather than
-    // half-fix astro while mdx still binds to the wrong copy.
+    // half-fix astro while mdx still binds to the wrong copy, and surface an
+    // actionable diagnostic instead of silently shipping a broken runtime.
     const { outDir, pkgDir } = await hoistedConflictFixture(false);
 
-    await ensureDepsLink(outDir, pkgDir);
+    const warning = await ensureDepsLink(outDir, pkgDir);
 
     expect(existsSync(join(outDir, "node_modules"))).toBe(false);
+    expect(warning).toMatch(/Astro version conflict/u);
+    expect(warning).toMatch(/overrides/u);
+    expect(warning).toMatch(/"astro"/u);
+  });
+
+  it("returns null (no warning) when it links or no-ops", async () => {
+    // The repairable and clean cases must stay quiet — a warning only belongs to
+    // the unfixable split layout.
+    const isolated = await isolatedFixture();
+    expect(await ensureDepsLink(isolated.outDir, isolated.pkgDir)).toBeNull();
+
+    const conflict = await hoistedConflictFixture();
+    expect(await ensureDepsLink(conflict.outDir, conflict.pkgDir)).toBeNull();
+  });
+
+  it("still warns when the conflicting Astro versions can't be read", async () => {
+    // Same split layout, but the astro package.json files are unparseable. The
+    // diagnostic degrades to a version-less message instead of crashing.
+    const projectModules = join(root, "node_modules");
+    const pkgDir = join(projectModules, "blume");
+    const depsDir = join(pkgDir, "node_modules");
+    await Promise.all(
+      [projectModules, depsDir].map(async (dir) => {
+        await mkdir(join(dir, "astro"), { recursive: true });
+        await writeFile(
+          join(dir, "astro", "package.json"),
+          "{ not json",
+          "utf-8"
+        );
+      })
+    );
+    // @astrojs/mdx hoisted away from Blume's nested astro — the split layout.
+    await fakePackage(projectModules, "@astrojs/mdx");
+    const outDir = join(root, ".blume");
+    await mkdir(outDir, { recursive: true });
+
+    const warning = await ensureDepsLink(outDir, pkgDir);
+
+    expect(warning).toMatch(/Astro version conflict/u);
+    expect(warning).toMatch(/a second copy of Astro/u);
+    expect(warning).toMatch(/<Blume's astro version>/u);
   });
 
   it("does nothing when Blume's deps can't be located", async () => {

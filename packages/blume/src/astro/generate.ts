@@ -150,6 +150,39 @@ const linkDepsJunction = async (
   await symlink(depsDir, link, "junction");
 };
 
+/** Read the `version` field of a `package.json`, or null when unreadable. */
+const readPkgVersion = (pkgJsonPath: string | null): string | null => {
+  if (!pkgJsonPath) {
+    return null;
+  }
+  try {
+    return JSON.parse(readFileSync(pkgJsonPath, "utf-8")).version ?? null;
+  } catch {
+    return null;
+  }
+};
+
+/**
+ * Build the diagnostic for a split-layout Astro conflict that a symlink can't
+ * repair: a different Astro is hoisted to the project root, shadowing Blume's,
+ * and `@astrojs/mdx` binds to the wrong copy. `blumeAstroPkg`/`shadowAstroPkg`
+ * are the resolved `astro/package.json` paths for Blume's set and the one the
+ * runtime actually resolves.
+ */
+const astroConflictWarning = (
+  blumeAstroPkg: string | null,
+  shadowAstroPkg: string | null
+): string => {
+  const blume = readPkgVersion(blumeAstroPkg);
+  const shadow = readPkgVersion(shadowAstroPkg);
+  const versions =
+    blume && shadow
+      ? `astro@${shadow} shadowing Blume's astro@${blume}`
+      : "a second copy of Astro shadowing Blume's";
+  const pin = blume ?? "<Blume's astro version>";
+  return `Astro version conflict: another dependency hoisted ${versions} to the project root, so @astrojs/mdx binds to the wrong copy and the build fails on a missing export (e.g. "chunkToString"). A single symlink can't reconcile a split install — pin Blume's Astro by adding a package.json "overrides" (npm/bun/pnpm) or "resolutions" (yarn) entry { "astro": "${pin}" }, then reinstall. Run \`npm ls astro\` to find the dependency pulling the older copy.`;
+};
+
 /**
  * Make the generated runtime resolve Astro and its integrations against Blume's
  * own dependency set. Two failure modes this repairs:
@@ -168,26 +201,37 @@ const linkDepsJunction = async (
  * are a *co-located, consistent* set (astro beside the `@astrojs/mdx` that binds
  * to it). A split layout — an integration hoisted away from a conflicting astro
  * — can't be made consistent by a single symlink and needs a root `overrides`/
- * `resolutions` pin instead, so we leave it untouched rather than half-fix it.
+ * `resolutions` pin instead. We can't fix that from `.blume/`, so we return a
+ * diagnostic naming the conflict rather than silently shipping a runtime that
+ * crashes downstream. Returns the warning, or null when nothing needs saying.
  */
 export const ensureDepsLink = async (
   outDir: string,
   pkgDir: string = packageRoot()
-): Promise<void> => {
+): Promise<string | null> => {
   const depsDir = blumeDepsDir(pkgDir);
-  if (!depsDir || !existsSync(join(depsDir, "@astrojs", "mdx"))) {
-    return;
+  if (!depsDir) {
+    return null;
   }
   // Already correct when `.blume/` resolves the very same astro Blume's deps
-  // provide — the clean hoisted case. Otherwise (unreachable, or a different
-  // astro shadowing Blume's) link Blume's deps in.
+  // provide — the clean hoisted case, nothing to do.
   const blumeAstro = resolvedAstroPath(depsDir);
-  if (blumeAstro && resolvedAstroPath(outDir) === blumeAstro) {
-    return;
+  const outDirAstro = resolvedAstroPath(outDir);
+  if (blumeAstro && outDirAstro === blumeAstro) {
+    return null;
   }
-  // Reaching here means `outDir` doesn't resolve Blume's astro, so any existing
-  // link is stale and gets replaced.
-  await linkDepsJunction(join(outDir, "node_modules"), depsDir);
+  // A co-located, consistent set (astro beside the @astrojs/mdx that binds to
+  // it) can be linked in wholesale; this repairs the unreachable and the
+  // repairable-conflict cases. Any existing link here is stale and gets
+  // replaced.
+  if (existsSync(join(depsDir, "@astrojs", "mdx"))) {
+    await linkDepsJunction(join(outDir, "node_modules"), depsDir);
+    return null;
+  }
+  // Split layout: Blume's astro is nested (a conflicting astro took the root
+  // spot) but @astrojs/mdx hoisted away from it, binding to the shadow. Only a
+  // root pin fixes this — surface it.
+  return astroConflictWarning(blumeAstro, outDirAstro);
 };
 
 /**
@@ -772,7 +816,7 @@ export const generateRuntime = async (
     return writeIfChanged(path, content);
   };
 
-  await ensureDepsLink(out);
+  const depsLinkWarning = await ensureDepsLink(out);
 
   const askEnabled = config.ai.ask?.enabled ?? false;
   const exportPdf = config.export.pdf;
@@ -1004,6 +1048,7 @@ export const generateRuntime = async (
   // API/AsyncAPI reference pages (Scalar). One self-contained page per source,
   // mounted on its configured route and regenerated each run.
   const warnings: string[] = [
+    ...(depsLinkWarning ? [depsLinkWarning] : []),
     ...mcp.warnings,
     ...islandDiscovery.warnings,
     ...exampleDiscovery.warnings,
