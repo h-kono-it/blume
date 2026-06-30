@@ -130,6 +130,42 @@ export const runtimeDependencies = (options: {
  * before a broader one (`@`); these follow Blume's `blume:*` aliases, which
  * never overlap with a project's.
  */
+/**
+ * Blume's render-time dependencies, forced external on the build's SSR and
+ * static-prerender Vite environments.
+ *
+ * Two reasons a dep lands here:
+ *   - `@takumi-rs/core` (OG image rendering) is a native NAPI addon that loads a
+ *     platform-specific `.node` binding via `createRequire(import.meta.url)`.
+ *     Bundling it relocates `import.meta.url` and breaks the binding lookup
+ *     ("Cannot find native binding") on other platforms (e.g. the Linux CI
+ *     runner), so it must resolve from `node_modules` at runtime instead.
+ *   - The rest are pure-JS packages kept external so an isolated linker (Bun's
+ *     `isolated` mode, pnpm) doesn't bundle their symlinked store copies. When
+ *     Vite bundles such a package but leaves its own `node_modules` child
+ *     external, that child surfaces as an unresolvable bare import in the
+ *     prerender chunk (e.g. `batchwork` via `@astrojs/markdown-satteri`). Kept
+ *     external, each package's transitive imports resolve relative to its real
+ *     store location — reachable through the `node_modules` junction {@link
+ *     prerenderDepsPlugin} drops beside the prerender bundle.
+ *
+ * Astro 7 configures externalization per Vite environment, so this must be
+ * applied to both `prerender` (static) and `ssr` (server) — a top-level
+ * `ssr.external` only reaches the latter.
+ */
+const RENDER_EXTERNAL_DEPS = [
+  "@astrojs/markdown-satteri",
+  "@pierre/diffs",
+  "@shikijs/transformers",
+  "@takumi-rs/core",
+  "@takumi-rs/helpers",
+  "github-slugger",
+  "katex",
+  "shiki",
+  "simple-icons",
+  "zod",
+];
+
 const renderUserAliases = (
   aliases: Record<string, string> | undefined
 ): string =>
@@ -243,7 +279,7 @@ export const astroConfigTemplate = (options: {
   const svelteImport = needsSvelte
     ? `import svelte from "@astrojs/svelte";\n`
     : "";
-  const blumeImport = `import { blumeIntegration } from "blume/astro";\n`;
+  const blumeImport = `import { blumeIntegration, prerenderDepsPlugin } from "blume/astro";\n`;
 
   // Twoslash runs first, before the always-on transformers, but only on fences
   // with the `twoslash` meta (explicitTrigger) — so it's opt-in per block with
@@ -305,19 +341,14 @@ export default defineConfig({
   },
   devToolbar: { enabled: false },
   vite: {
-    plugins: [tailwindcss()],
-    // @takumi-rs/core (OG image rendering) is a native NAPI addon that loads a
-    // platform-specific .node binding via createRequire(import.meta.url). Astro's
-    // build bundles it into the per-environment output by default, which
-    // relocates import.meta.url and breaks the binding lookup ("Cannot find
-    // native binding") on other platforms (e.g. the Linux CI runner). Astro 7
-    // configures externalization per Vite environment, so it must be forced
-    // external on the prerender (static) and ssr (server) environments -- a
-    // top-level ssr.external only reaches the latter -- so the binding resolves
-    // from node_modules at runtime instead.
+    plugins: [tailwindcss(), prerenderDepsPlugin()],
+    // Blume's render-time deps are forced external on both build environments so
+    // native bindings resolve at runtime and isolated linkers don't bundle
+    // symlinked store copies (which would surface their children as unresolvable
+    // imports). See RENDER_EXTERNAL_DEPS / prerenderDepsPlugin.
     environments: {
-      prerender: { resolve: { external: ["@takumi-rs/core"] } },
-      ssr: { resolve: { external: ["@takumi-rs/core"] } },
+      prerender: { resolve: { external: ${JSON.stringify(RENDER_EXTERNAL_DEPS)} } },
+      ssr: { resolve: { external: ${JSON.stringify(RENDER_EXTERNAL_DEPS)} } },
     },
     resolve: {
       alias: {

@@ -11,7 +11,7 @@ import {
 import { createRequire } from "node:module";
 import { pathToFileURL } from "node:url";
 
-import { dirname, join, normalize, relative } from "pathe";
+import { basename, dirname, join, normalize, relative } from "pathe";
 import { glob } from "tinyglobby";
 
 import { resolveAskBackend } from "../ai/ask.ts";
@@ -129,6 +129,28 @@ export const blumeDepsDir = (pkgDir: string = packageRoot()): string | null => {
 };
 
 /**
+ * Point `link` at Blume's dependency directory via a `node_modules` junction,
+ * replacing a stale junction we own and leaving a real directory untouched.
+ *
+ * `lstat`, not `existsSync`, so a broken junction (target since moved) is still
+ * detected — `existsSync` follows the link and reports a dangling one as absent.
+ */
+const linkDepsJunction = async (
+  link: string,
+  depsDir: string
+): Promise<void> => {
+  const existing = await lstat(link).catch(() => null);
+  if (existing) {
+    if (!existing.isSymbolicLink()) {
+      return;
+    }
+    await rm(link, { force: true });
+  }
+  await mkdir(dirname(link), { recursive: true });
+  await symlink(depsDir, link, "junction");
+};
+
+/**
  * Make the generated runtime resolve Astro and its integrations against Blume's
  * own dependency set. Two failure modes this repairs:
  *
@@ -163,22 +185,52 @@ export const ensureDepsLink = async (
   if (blumeAstro && resolvedAstroPath(outDir) === blumeAstro) {
     return;
   }
-  const link = join(outDir, "node_modules");
-  // `lstat`, not `existsSync`, so a broken junction (target since moved) is
-  // still detected — `existsSync` follows the link and reports a dangling one
-  // as absent. Reaching here means `outDir` doesn't resolve Blume's astro, so
-  // any existing link is stale: replace a link we own (a junction/symlink) and
-  // leave a real directory untouched.
-  const existing = await lstat(link).catch(() => null);
-  if (existing) {
-    if (!existing.isSymbolicLink()) {
+  // Reaching here means `outDir` doesn't resolve Blume's astro, so any existing
+  // link is stale and gets replaced.
+  await linkDepsJunction(join(outDir, "node_modules"), depsDir);
+};
+
+/**
+ * Vite plugin that makes Blume's externalized runtime deps (zod, shiki, sharp,
+ * `@takumi-rs/core`, …) resolvable when Astro executes the static prerender
+ * bundle under an isolated linker (Bun's `isolated` mode, pnpm).
+ *
+ * Astro's static build emits a self-contained SSR bundle to
+ * `<outDir>/.prerender/` and `import()`s it in-process to generate the HTML.
+ * That bundle externalizes Blume's render-time deps, so Node resolves them at
+ * prerender time by walking up from `.prerender/chunks/*.mjs`. {@link
+ * ensureDepsLink} only repairs resolution rooted at `.blume/`; `.prerender/`
+ * lives under `dist/`, a separate tree an isolated linker never hoists Blume's
+ * deps into — so the import dies with `Cannot find package 'zod'`. We drop the
+ * same `node_modules` junction into the prerender root, mirroring
+ * `.blume/node_modules`, so every externalized specifier — native bindings
+ * included, which can't be bundled — resolves. Astro deletes `.prerender/` once
+ * generation finishes (and the junction with it: `fs.rm` unlinks symlinks, it
+ * never follows them), so nothing leaks into the published `dist/`.
+ *
+ * Keyed off the output dir's basename (`.prerender`) — the name Astro 7 gives
+ * the prerender build for both static (`<outDir>/.prerender/`) and server
+ * (`<build.server>/.prerender/`) output — so it fires for exactly that build.
+ * Inert in dev, where there is no build and `writeBundle` never runs.
+ */
+export const prerenderDepsPlugin = (
+  pkgDir: string = packageRoot()
+): {
+  name: string;
+  writeBundle: (options: { dir?: string }) => Promise<void>;
+} => ({
+  name: "blume:prerender-deps",
+  writeBundle: async (options) => {
+    if (!options.dir || basename(options.dir) !== ".prerender") {
       return;
     }
-    await rm(link, { force: true });
-  }
-  await mkdir(outDir, { recursive: true });
-  await symlink(depsDir, link, "junction");
-};
+    const depsDir = blumeDepsDir(pkgDir);
+    if (!depsDir) {
+      return;
+    }
+    await linkDepsJunction(join(options.dir, "node_modules"), depsDir);
+  },
+});
 
 /** Astro integration package each non-React island framework needs installed. */
 const ISLAND_FRAMEWORK_DEPS: Record<string, string> = {

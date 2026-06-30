@@ -15,7 +15,11 @@ import { pathToFileURL } from "node:url";
 
 import { join } from "pathe";
 
-import { blumeDepsDir, ensureDepsLink } from "../src/astro/generate.ts";
+import {
+  blumeDepsDir,
+  ensureDepsLink,
+  prerenderDepsPlugin,
+} from "../src/astro/generate.ts";
 
 // `ensureDepsLink` proves out by making Astro resolvable from `.blume/`. We
 // assert that at the filesystem level — `existsSync`/`readlink` through the
@@ -250,5 +254,63 @@ describe("ensureDepsLink", () => {
     expect(stats.isSymbolicLink()).toBe(false);
     expect(stats.isDirectory()).toBe(true);
     expect(existsSync(join(link, "marker.txt"))).toBe(true);
+  });
+});
+
+describe("prerenderDepsPlugin", () => {
+  // The plugin's only job is to drop a `node_modules` junction into Astro's
+  // `.prerender/` output so the prerender bundle's externalized deps resolve
+  // under an isolated linker. Drive its `writeBundle` hook directly with the
+  // output dir Astro would pass for each Vite environment.
+  const prerenderDir = async (): Promise<string> => {
+    const dir = join(root, "dist", ".prerender");
+    await mkdir(dir, { recursive: true });
+    return dir;
+  };
+
+  it("links Blume's deps into the prerender output under an isolated linker", async () => {
+    const { pkgDir, store } = await isolatedFixture();
+    const dir = await prerenderDir();
+
+    await prerenderDepsPlugin(pkgDir).writeBundle({ dir });
+
+    const link = join(dir, "node_modules");
+    const stats = await lstat(link);
+    expect(stats.isSymbolicLink()).toBe(true);
+    expect(await readlink(link)).toBe(store);
+    // The externalized specifiers Node walks up to find now resolve.
+    expect(existsSync(join(link, "astro", "package.json"))).toBe(true);
+    expect(resolvesAstro(join(dir, "chunks"))).toBe(true);
+  });
+
+  it("ignores non-prerender environment outputs (client, ssr)", async () => {
+    const { pkgDir } = await isolatedFixture();
+    const clientDir = join(root, "dist");
+    const ssrDir = join(root, "dist", "server");
+    await mkdir(ssrDir, { recursive: true });
+    const plugin = prerenderDepsPlugin(pkgDir);
+
+    await plugin.writeBundle({ dir: clientDir });
+    await plugin.writeBundle({ dir: ssrDir });
+
+    expect(existsSync(join(clientDir, "node_modules"))).toBe(false);
+    expect(existsSync(join(ssrDir, "node_modules"))).toBe(false);
+  });
+
+  it("is a no-op when there is no output dir", async () => {
+    const { pkgDir } = await isolatedFixture();
+    // A `file`-based output has no `dir`; nothing to link against.
+    await prerenderDepsPlugin(pkgDir).writeBundle({});
+    expect(existsSync(join(root, "dist"))).toBe(false);
+  });
+
+  it("does nothing when Blume's deps can't be located", async () => {
+    const dir = await prerenderDir();
+    const pkgDir = join(root, "lonely", "blume");
+    await mkdir(pkgDir, { recursive: true });
+
+    await prerenderDepsPlugin(pkgDir).writeBundle({ dir });
+
+    expect(existsSync(join(dir, "node_modules"))).toBe(false);
   });
 });

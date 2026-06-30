@@ -331,6 +331,19 @@ describe("astroConfigTemplate", () => {
     );
     expect(out).not.toContain('import react from "@astrojs/react"');
     expect(out).toContain("blumeIntegration(");
+    // The prerender dep-link plugin is wired into the Vite config so isolated
+    // linkers can resolve externalized deps when generating static pages.
+    expect(out).toContain(
+      'import { blumeIntegration, prerenderDepsPlugin } from "blume/astro"'
+    );
+    expect(out).toContain("prerenderDepsPlugin()");
+    // Blume's render-time deps are forced external on both build environments so
+    // native bindings load at runtime and isolated linkers don't bundle (and
+    // strand the children of) symlinked store copies.
+    expect(out).toContain('"@takumi-rs/core"');
+    expect(out).toContain('"@astrojs/markdown-satteri"');
+    expect(out).toMatch(/prerender: \{ resolve: \{ external: \[/u);
+    expect(out).toMatch(/ssr: \{ resolve: \{ external: \[/u);
     expect(out).not.toContain("adapter:");
     expect(out).toContain(`"blume:examples": ${JSON.stringify(EXAMPLES_PATH)}`);
   });
