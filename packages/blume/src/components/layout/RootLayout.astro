@@ -16,7 +16,12 @@ import Favicon from "./Favicon.astro";
 import Fonts from "./Fonts.astro";
 import { bannerInitScript, themeInitScript } from "./head-scripts.ts";
 import Header from "./Header.astro";
-import { findBreadcrumbs, flattenPages, getPagination } from "./nav-utils.ts";
+import {
+  findBreadcrumbs,
+  flattenPages,
+  getPagination,
+  sidebarForRoute,
+} from "./nav-utils.ts";
 import NavTree from "./NavTree.astro";
 import { resolveSlot } from "./overrides.ts";
 import PageActions from "./PageActions.astro";
@@ -179,11 +184,12 @@ const formattedLastModified =
 // Needs a configured site to be useful, so the menu is hidden without one.
 const mcpUrl = mcp && siteUrl ? new URL(mcp.route, siteUrl).href : null;
 
-const crumbs = findBreadcrumbs(navigation.sidebar, page.route);
-const { prev, next } = getPagination(
-  flattenPages(navigation.sidebar),
-  page.route
-);
+// Scope the sidebar (and the breadcrumbs/pagination derived from it) to the
+// active tab's section, so a multi-section site drills each tab into its own
+// pages. Without tabs — or on a route under none — this is the full sidebar.
+const sidebar = sidebarForRoute(navigation.sidebar, navigation.tabs, page.route);
+const crumbs = findBreadcrumbs(sidebar, page.route);
+const { prev, next } = getPagination(flattenPages(sidebar), page.route);
 
 // Structured data is skipped when disabled or for pages we ask crawlers not to
 // index. Escape `<` so a title/description containing `</script>` can't break
@@ -294,7 +300,7 @@ const bannerScript = banner?.dismissible
         class="fixed top-16 start-0 z-[35] h-[calc(100dvh-4rem)] w-64 max-w-[80vw] -translate-x-[105%] overflow-y-auto border-border border-e bg-background px-5 pt-4 pb-6 transition-transform rtl:translate-x-[105%] [:where([data-blume-nav-open])_&]:translate-x-0! lg:sticky lg:z-auto lg:w-auto lg:max-w-none lg:translate-x-0! lg:border-e-0 lg:bg-transparent lg:px-4"
       >
         <nav>
-          <SidebarSlot currentRoute={page.route} items={navigation.sidebar} />
+          <SidebarSlot currentRoute={page.route} items={sidebar} />
         </nav>
       </aside>
       <main class="min-w-0 px-6 pt-6 pb-10 lg:px-8 xl:px-10" id="blume-content">

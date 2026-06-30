@@ -55,6 +55,8 @@ interface MutableGroup {
   kind: "group";
   key: string;
   path: string;
+  /** The group's URL path (folder route prefix); set as pages are inserted. */
+  routePath?: string;
   label: string;
   icon?: string;
   collapsed?: boolean;
@@ -194,6 +196,7 @@ const toNavNode = (node: MutableNode): NavNode => {
     icon: node.icon,
     kind: "group",
     label: node.label,
+    path: node.routePath,
   };
 };
 
@@ -215,9 +218,18 @@ const buildFileSystemSidebar = (
     const filename = parts.at(-1) ?? page.navPath;
     const dirs = parts.slice(0, -1);
 
+    // Each group's URL path is the matching prefix of the page's route. navPath
+    // is locale-stripped while the route may carry a locale/base prefix, so
+    // align the folder segments from the right (the extra leading segments are
+    // that prefix). Under such a prefix the path won't match a logical tab path,
+    // so tab-scoping simply no-ops — same as the header's active-tab logic.
+    const folderParts = page.route.split("/").filter(Boolean).slice(0, -1);
+    const offset = Math.max(0, folderParts.length - dirs.length);
+
     let parent = root;
-    for (const dir of dirs) {
+    for (const [index, dir] of dirs.entries()) {
       parent = ensureGroup(parent, dir);
+      parent.routePath ??= `/${folderParts.slice(0, offset + index + 1).join("/")}`;
     }
 
     parent.children.push({

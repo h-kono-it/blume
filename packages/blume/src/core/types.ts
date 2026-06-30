@@ -137,6 +137,12 @@ export type NavNode =
       display?: SidebarDisplay;
       icon?: string;
       route?: string;
+      /**
+       * The group's URL path (its folder route prefix), even when the folder
+       * has no index page to link. Used to scope the sidebar to a tab's section;
+       * not a clickable link (that's `route`).
+       */
+      path?: string;
       collapsed?: boolean;
       children: NavNode[];
     };

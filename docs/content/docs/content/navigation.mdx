@@ -86,18 +86,26 @@ sidebar:
 
 ## Tabs
 
-Render top-level sections as tabs in the header, useful for separating, say, docs
-from an API reference. A tab is highlighted when the current route falls under
-its `path`:
+Render top-level sections as tabs in the header, useful for splitting a large
+site into distinct areas — say adapters, an API, and AI guides. A tab is
+highlighted when the current route falls under its `path`:
 
 ```ts blume.config.ts lineNumbers
 navigation: {
   tabs: [
-    { label: "Docs", path: "/", icon: "book-open" },
+    { label: "Adapters", path: "/adapters", icon: "plug" },
     { label: "API", path: "/api", icon: "rocket" },
+    { label: "AI", path: "/ai", icon: "sparkles" },
   ],
 }
 ```
+
+Tabs also **scope the sidebar**: when the current route falls under a tab's
+`path`, the sidebar shows only that section's pages — so `/adapters/*` lists the
+adapters and nothing else. The folder at a tab's `path` becomes the section, so
+this needs no extra config beyond the tabs themselves; structure your content
+into a folder per tab and point each tab at it. A route under no tab (or a tab
+whose `path` is `/`) shows the full sidebar.
 
 ## Explicit sidebar
 

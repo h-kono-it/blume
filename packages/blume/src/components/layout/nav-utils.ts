@@ -1,4 +1,4 @@
-import type { NavNode } from "../../core/types.ts";
+import type { NavNode, NavTab } from "../../core/types.ts";
 
 /** A flat, ordered page reference used for previous/next pagination. */
 export interface FlatPage {
@@ -69,6 +69,69 @@ export const findBreadcrumbs = (nodes: NavNode[], route: string): Crumb[] => {
     return null;
   };
   return search(nodes, []) ?? [];
+};
+
+/** Whether `route` is the section root `base` or nested beneath it. */
+const isUnderPath = (route: string, base: string): boolean =>
+  route === base || route.startsWith(`${base}/`);
+
+/**
+ * The tab whose `path` is the longest prefix of `route`, mirroring the header's
+ * active-tab highlight. The root tab (`/`) is skipped — it spans everything and
+ * so never scopes the sidebar.
+ */
+const activeTab = (tabs: NavTab[], route: string): NavTab | null => {
+  let match: NavTab | null = null;
+  for (const tab of tabs) {
+    if (tab.path === "/" || !isUnderPath(route, tab.path)) {
+      continue;
+    }
+    if (!match || tab.path.length > match.path.length) {
+      match = tab;
+    }
+  }
+  return match;
+};
+
+/**
+ * The children of the group whose path is `base`, searched at any depth — so a
+ * content tree wrapped in a top-level container group still resolves to the
+ * right section. Returns null when no group sits exactly at `base`.
+ */
+const sectionChildren = (nodes: NavNode[], base: string): NavNode[] | null => {
+  for (const node of nodes) {
+    if (node.kind !== "group") {
+      continue;
+    }
+    if (node.path === base || node.route === base) {
+      return node.children;
+    }
+    const deeper = sectionChildren(node.children, base);
+    if (deeper) {
+      return deeper;
+    }
+  }
+  return null;
+};
+
+/**
+ * Scope the sidebar to the active tab's section. With tabs configured, a route
+ * under one tab shows only that tab's group — so a multi-section site (e.g.
+ * Adapters / API / AI tabs) drills each tab into its own pages instead of one
+ * global tree, the way Fumadocs' root folders do. Falls back to the full
+ * sidebar when no tab matches (or the tab maps to no group), so a route is
+ * never left with a blank sidebar.
+ */
+export const sidebarForRoute = (
+  sidebar: NavNode[],
+  tabs: NavTab[],
+  route: string
+): NavNode[] => {
+  const tab = activeTab(tabs, route);
+  if (!tab) {
+    return sidebar;
+  }
+  return sectionChildren(sidebar, tab.path) ?? sidebar;
 };
 
 /** Resolve previous/next pages around the current route. */
