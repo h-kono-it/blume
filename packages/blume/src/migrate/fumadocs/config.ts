@@ -1,7 +1,7 @@
 import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 
-import { join } from "pathe";
+import { basename, dirname, join } from "pathe";
 
 import type { BlumeConfig } from "../../core/schema.ts";
 
@@ -39,6 +39,41 @@ const prettifyTitle = (name: string): string => {
     .join(" ");
 };
 
+/**
+ * Generic monorepo app-shell package names. When the migrated project is named
+ * one of these, its name makes a poor doc title ("Web"), so we fall back to the
+ * repo name — but only in a monorepo, where a better name is actually available.
+ */
+const GENERIC_NAMES = new Set([
+  "api",
+  "app",
+  "client",
+  "frontend",
+  "server",
+  "site",
+  "web",
+  "www",
+]);
+
+/** The nearest ancestor that is a git repository root, or null. */
+const gitRepoRoot = (start: string): string | null => {
+  let dir = start;
+  for (;;) {
+    if (existsSync(join(dir, ".git"))) {
+      return dir;
+    }
+    const parent = dirname(dir);
+    if (parent === dir) {
+      return null;
+    }
+    dir = parent;
+  }
+};
+
+/** The unscoped package name (`@acme/web` -> `web`). */
+const bareName = (name: string): string =>
+  name.includes("/") ? name.slice(name.lastIndexOf("/") + 1) : name;
+
 const readTitle = async (root: string): Promise<string> => {
   const packageJson = join(root, "package.json");
   if (!existsSync(packageJson)) {
@@ -48,9 +83,23 @@ const readTitle = async (root: string): Promise<string> => {
     const parsed = JSON.parse(await readFile(packageJson, "utf-8")) as {
       name?: unknown;
     };
-    return typeof parsed.name === "string" && parsed.name.trim()
-      ? prettifyTitle(parsed.name)
-      : "Documentation";
+    const { name } = parsed;
+    if (typeof name !== "string" || !name.trim()) {
+      return "Documentation";
+    }
+    // A generic name (`apps/web` -> "Web") is a weak title. In a monorepo the
+    // repo's own directory name is usually better, so prefer it when this isn't
+    // already the repo root.
+    if (GENERIC_NAMES.has(bareName(name).toLowerCase())) {
+      const repoRoot = gitRepoRoot(root);
+      if (repoRoot && repoRoot !== root) {
+        const repoTitle = prettifyTitle(basename(repoRoot));
+        if (repoTitle !== "Documentation") {
+          return repoTitle;
+        }
+      }
+    }
+    return prettifyTitle(name);
   } catch {
     return "Documentation";
   }

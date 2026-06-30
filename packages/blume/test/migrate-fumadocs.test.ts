@@ -415,6 +415,21 @@ describe("loadFumadocsConfig", () => {
     const { config } = await loadFumadocsConfig(root);
     expect(config.title).toBe("Documentation");
   });
+
+  it("falls back to the repo name for a generic monorepo package name", async () => {
+    const root = await project({
+      "myrepo/.git/HEAD": "ref: refs/heads/main\n",
+      "myrepo/apps/web/lib/source.ts":
+        'export const source = loader({ baseUrl: "/docs" });\n',
+      "myrepo/apps/web/package.json": JSON.stringify({ name: "web" }),
+    });
+
+    const { config } = await loadFumadocsConfig(
+      join(root, "myrepo", "apps", "web")
+    );
+    // "Web" (from the apps/web package name) is a weak title; the repo dir wins.
+    expect(config.title).toBe("Myrepo");
+  });
 });
 
 describe("migrateFumadocs end to end", () => {
@@ -530,6 +545,54 @@ describe("migrateFumadocs end to end", () => {
       rootMeta.indexOf('"providers"')
     );
     expect(result.warnings.some((w) => w.includes("...providers"))).toBe(true);
+  });
+
+  it("tears down the old Next/Fumadocs scaffolding", async () => {
+    const root = await project({
+      "app/page.tsx": "export default function Page() {\n  return null;\n}\n",
+      "content/docs/index.mdx": "# Home\n",
+      "mdx-components.tsx": "export const useMDXComponents = (c) => c;\n",
+      "next.config.ts": "export default {};\n",
+      "package.json": JSON.stringify({
+        name: "docs-app",
+        scripts: {
+          build: "next build",
+          dev: "next dev",
+          postinstall: "fumadocs-mdx",
+          start: "next start",
+        },
+      }),
+      "source.config.ts": "export const docs = {};\n",
+    });
+
+    const result = await migrateFumadocs(root);
+
+    // Scripts repointed at the Blume CLI; the fumadocs-mdx postinstall dropped.
+    const pkg = JSON.parse(
+      await readFile(join(root, "package.json"), "utf-8")
+    ) as { scripts: Record<string, string> };
+    expect(pkg.scripts).toEqual({
+      build: "blume build",
+      dev: "blume dev",
+      start: "blume preview",
+    });
+
+    // Blume's outputs are ignored.
+    const gitignore = await readFile(join(root, ".gitignore"), "utf-8");
+    expect(gitignore).toContain(".blume/");
+    expect(gitignore).toContain("dist/");
+
+    // The leftover framework files are surfaced as a delete checklist.
+    expect(
+      result.warnings.some(
+        (w) =>
+          w.includes("Safe to delete") &&
+          w.includes("next.config.ts") &&
+          w.includes("source.config.ts") &&
+          w.includes("mdx-components.tsx") &&
+          w.includes("app")
+      )
+    ).toBe(true);
   });
 
   it("writes a default config when there is no content/docs", async () => {

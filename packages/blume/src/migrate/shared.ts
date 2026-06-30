@@ -1,4 +1,5 @@
-import { writeFile } from "node:fs/promises";
+import { existsSync } from "node:fs";
+import { readFile, writeFile } from "node:fs/promises";
 
 import { join } from "pathe";
 
@@ -19,6 +20,102 @@ export const writeBlumeConfig = async (
   const body = `import { defineConfig } from "blume";\n\nexport default defineConfig(${JSON.stringify(config, null, 2)});\n`;
   await writeFile(join(root, "blume.config.ts"), body, "utf-8");
 };
+
+// ---------------------------------------------------------------------------
+// Old-framework teardown
+// ---------------------------------------------------------------------------
+
+/** The Blume command each standard npm script maps to after a migration. */
+const BLUME_SCRIPTS: Record<string, string> = {
+  build: "blume build",
+  dev: "blume dev",
+  start: "blume preview",
+};
+
+/**
+ * Rewrite a migrated project's npm scripts off the old framework's CLI. A
+ * `dev`/`build`/`start` script whose command invokes `cli` (e.g. `/\bnext\b/`)
+ * is repointed at the matching Blume command (`start` -> `blume preview`); a
+ * script whose command matches `remove` (e.g. a `fumadocs-mdx` postinstall) is
+ * dropped. Scripts that don't match either are left untouched, so custom tasks
+ * survive. Returns true when `package.json` changed.
+ */
+export const rewriteFrameworkScripts = async (
+  root: string,
+  cli: RegExp,
+  remove?: RegExp
+): Promise<boolean> => {
+  const pkgPath = join(root, "package.json");
+  if (!existsSync(pkgPath)) {
+    return false;
+  }
+  let pkg: { scripts?: Record<string, unknown> };
+  try {
+    pkg = JSON.parse(await readFile(pkgPath, "utf-8"));
+  } catch {
+    return false;
+  }
+  const { scripts } = pkg;
+  if (!scripts || typeof scripts !== "object") {
+    return false;
+  }
+
+  const next: Record<string, unknown> = {};
+  let changed = false;
+  for (const [name, command] of Object.entries(scripts)) {
+    const blume = BLUME_SCRIPTS[name];
+    if (typeof command === "string" && remove?.test(command)) {
+      changed = true;
+    } else if (
+      typeof command === "string" &&
+      blume &&
+      cli.test(command) &&
+      command !== blume
+    ) {
+      next[name] = blume;
+      changed = true;
+    } else {
+      next[name] = command;
+    }
+  }
+
+  if (changed) {
+    pkg.scripts = next;
+    await writeFile(pkgPath, `${JSON.stringify(pkg, null, 2)}\n`, "utf-8");
+  }
+  return changed;
+};
+
+/** A `.gitignore` line, normalized for comparison (trailing slashes dropped). */
+const gitignoreKey = (line: string): string => line.trim().replace(/\/+$/u, "");
+
+/**
+ * Ensure `.gitignore` ignores each of `entries`, appending any that are missing
+ * (creating the file when absent). Trailing-slash differences (`dist` vs
+ * `dist/`) count as already present. Returns the entries actually added.
+ */
+export const ensureGitignore = async (
+  root: string,
+  entries: string[]
+): Promise<string[]> => {
+  const path = join(root, ".gitignore");
+  const existing = existsSync(path) ? await readFile(path, "utf-8") : "";
+  const present = new Set(
+    existing.split("\n").map(gitignoreKey).filter(Boolean)
+  );
+  const added = entries.filter((entry) => !present.has(gitignoreKey(entry)));
+  if (added.length === 0) {
+    return [];
+  }
+  const gap = existing.length > 0 && !existing.endsWith("\n") ? "\n" : "";
+  await writeFile(path, `${existing}${gap}${added.join("\n")}\n`, "utf-8");
+  return added;
+};
+
+/** Of the candidate project-relative paths, the ones that still exist — the old
+ * framework files a migration leaves behind for the user to remove by hand. */
+export const leftoverFiles = (root: string, candidates: string[]): string[] =>
+  candidates.filter((candidate) => existsSync(join(root, candidate)));
 
 // ---------------------------------------------------------------------------
 // Callout components -> Blume `:::` directives

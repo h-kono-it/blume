@@ -1,5 +1,5 @@
 import { afterAll, describe, expect, it } from "bun:test";
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 
 import { join } from "pathe";
@@ -12,14 +12,17 @@ import {
   asLiteralArray,
   asLiteralString,
   attribute,
+  ensureGitignore,
   findOpenTagEnd,
   findStringEnd,
   isLiteralObject,
+  leftoverFiles,
   parseKey,
   parseLiteral,
   readString,
   renameTag,
   rewriteCallouts,
+  rewriteFrameworkScripts,
   scanArray,
   scanObject,
   splitKeyValue,
@@ -62,6 +65,83 @@ describe("writeBlumeConfig", () => {
     expect(written).toContain('"title": "Docs Test"');
     expect(written).toContain('"description": "Hi"');
     expect(written.endsWith(");\n")).toBe(true);
+  });
+});
+
+describe("rewriteFrameworkScripts", () => {
+  it("repoints dev/build/start at Blume and drops framework-only scripts", async () => {
+    const root = await tempDir();
+    await writeFile(
+      join(root, "package.json"),
+      JSON.stringify({
+        scripts: {
+          build: "next build",
+          dev: "next dev",
+          lint: "eslint .",
+          postinstall: "fumadocs-mdx",
+          start: "next start",
+        },
+      }),
+      "utf-8"
+    );
+
+    expect(await rewriteFrameworkScripts(root, /\bnext\b/u, /fumadocs/u)).toBe(
+      true
+    );
+    const pkg = JSON.parse(
+      await readFile(join(root, "package.json"), "utf-8")
+    ) as { scripts: Record<string, string> };
+    expect(pkg.scripts).toEqual({
+      build: "blume build",
+      dev: "blume dev",
+      lint: "eslint .",
+      start: "blume preview",
+    });
+  });
+
+  it("is a no-op when no script invokes the framework", async () => {
+    const root = await tempDir();
+    await writeFile(
+      join(root, "package.json"),
+      JSON.stringify({ scripts: { dev: "blume dev" } }),
+      "utf-8"
+    );
+    expect(await rewriteFrameworkScripts(root, /\bnext\b/u)).toBe(false);
+  });
+});
+
+describe("ensureGitignore", () => {
+  it("appends only the missing entries (trailing slash agnostic)", async () => {
+    const root = await tempDir();
+    await writeFile(join(root, ".gitignore"), "node_modules\ndist/\n", "utf-8");
+
+    expect(await ensureGitignore(root, [".blume/", "dist/"])).toEqual([
+      ".blume/",
+    ]);
+    expect(await readFile(join(root, ".gitignore"), "utf-8")).toContain(
+      ".blume/"
+    );
+  });
+
+  it("creates .gitignore when absent", async () => {
+    const root = await tempDir();
+    expect(await ensureGitignore(root, [".blume/", "dist/"])).toEqual([
+      ".blume/",
+      "dist/",
+    ]);
+    expect(await readFile(join(root, ".gitignore"), "utf-8")).toBe(
+      ".blume/\ndist/\n"
+    );
+  });
+});
+
+describe("leftoverFiles", () => {
+  it("returns only the candidate paths that exist", async () => {
+    const root = await tempDir();
+    await writeFile(join(root, "next.config.ts"), "", "utf-8");
+    expect(leftoverFiles(root, ["next.config.ts", "source.config.ts"])).toEqual(
+      ["next.config.ts"]
+    );
   });
 });
 

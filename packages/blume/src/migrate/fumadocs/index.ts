@@ -6,7 +6,12 @@ import { glob } from "tinyglobby";
 
 import matter from "../../core/frontmatter.ts";
 import type { FolderMeta } from "../../core/schema.ts";
-import { writeBlumeConfig } from "../shared.ts";
+import {
+  ensureGitignore,
+  leftoverFiles,
+  rewriteFrameworkScripts,
+  writeBlumeConfig,
+} from "../shared.ts";
 import { loadFumadocsConfig } from "./config.ts";
 import {
   inlineFumadocsIncludes,
@@ -35,6 +40,23 @@ const SOURCE_DIR = "content/docs";
 const PAGE_GLOB = "**/*.{md,mdx}";
 const META_GLOB = "**/meta.json";
 const IGNORE = ["**/node_modules/**"];
+
+/**
+ * Old Next/Fumadocs scaffolding a migration leaves behind. Blume can't safely
+ * auto-delete these (they may hold custom code), so the ones that exist are
+ * surfaced as a "safe to delete" checklist once the migration is verified.
+ */
+const FUMADOCS_LEFTOVERS = [
+  "next.config.ts",
+  "next.config.mjs",
+  "next.config.js",
+  "source.config.ts",
+  "source.config.mjs",
+  "source.config.js",
+  "mdx-components.tsx",
+  "next-env.d.ts",
+  "app",
+];
 
 interface PageResult {
   includeWarnings: string[];
@@ -270,6 +292,17 @@ export const migrateFumadocsProject = async (
   await writeBlumeConfig(root, config);
   const cleanupWarnings = await cleanupSourceDirs(root);
 
+  // Tear down the old Next/Fumadocs scaffolding so the project builds as Blume:
+  // repoint the npm scripts, ignore Blume's outputs, and list the leftover
+  // framework files to delete by hand.
+  const scriptsRewritten = await rewriteFrameworkScripts(
+    root,
+    /\bnext\b/u,
+    /fumadocs/u
+  );
+  const gitignoreAdded = await ensureGitignore(root, [".blume/", "dist/"]);
+  const leftovers = leftoverFiles(root, FUMADOCS_LEFTOVERS);
+
   const warnings = [
     ...configWarnings,
     ...metaWarnings,
@@ -285,6 +318,17 @@ export const migrateFumadocsProject = async (
   if (pages.unsupported.length > 0) {
     warnings.push(
       `Components without a drop-in Blume equivalent need manual review: ${pages.unsupported.join(", ")}.`
+    );
+  }
+  if (scriptsRewritten) {
+    warnings.push("Repointed the dev/build/start scripts at the Blume CLI.");
+  }
+  if (gitignoreAdded.length > 0) {
+    warnings.push(`Added ${gitignoreAdded.join(", ")} to .gitignore.`);
+  }
+  if (leftovers.length > 0) {
+    warnings.push(
+      `Safe to delete once the migration looks right: ${leftovers.join(", ")}. Also drop the \`next\` plugin from tsconfig.json and the \`.next\`/\`.source\` lines from .gitignore.`
     );
   }
   warnings.push("Review blume.config.ts and the generated meta.ts files.");
