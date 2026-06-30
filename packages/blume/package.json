@@ -31,10 +31,17 @@
     "docs"
   ],
   "type": "module",
+  "types": "./dist/types/index.d.ts",
   "exports": {
-    ".": "./src/index.ts",
+    ".": {
+      "types": "./dist/types/index.d.ts",
+      "default": "./src/index.ts"
+    },
     "./ai/*": "./src/ai/*",
-    "./schema": "./src/core/schema.ts",
+    "./schema": {
+      "types": "./dist/types/core/schema.d.ts",
+      "default": "./src/core/schema.ts"
+    },
     "./runtime": "./src/runtime/index.ts",
     "./astro": "./src/astro/index.ts",
     "./og": "./src/og/index.ts",

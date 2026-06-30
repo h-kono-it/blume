@@ -1,5 +1,5 @@
 #!/usr/bin/env bun
-// Build the Node-runnable CLI into dist/.
+// Build the Node-runnable CLI and the public-API type declarations into dist/.
 //
 // Blume ships its Astro runtime (components, theme, integration, markdown
 // processors) as source: the consumer's Astro/Vite pipeline compiles those, and
@@ -9,11 +9,19 @@
 //
 // Bun bundles src/cli/index.ts (and its Node-side imports) into
 // dist/cli/index.js and externalizes every declared dependency — those resolve
-// from the consumer's install at runtime. tsgo stays the typechecker
-// (`bun run typecheck`); no .d.ts is emitted because nothing imports the CLI as
-// a typed module — the public API's types come from the shipped `src` exports.
+// from the consumer's install at runtime.
+//
+// Separately, tsc emits .d.ts for the public entry points (`blume`, `blume/
+// schema`) into dist/types/. Without them a consumer's tsconfig follows the `.`
+// export into `src/*.ts` and floods their typecheck with errors it can't resolve
+// (`.ts` import extensions, `node:fs`, the migrator's internals) the moment they
+// typecheck their own `blume.config.ts` / `meta.ts`. The exports map points the
+// `types` condition at these declarations while the runtime keeps resolving to
+// source. tsgo stays the repo's own typechecker (`bun run typecheck`).
 import { rm } from "node:fs/promises";
 import path from "node:path";
+
+import { $ } from "bun";
 
 import pkg from "../package.json" with { type: "json" };
 
@@ -52,4 +60,8 @@ if (!result.success) {
   throw new Error("CLI bundle failed");
 }
 
-console.log(`build: dist/ ready (${result.outputs.length} file(s))`);
+// Emit public-API declarations to dist/types/. `$` resolves tsc from
+// node_modules/.bin and throws on a non-zero exit, failing the build.
+await $`tsc -p tsconfig.build.json`.cwd(root);
+
+console.log(`build: dist/ ready (${result.outputs.length} file(s) + types)`);
