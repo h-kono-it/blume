@@ -123,6 +123,23 @@ export const runtimeDependencies = (options: {
 };
 
 /** Generate `.blume/astro.config.mjs`. */
+/**
+ * Render project tsconfig path aliases as `vite.resolve.alias` object entries.
+ * Longest find first, so a more specific prefix (`@components`) is matched
+ * before a broader one (`@`); these follow Blume's `blume:*` aliases, which
+ * never overlap with a project's.
+ */
+const renderUserAliases = (
+  aliases: Record<string, string> | undefined
+): string =>
+  Object.entries(aliases ?? {})
+    .toSorted(([a], [b]) => b.length - a.length)
+    .map(
+      ([find, replacement]) =>
+        `\n        ${JSON.stringify(find)}: ${JSON.stringify(replacement)},`
+    )
+    .join("");
+
 export const astroConfigTemplate = (options: {
   context: ProjectContext;
   config: ResolvedConfig;
@@ -135,6 +152,8 @@ export const astroConfigTemplate = (options: {
   examplesPath: string;
   themePath: string;
   searchClientPath: string;
+  /** Project tsconfig path aliases (`find` -> absolute dir), e.g. `@` -> src. */
+  aliases?: Record<string, string>;
 }): string => {
   const { context, config, needsReact, pages, dataPath, themePath } = options;
   const {
@@ -145,6 +164,7 @@ export const astroConfigTemplate = (options: {
     searchClientPath,
   } = options;
   const { deployment } = config;
+  const userAliasLines = renderUserAliases(options.aliases);
   const server = deployment.output === "server";
 
   // The project root plus the workspace root, so hoisted dependencies (e.g.
@@ -303,7 +323,7 @@ export default defineConfig({
         "blume:data": ${JSON.stringify(dataPath)},
         "blume:examples": ${JSON.stringify(examplesPath)},
         "blume:search-client": ${JSON.stringify(searchClientPath)},
-        "blume:theme": ${JSON.stringify(themePath)},
+        "blume:theme": ${JSON.stringify(themePath)},${userAliasLines}
       },
     },
     server: {

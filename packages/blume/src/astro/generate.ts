@@ -29,6 +29,7 @@ import { resolveFallbackLocale } from "../core/i18n.ts";
 import { packageRoot } from "../core/package-root.ts";
 import type { BlumeProject } from "../core/project-graph.ts";
 import type { ResolvedConfig } from "../core/schema.ts";
+import { resolveTsconfigAliases } from "../core/tsconfig-aliases.ts";
 import type { Navigation } from "../core/types.ts";
 import { buildRssFeeds, renderRssFeed } from "../deploy/rss.ts";
 import {
@@ -760,6 +761,7 @@ export const generateRuntime = async (
     write(
       join(out, "astro.config.mjs"),
       astroConfigTemplate({
+        aliases: resolveTsconfigAliases(context.root),
         config,
         contentRoutes: project.manifest.routes.map((route) => route.path),
         context,

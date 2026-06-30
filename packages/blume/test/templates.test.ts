@@ -397,6 +397,27 @@ describe("astroConfigTemplate", () => {
     expect(out).toContain('import adapter from "@astrojs/vercel"');
     expect(out).toContain("adapter: adapter(),");
   });
+
+  it("wires project tsconfig aliases into vite resolve.alias, longest first", () => {
+    const out = astroConfigTemplate({
+      aliases: { "@": "/proj/src", "@ui": "/proj/src/components/ui" },
+      config,
+      contentRoutes: ["/"],
+      context: context(),
+      dataPath: DATA_PATH,
+      examplesPath: EXAMPLES_PATH,
+      needsReact: false,
+      pages: [],
+      searchClientPath: SEARCH_CLIENT_PATH,
+      themePath: THEME_PATH,
+    });
+    expect(out).toContain('"@": "/proj/src"');
+    expect(out).toContain('"@ui": "/proj/src/components/ui"');
+    // A more specific prefix is matched before the broader one...
+    expect(out.indexOf('"@ui"')).toBeLessThan(out.indexOf('"@": '));
+    // ...and both follow Blume's own aliases.
+    expect(out.indexOf('"blume:theme"')).toBeLessThan(out.indexOf('"@ui"'));
+  });
 });
 
 describe("astroConfigTemplate workspace root", () => {
