@@ -776,6 +776,7 @@ import Badge from "blume/components/content/Badge.astro";
 import Callout from "blume/components/content/Callout.astro";
 import Card from "blume/components/content/Card.astro";
 import CardGroup from "blume/components/content/CardGroup.astro";
+import CodeBlock from "blume/components/content/CodeBlock.astro";
 import CodeGroup from "blume/components/content/CodeGroup.astro";
 import ColorRoot from "blume/components/content/Color.astro";
 import ColorItem from "blume/components/content/ColorItem.astro";
@@ -823,6 +824,7 @@ const components = {
   Callout,
   Card,
   CardGroup,
+  CodeBlock,
   CodeGroup,
   Color,
   Column,

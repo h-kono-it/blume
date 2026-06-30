@@ -584,6 +584,35 @@ An Astro example renders live with no client JavaScript:
 
 <Component path="card" />
 
+## CodeBlock
+
+`CodeBlock` highlights a code string with the same Shiki theme and transformers
+as your fenced code — including the light/dark swap — for places a fence can't
+go, like a landing page or a custom component. Pass `code` and a `lang`:
+
+<CodeBlock
+  lang="ts"
+  code={`export const greet = (name: string): string =>
+  \`Hello, \${name}!\`;`}
+/>
+
+```astro
+---
+import CodeBlock from "blume/components/content/CodeBlock.astro";
+---
+
+<CodeBlock lang="ts" code={source} />
+```
+
+To highlight to an HTML string yourself (e.g. inside your own component), import
+the underlying helper from `blume/markdown`:
+
+```ts
+import { highlightCode } from "blume/markdown";
+
+const html = await highlightCode(source, "ts");
+```
+
 ## Diff
 
 `Diff` renders a git-style diff, highlighted with the same Shiki theme as your

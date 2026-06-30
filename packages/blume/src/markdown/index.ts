@@ -6,6 +6,7 @@ import {
   transformerNotationHighlight,
   transformerNotationWordHighlight,
 } from "@shikijs/transformers";
+import { codeToHtml } from "shiki";
 
 import { codeTitleTransformer } from "./code-title.ts";
 import { directiveToCalloutPlugin } from "./directives.ts";
@@ -95,6 +96,74 @@ export const blumeShikiTransformers = (
   // The fence-meta reader (title / line numbers) always runs last.
   transformers.push(codeTitleTransformer() as unknown as ShikiTransformer);
   return transformers;
+};
+
+/**
+ * The light/dark Shiki themes Blume highlights with. Kept in lockstep with the
+ * generated Astro config's `shikiConfig.themes` so code highlighted outside the
+ * Markdown pipeline (via {@link highlightCode}) matches fenced code exactly.
+ */
+const CODE_THEMES = { dark: "github-dark", light: "github-light" } as const;
+
+const escapeHtml = (value: string): string =>
+  value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;");
+
+/**
+ * Tag the highlighted `<pre>` with `astro-code` (plus any extra classes) so the
+ * theme's code-block styles apply — `codeToHtml`'s bare output is `pre.shiki`,
+ * which the theme doesn't style.
+ */
+const astroCodeClassTransformer = (extra?: string): ShikiTransformer =>
+  ({
+    name: "blume:astro-code-class",
+    pre(node: { properties: Record<string, unknown> }) {
+      const existing =
+        typeof node.properties.class === "string" ? node.properties.class : "";
+      node.properties.class = `astro-code ${extra ?? ""} ${existing}`
+        .replaceAll(/\s+/gu, " ")
+        .trim();
+    },
+  }) as unknown as ShikiTransformer;
+
+export interface HighlightCodeOptions extends BlumeShikiOptions {
+  /** Extra `<pre>` class names, e.g. `blume-source` for a height-capped pane. */
+  className?: string;
+}
+
+/**
+ * Highlight a code string with the same Shiki themes and transformers as Blume's
+ * Markdown code fences, returning ready-to-render HTML. Use it to show themed
+ * code *outside* the Markdown pipeline (custom pages, components): the output
+ * carries the `astro-code` class and dual (light/dark) color variables, so the
+ * theme styles it — including the light/dark swap — with no extra CSS. The
+ * theme's code-block rules are scoped to `.prose`, so render the result inside a
+ * `.prose` container (the shipped `<CodeBlock>` does this). An unknown language
+ * falls back to an escaped plain block.
+ */
+export const highlightCode = async (
+  code: string,
+  lang: string,
+  options: HighlightCodeOptions = {}
+): Promise<string> => {
+  try {
+    return await codeToHtml(code, {
+      defaultColor: false,
+      lang,
+      themes: CODE_THEMES,
+      transformers: [
+        ...blumeShikiTransformers({ icons: options.icons }),
+        astroCodeClassTransformer(options.className),
+      ],
+    });
+  } catch {
+    const className = `astro-code ${options.className ?? ""}`
+      .replaceAll(/\s+/gu, " ")
+      .trim();
+    return `<pre class="${className}"><code>${escapeHtml(code)}</code></pre>`;
+  }
 };
 
 /**
