@@ -50,6 +50,14 @@ interface Props {
   fontCssVars?: string[];
   searchEnabled: boolean;
   askEnabled?: boolean;
+  /**
+   * Absolute site URL (`data.config.site`). When set, `canonical` and the
+   * generated `og:image` for this route are derived from it automatically;
+   * `canonical`/`ogImage` below still override.
+   */
+  siteUrl?: string | null;
+  /** Whether OG image generation is on (`data.config.og.enabled`). */
+  ogEnabled?: boolean;
   /** SEO overrides; a marketing page often sets its own canonical/og image. */
   ogImage?: string | null;
   canonical?: string | null;
@@ -76,6 +84,8 @@ const {
   fontCssVars,
   searchEnabled,
   askEnabled,
+  siteUrl,
+  ogEnabled,
   ogImage,
   canonical,
   noindex,
@@ -93,6 +103,16 @@ const pageTitle = page?.title ?? site.title;
 const description = page?.description ?? site.description;
 const route = page?.route ?? "/";
 
+// Derive canonical + og:image from the site URL the same way the catch-all does
+// for content pages, so a custom page gets both for free. The matching OG card
+// (`/og/<slug>.png`, `index` for the home) is generated for static custom pages
+// when `og.enabled`. Explicit props still win.
+const ogSlug = route === "/" ? "index" : route.slice(1);
+const resolvedCanonical =
+  canonical ?? (siteUrl ? `${siteUrl}${route === "/" ? "" : route}` : null);
+const resolvedOgImage =
+  ogImage ?? (ogEnabled && siteUrl ? `${siteUrl}/og/${ogSlug}.png` : null);
+
 const initialThemeScript = themeInitScript(themeMode);
 const bannerScript = banner?.dismissible
   ? bannerInitScript(banner.key)
@@ -107,17 +127,17 @@ const bannerScript = banner?.dismissible
     <title>{pageTitle}</title>
     <Favicon appleIcon={appleIcon} favicon={favicon} />
     <Fonts cssVars={fontCssVars ?? []} />
-    {canonical && <link href={canonical} rel="canonical" />}
+    {resolvedCanonical && <link href={resolvedCanonical} rel="canonical" />}
     {noindex && <meta content="noindex" name="robots" />}
     {description && <meta content={description} name="description" />}
     <meta content="website" property="og:type" />
     <meta content={pageTitle} property="og:title" />
     {description && <meta content={description} property="og:description" />}
     {
-      ogImage && (
+      resolvedOgImage && (
         <>
-          <meta content={ogImage} property="og:image" />
-          <meta content={ogImage} name="twitter:image" />
+          <meta content={resolvedOgImage} property="og:image" />
+          <meta content={resolvedOgImage} name="twitter:image" />
           <meta content="summary_large_image" name="twitter:card" />
         </>
       )

@@ -29,14 +29,15 @@ const copyScript = `(()=>{const CHECK='<svg class="size-4" fill="none" height="1
 <PageLayout
   analytics={config.analytics}
   banner={config.banner}
-  canonical={config.site}
   favicon={config.favicon}
   fontCssVars={data.fontCssVars}
   logo={config.logo}
   navigation={data.navigation}
+  ogEnabled={config.og.enabled}
   page={{ description: config.description, route: "/", title: pageTitle }}
   searchEnabled={config.search.enabled}
   site={{ description: config.description, title: config.title }}
+  siteUrl={config.site}
   themeMode={config.theme.mode}
 >
   <div

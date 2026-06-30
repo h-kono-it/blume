@@ -45,7 +45,7 @@ import { buildThemeCss } from "../theme/palette.ts";
 import { twoslashCss } from "../theme/twoslash.ts";
 import { discoverExamples } from "./examples.ts";
 import { discoverIslands } from "./islands.ts";
-import { discoverPages } from "./pages.ts";
+import { customOgRoutes, discoverPages } from "./pages.ts";
 import {
   askEndpointTemplate,
   astroConfigTemplate,
@@ -746,6 +746,11 @@ export const generateRuntime = async (
   const needsVue = frameworks.has("vue");
   const needsSvelte = frameworks.has("svelte");
 
+  // Custom pages that should get a generated OG card (the home most of all).
+  // Computed before the MCP `.well-known` routes are appended below — those are
+  // private and filtered out anyway, but the intent is the user's pages.
+  const ogRoutes = customOgRoutes(pages, config.title, config.description);
+
   // The hosted MCP server. The `.well-known` discovery docs are injected as
   // prerendered routes alongside user pages; the server endpoint itself is a
   // normal (server-rendered) page written by `writeMcpFiles`.
@@ -862,7 +867,7 @@ export const generateRuntime = async (
   if (config.seo.og.enabled) {
     await write(
       join(srcDir, "pages", "og", "[...slug].png.ts"),
-      ogEndpointTemplate()
+      ogEndpointTemplate(ogRoutes)
     );
   }
 

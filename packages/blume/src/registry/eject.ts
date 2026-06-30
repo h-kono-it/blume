@@ -12,7 +12,7 @@ import {
   detectNeedsReact,
 } from "../astro/generate.ts";
 import { discoverIslands } from "../astro/islands.ts";
-import { discoverPages } from "../astro/pages.ts";
+import { customOgRoutes, discoverPages } from "../astro/pages.ts";
 import {
   askEndpointTemplate,
   astroConfigTemplate,
@@ -199,7 +199,9 @@ export const eject = async (root: string): Promise<string[]> => {
 
   if (config.seo.og.enabled) {
     files.push({
-      content: ogEndpointTemplate(),
+      content: ogEndpointTemplate(
+        customOgRoutes(pages, config.title, config.description)
+      ),
       path: join(srcDir, "pages", "og", "[...slug].png.ts"),
     });
   }
