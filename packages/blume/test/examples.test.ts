@@ -100,4 +100,23 @@ describe("discoverExamples", () => {
     expect(result.warnings).toHaveLength(0);
     await rm(empty, { force: true, recursive: true });
   });
+
+  it("reads from a configured subdir, keying paths relative to it", async () => {
+    // A registry-style layout: examples live under registry/<pkg>/, not a
+    // top-level examples/. The path key is relative to the configured dir.
+    const reg = await mkdtemp(join(tmpdir(), "blume-examples-reg-"));
+    const file = join(reg, "registry", "files-sdk", "file-list", "basic.tsx");
+    await mkdir(dirname(file), { recursive: true });
+    await writeFile(file, "export default function FileList() {}");
+
+    // The default subdir doesn't see it.
+    const fromDefault = await discoverExamples(reg);
+    expect(fromDefault.examples).toHaveLength(0);
+
+    const map = byPath(await discoverExamples(reg, "registry/files-sdk"));
+    expect(map.has("file-list/basic")).toBe(true);
+    expect(map.get("file-list/basic")?.framework).toBe("react");
+
+    await rm(reg, { force: true, recursive: true });
+  });
 });

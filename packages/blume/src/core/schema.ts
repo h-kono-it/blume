@@ -1021,6 +1021,14 @@ export const blumeConfigSchema = z
     contextual: contextualConfigSchema.default({}),
     deployment: deploymentConfigSchema.default({}),
     description: z.string().optional(),
+    /**
+     * Directory (relative to the project root) that `<Component path>` resolves
+     * live previews and their source against. Defaults to `examples`; point it
+     * elsewhere when examples live outside a top-level `examples/` — e.g. a
+     * registry layout like `registry/<pkg>`, where a `<Component path>` key is
+     * then relative to that directory.
+     */
+    examples: z.string().default("examples"),
     export: exportConfigSchema.default(false),
     favicon: faviconConfigSchema.optional(),
     feedback: z.boolean().default(true),

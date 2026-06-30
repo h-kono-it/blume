@@ -44,18 +44,20 @@ const FRAMEWORK_BY_EXT: Record<string, ExampleFramework> = {
 const EXAMPLE_FILE = /\.(?<ext>astro|jsx|svelte|tsx|vue)$/u;
 
 /**
- * Discover preview examples under `<root>/examples`. Every `.astro`/`.tsx`/
- * `.jsx`/`.vue`/`.svelte` file becomes addressable by `<Component path="...">`,
- * where the path is the file's location under `examples/` without its extension
- * (e.g. `forms/login.tsx` → `forms/login`). Discovery is path-based (a glob),
- * so no example code is executed. Framework examples carry a hydration mode
- * (default `client:visible`, overridable via `export const client`); `.astro`
- * examples render statically with no client directive.
+ * Discover preview examples under `<root>/<subdir>` (the `examples` config,
+ * default `examples`). Every `.astro`/`.tsx`/`.jsx`/`.vue`/`.svelte` file
+ * becomes addressable by `<Component path="...">`, where the path is the file's
+ * location under that directory without its extension (e.g. `forms/login.tsx` →
+ * `forms/login`). Discovery is path-based (a glob), so no example code is
+ * executed. Framework examples carry a hydration mode (default `client:visible`,
+ * overridable via `export const client`); `.astro` examples render statically
+ * with no client directive.
  */
 export const discoverExamples = async (
-  root: string
+  root: string,
+  subdir = "examples"
 ): Promise<ExampleDiscovery> => {
-  const dir = join(root, "examples");
+  const dir = join(root, subdir);
   const matches = await glob(["**/*.{astro,jsx,svelte,tsx,vue}"], {
     absolute: true,
     cwd: dir,

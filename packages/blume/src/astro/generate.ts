@@ -829,7 +829,7 @@ export const generateRuntime = async (
       detectNeedsReact(context.root),
       readOptional(context.themeFile),
       discoverIslands(context.root),
-      discoverExamples(context.root),
+      discoverExamples(context.root, config.examples),
     ]);
   // Each island/example framework enables its Astro renderer. React also
   // switches on for any project `.tsx`/`.jsx` and for Ask AI; Vue/Svelte are

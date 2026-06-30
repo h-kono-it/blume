@@ -573,6 +573,22 @@ a live preview alongside its highlighted source, in tabs. Point it at a file wit
 examples are all supported; framework examples hydrate, Astro ones render
 statically. It keeps the preview and the code in sync from a single file.
 
+The directory is configurable — set `examples` in `blume.config.ts` when your
+examples live elsewhere (e.g. a registry layout). `path` is always relative to
+it:
+
+```ts
+// blume.config.ts
+export default defineConfig({
+  examples: "registry/files-sdk",
+});
+```
+
+```astro
+<!-- registry/files-sdk/file-list/basic.tsx -->
+<Component path="file-list/basic" />
+```
+
 <Component path="counter" />
 
 ```astro
