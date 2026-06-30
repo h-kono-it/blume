@@ -14,6 +14,7 @@ import Banner from "./Banner.astro";
 import Breadcrumbs from "./Breadcrumbs.astro";
 import Favicon from "./Favicon.astro";
 import Fonts from "./Fonts.astro";
+import { bannerInitScript, themeInitScript } from "./head-scripts.ts";
 import Header from "./Header.astro";
 import { findBreadcrumbs, flattenPages, getPagination } from "./nav-utils.ts";
 import NavTree from "./NavTree.astro";
@@ -206,11 +207,9 @@ const structuredDataJson = structuredData
   ? JSON.stringify(structuredData).replaceAll("<", "\\u003c")
   : null;
 
-const initialThemeScript = `(()=>{const m=${JSON.stringify(themeMode)};const s=localStorage.getItem("blume-theme");const sys=matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light";document.documentElement.dataset.theme=s??(m==="system"?sys:m);})();`;
-
-// Pre-paint: hide a previously-dismissed banner before it flashes in.
+const initialThemeScript = themeInitScript(themeMode);
 const bannerScript = banner?.dismissible
-  ? `(()=>{if(localStorage.getItem("blume-banner:"+${JSON.stringify(banner.key)}))document.documentElement.setAttribute("data-blume-banner-hidden","");})();`
+  ? bannerInitScript(banner.key)
   : null;
 ---
 

@@ -169,9 +169,45 @@ const posts = (await getCollection("docs"))
 
 ## Using the site layout
 
-To give a custom page the full Blume chrome — header, sidebar, search, and theme
-— wrap it in `RootLayout`, the same layout the generated pages use. Pull the
-required props straight from `blume:data`:
+`RootLayout` gives a custom page the full docs chrome — header, sidebar, search,
+TOC, and theme — by wrapping it in the same 3-column grid the generated pages
+use. For a landing or marketing page that grid is in the way, so reach for
+**`PageLayout`** instead: it provides the document shell, header, theme, and
+fonts, then a single full-width `<slot />` (no sidebar, no prose, no TOC). An
+optional `footer` slot renders after `<main>`:
+
+```astro pages/index.astro lineNumbers
+---
+import PageLayout from "blume/components/layout/PageLayout.astro";
+import data from "blume:data";
+import Footer from "./_home/Footer.astro";
+
+const { config } = data;
+---
+
+<PageLayout
+  site={{ title: config.title, description: config.description }}
+  logo={config.logo}
+  banner={config.banner}
+  analytics={config.analytics}
+  navigation={data.navigation}
+  favicon={config.favicon}
+  fontCssVars={data.fontCssVars}
+  themeMode={config.theme.mode}
+  searchEnabled={config.search.enabled}
+  page={{ title: "Acme — the fastest docs", description: config.description }}
+>
+  <section class="mx-auto max-w-5xl px-6 py-24">
+    <h1>Build docs that fly</h1>
+  </section>
+  <Footer slot="footer" />
+</PageLayout>
+```
+
+`page.title` is used verbatim as the document title (no `- siteTitle` suffix),
+since marketing pages usually set their own. To give a custom page the full docs
+chrome instead — sidebar, TOC, and all — wrap it in `RootLayout`, the layout the
+generated pages use. Pull the required props straight from `blume:data`:
 
 ```astro pages/pricing.astro lineNumbers
 ---

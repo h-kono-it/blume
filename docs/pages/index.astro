@@ -1,7 +1,5 @@
 ---
-import "blume:theme";
-import Favicon from "blume/components/layout/Favicon.astro";
-import Header from "blume/components/layout/Header.astro";
+import PageLayout from "blume/components/layout/PageLayout.astro";
 import data from "blume:data";
 import Batteries from "./_home/Batteries.astro";
 import BuiltForModels from "./_home/BuiltForModels.astro";
@@ -16,115 +14,52 @@ import Spotlight from "./_home/Spotlight.astro";
 
 // Everything the landing page needs comes from the resolved Blume config, so it
 // stays in sync with the docs site (title, description, banner, theme mode).
+// PageLayout supplies the document shell, header, theme, and fonts — the
+// document `<html>`/`<head>`, theme + banner pre-paint scripts, and banner that
+// this page used to hand-roll all live there now.
 const { config } = data;
-const title = config.title;
-const description = config.description;
-const banner = config.banner;
-const siteUrl = config.site;
-
-const pageTitle = `${title} — fast, AI-ready, markdown-first docs`;
-
-// The header (logo, search, theme toggle) and its theme/banner click handlers
-// come from the shared <Header>, so the navbar is identical to the docs pages.
-// The pre-paint scripts must run in <head> before first paint, so they stay
-// inline here (same `blume-theme` / `blume-banner:*` keys as the docs).
-const themeMode = config.theme.mode;
-const initialThemeScript = `(()=>{const m=${JSON.stringify(themeMode)};const s=localStorage.getItem("blume-theme");const sys=matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light";document.documentElement.dataset.theme=s??(m==="system"?sys:m);})();`;
-const bannerScript = banner?.dismissible
-  ? `(()=>{if(localStorage.getItem("blume-banner:"+${JSON.stringify(banner.key)}))document.documentElement.setAttribute("data-blume-banner-hidden","");})();`
-  : null;
+const pageTitle = `${config.title} — fast, AI-ready, markdown-first docs`;
 
 // Copy-to-clipboard for the install boxes; briefly swaps the glyph for a check.
-// One delegated handler covers every box on the page.
+// One delegated handler covers every box on the page. Page-specific (the docs
+// chrome's copy buttons are separate), so it stays here.
 const copyScript = `(()=>{const CHECK='<svg class="size-4" fill="none" height="16" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="16"><path d="M20 6 9 17l-5-5"/></svg>';document.addEventListener("click",async(e)=>{const b=e.target.closest("[data-blume-copy-install]");if(!b){return;}try{await navigator.clipboard.writeText(b.dataset.command);}catch{return;}const o=b.innerHTML;b.innerHTML=CHECK;setTimeout(()=>{b.innerHTML=o;},1500);});})();`;
 ---
 
-<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>{pageTitle}</title>
-    <Favicon favicon={config.favicon} />
-    <meta name="description" content={description} />
-    {siteUrl && <link rel="canonical" href={siteUrl} />}
-    <meta property="og:title" content={pageTitle} />
-    <meta property="og:description" content={description} />
-    <meta property="og:type" content="website" />
-    {bannerScript && <script is:inline set:html={bannerScript} />}
-    <script is:inline set:html={initialThemeScript} />
-  </head>
-  <body class="bg-background font-sans text-foreground antialiased">
-    {
-      banner && (
-        <div
-          class="relative flex items-center justify-center gap-x-2 gap-y-0.5 bg-foreground px-10 py-3 text-center text-background text-sm max-sm:flex-wrap dark:border-border dark:border-b dark:bg-background dark:text-foreground [:where([data-blume-banner-hidden])_&]:hidden"
-          data-banner-key={banner.key}
-          data-blume-banner
-        >
-          <span>{banner.content}</span>
-          {banner.dismissible && (
-            <button
-              aria-label="Dismiss announcement"
-              class="absolute right-1.5 inline-flex size-7 items-center justify-center rounded-full text-background/80 transition-colors hover:bg-white/10 hover:text-background dark:text-foreground/70 dark:hover:bg-foreground/10 dark:hover:text-foreground"
-              data-blume-banner-dismiss
-              type="button"
-            >
-              <svg
-                fill="none"
-                height="16"
-                stroke="currentColor"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                viewBox="0 0 24 24"
-                width="16"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <path d="M18 6 6 18" />
-                <path d="m6 6 12 12" />
-              </svg>
-            </button>
-          )}
-        </div>
-      )
-    }
+<PageLayout
+  analytics={config.analytics}
+  banner={config.banner}
+  canonical={config.site}
+  favicon={config.favicon}
+  fontCssVars={data.fontCssVars}
+  logo={config.logo}
+  navigation={data.navigation}
+  page={{ description: config.description, route: "/", title: pageTitle }}
+  searchEnabled={config.search.enabled}
+  site={{ description: config.description, title: config.title }}
+  themeMode={config.theme.mode}
+>
+  <div
+    class="mx-auto grid max-w-[1400px] gap-16 px-6 py-20 sm:py-24 lg:gap-24 xl:gap-32"
+  >
+    <Hero />
 
-    <Header
-      hasSidebar={false}
-      logo={config.logo}
-      navigation={data.navigation}
-      route="/"
-      searchEnabled={config.search.enabled}
-      searchProvider={config.search.provider}
-      site={{ title }}
-    />
+    <ProductPreview />
 
-    <main>
-      <div
-        class="mx-auto grid max-w-[1400px] gap-16 px-6 py-20 sm:py-24 lg:gap-24 xl:gap-32"
-      >
-      <Hero />
+    <Batteries />
 
-      <ProductPreview />
+    <MarkdownShowcase />
 
-      <Batteries />
+    <ContentSources />
 
-      <MarkdownShowcase />
+    <BuiltForModels />
 
-      <ContentSources />
+    <Spotlight />
 
-      <BuiltForModels />
+    <Migrate />
 
-      <Spotlight />
-
-      <Migrate />
-
-      <InstallCta />
-      </div>
-    </main>
-
-    <Footer />
-    <script is:inline set:html={copyScript} />
-  </body>
-</html>
+    <InstallCta />
+  </div>
+  <script is:inline set:html={copyScript} />
+  <Footer slot="footer" />
+</PageLayout>
