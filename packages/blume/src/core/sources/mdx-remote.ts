@@ -1,6 +1,5 @@
-import matter from "gray-matter";
-
 import { BlumeError } from "../diagnostics.ts";
+import matter from "../frontmatter.ts";
 import {
   hashText,
   loadWithCache,

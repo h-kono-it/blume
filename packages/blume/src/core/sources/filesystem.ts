@@ -1,11 +1,11 @@
 import { existsSync, watch as fsWatch } from "node:fs";
 import { readFile } from "node:fs/promises";
 
-import matter from "gray-matter";
 import { extname, isAbsolute, join, relative, resolve } from "pathe";
 import { glob } from "tinyglobby";
 
 import { BlumeError } from "../diagnostics.ts";
+import matter from "../frontmatter.ts";
 import type { ContentSource, SourceEntry, SourceLoadResult } from "./types.ts";
 
 /** Options for the built-in filesystem source. */

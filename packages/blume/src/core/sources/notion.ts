@@ -1,7 +1,7 @@
-import matter from "gray-matter";
 import { join } from "pathe";
 
 import { BlumeError } from "../diagnostics.ts";
+import matter from "../frontmatter.ts";
 import type { Diagnostic } from "../types.ts";
 import { materializeAssets } from "./assets.ts";
 import {

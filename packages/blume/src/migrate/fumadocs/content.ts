@@ -1,9 +1,9 @@
 import { existsSync } from "node:fs";
 import { readFile as readFileFromDisk } from "node:fs/promises";
 
-import matter from "gray-matter";
 import { dirname, resolve } from "pathe";
 
+import matter from "../../core/frontmatter.ts";
 import { findOpenTagEnd, renameTag, rewriteCallouts } from "../shared.ts";
 
 /**

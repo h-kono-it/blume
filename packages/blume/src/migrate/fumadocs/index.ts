@@ -1,10 +1,10 @@
 import { existsSync } from "node:fs";
 import { mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 
-import matter from "gray-matter";
 import { dirname, join, relative } from "pathe";
 import { glob } from "tinyglobby";
 
+import matter from "../../core/frontmatter.ts";
 import { writeBlumeConfig } from "../shared.ts";
 import { loadFumadocsConfig } from "./config.ts";
 import {

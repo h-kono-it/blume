@@ -1,10 +1,10 @@
 import { existsSync } from "node:fs";
 import { readFile, writeFile } from "node:fs/promises";
 
-import matter from "gray-matter";
 import { join } from "pathe";
 import { glob } from "tinyglobby";
 
+import matter from "../../core/frontmatter.ts";
 import { writeBlumeConfig } from "../shared.ts";
 import { loadStarlightConfig, mapStarlightConfig } from "./config.ts";
 import {

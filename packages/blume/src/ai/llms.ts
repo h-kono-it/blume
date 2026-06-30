@@ -1,5 +1,4 @@
-import matter from "gray-matter";
-
+import matter from "../core/frontmatter.ts";
 import type { BlumeProject } from "../core/project-graph.ts";
 import { readEntryText } from "../core/sources/read.ts";
 import type { PageRecord } from "../core/types.ts";

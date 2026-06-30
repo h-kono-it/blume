@@ -1,12 +1,12 @@
 import { existsSync, watch as fsWatch } from "node:fs";
 import { readFile } from "node:fs/promises";
 
-import matter from "gray-matter";
 import { isAbsolute, join, relative, resolve } from "pathe";
 import { glob } from "tinyglobby";
 
 import { transformMintlifyContent } from "../../migrate/mintlify/transform.ts";
 import { BlumeError } from "../diagnostics.ts";
+import matter from "../frontmatter.ts";
 import type { Diagnostic } from "../types.ts";
 import type { ContentSource, SourceEntry, SourceLoadResult } from "./types.ts";
 

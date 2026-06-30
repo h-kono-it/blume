@@ -1,5 +1,4 @@
-import matter from "gray-matter";
-
+import matter from "../../core/frontmatter.ts";
 import { stripUnknownPageMeta } from "../shared.ts";
 import {
   rewriteMintlifyCallouts,

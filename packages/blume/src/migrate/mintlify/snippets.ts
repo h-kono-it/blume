@@ -1,7 +1,8 @@
 import { readFile as readFileFromDisk } from "node:fs/promises";
 
-import matter from "gray-matter";
 import { dirname, relative, resolve } from "pathe";
+
+import matter from "../../core/frontmatter.ts";
 
 const MARKDOWN_SNIPPET_IMPORT =
   /^import\s+(?<name>[$A-Z_a-z][$\w]*)\s+from\s+["'](?<source>[^"']+\.mdx?)["'];?\s*$/gmu;
