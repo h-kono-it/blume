@@ -8,7 +8,7 @@ import {
   writeFile,
 } from "node:fs/promises";
 import { createRequire } from "node:module";
-import { fileURLToPath, pathToFileURL } from "node:url";
+import { pathToFileURL } from "node:url";
 
 import { dirname, join, normalize, relative } from "pathe";
 import { glob } from "tinyglobby";
@@ -19,6 +19,7 @@ import { buildMcpData } from "../ai/mcp/data.ts";
 import { buildMcpDiscovery, buildMcpServerCard } from "../ai/mcp/discovery.ts";
 import { EN_UI, resolveUIStrings } from "../core/i18n-ui.ts";
 import { resolveFallbackLocale } from "../core/i18n.ts";
+import { packageRoot } from "../core/package-root.ts";
 import type { BlumeProject } from "../core/project-graph.ts";
 import type { ResolvedConfig } from "../core/schema.ts";
 import type { Navigation } from "../core/types.ts";
@@ -62,9 +63,9 @@ import {
 } from "./templates.ts";
 
 /** Absolute path to the Blume package `src` directory. */
-const BLUME_SRC = fileURLToPath(new URL("..", import.meta.url));
+const BLUME_SRC = join(packageRoot(), "src");
 /** The Blume package's own `node_modules` (where Astro and friends live). */
-const BLUME_NODE_MODULES = join(BLUME_SRC, "..", "node_modules");
+const BLUME_NODE_MODULES = join(packageRoot(), "node_modules");
 
 /** Whether a module specifier resolves from a directory via node resolution. */
 const canResolveFrom = (fromDir: string, spec: string): boolean => {

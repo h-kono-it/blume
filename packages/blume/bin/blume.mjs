@@ -1,9 +1,10 @@
-#!/usr/bin/env bun
+#!/usr/bin/env node
 // Blume CLI launcher.
 //
-// During development the CLI runs directly from TypeScript source via Bun, which
-// transpiles on import. A node-compatible `dist/` build is produced for
-// publishing (see the tooling milestone); when present it is preferred.
+// The published package ships a Node-compatible bundle at dist/cli/index.js
+// (built by scripts/build.ts) and the launcher prefers it. When it is absent —
+// e.g. running from a source checkout — it falls back to the TypeScript source,
+// which requires a TS-aware runtime such as Bun (`bun bin/blume.mjs <cmd>`).
 import { existsSync } from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";

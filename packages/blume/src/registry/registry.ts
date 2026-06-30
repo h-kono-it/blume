@@ -1,5 +1,7 @@
 import { join } from "pathe";
 
+import { packageRoot } from "../core/package-root.ts";
+
 /** A file copied into the user's project by `blume add`. */
 export interface RegistryFile {
   /** Path to the source file, relative to the blume package `src` directory. */
@@ -19,10 +21,10 @@ export interface RegistryItem {
 }
 
 /** Absolute path to the blume package `src` directory (the copy source root). */
-export const packageSrc = join(import.meta.dirname, "..");
+export const packageSrc = join(packageRoot(), "src");
 
 /** Absolute path to the bundled registry item sources. */
-export const itemsRoot = join(import.meta.dirname, "items");
+export const itemsRoot = join(packageRoot(), "src", "registry", "items");
 
 /**
  * A built-in layout component offered as editable source. `blume add` rewrites

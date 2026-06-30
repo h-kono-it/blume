@@ -1,6 +1,6 @@
 {
   "name": "blume",
-  "version": "0.0.0",
+  "version": "0.1.0-alpha.0",
   "description": "Documentation that's fast, AI-ready, and zero-config.",
   "keywords": [
     "astro",
@@ -10,11 +10,22 @@
     "mdx",
     "vite"
   ],
+  "homepage": "https://github.com/haydenbleasel/blume#readme",
+  "bugs": {
+    "url": "https://github.com/haydenbleasel/blume/issues"
+  },
   "license": "MIT",
+  "author": "Hayden Bleasel",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/haydenbleasel/blume.git",
+    "directory": "packages/blume"
+  },
   "bin": {
     "blume": "./bin/blume.mjs"
   },
   "files": [
+    "dist",
     "src",
     "bin",
     "docs"
@@ -36,8 +47,9 @@
     "./package.json": "./package.json"
   },
   "scripts": {
+    "build": "bun run scripts/build.ts",
     "bundle-docs": "node scripts/bundle-docs.mjs",
-    "prepack": "node scripts/bundle-docs.mjs",
+    "prepack": "bun run scripts/build.ts && node scripts/bundle-docs.mjs",
     "test": "bun test",
     "test:coverage": "bun test --coverage",
     "typecheck": "tsgo --noEmit && tsgo -p test/tsconfig.json --noEmit"
