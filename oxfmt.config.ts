@@ -8,5 +8,6 @@ export default defineConfig({
     "**/.blume",
     "packages/video/src/components",
     "packages/video/src/lib/utils.ts",
+    "packages/video/src/lib/remocn-ui",
   ],
 });
