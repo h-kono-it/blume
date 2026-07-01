@@ -20,5 +20,7 @@ export default defineConfig({
     // upstream and gets clobbered on the next skill update.
     "**/.agents/skills/**",
     "**/.claude/skills/**",
+    "packages/video/src/components",
+    "packages/video/src/lib/utils.ts",
   ],
 });
