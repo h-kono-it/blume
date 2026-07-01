@@ -5,9 +5,7 @@
 [![license](https://img.shields.io/npm/l/blume.svg)](./LICENSE)
 [![node](https://img.shields.io/node/v/blume.svg)](https://nodejs.org)
 
-Open-source, markdown-first documentation powered by Astro and Vite.
-
-> Mintlify's authoring DX, Astro/Vite performance, and full open-source ownership.
+**Documentation for everything you build.** Fast, AI-ready, and zero-config. Drop Markdown into a folder and ship a production-grade docs site, no app boilerplate to write or maintain. Free and open source, forever.
 
 Drop Markdown or MDX into a folder, run `blume dev`, and get a production-grade
 docs site — navigation, search, theming, Open Graph images, and a rich component
