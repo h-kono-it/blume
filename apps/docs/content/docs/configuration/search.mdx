@@ -17,7 +17,8 @@ so picking one backend never pulls in the others.
 ## Using search
 
 Open search with <Badge variant="accent">⌘K</Badge> (or `Ctrl K`), or press `/`
-when you're not typing in a field. `Esc` closes it.
+when you're not typing in a field. `Esc` closes it, and `⌘J` (or `Ctrl J`)
+toggles the result preview pane.
 
 Queries match page **titles**, **descriptions**, and **body text**, with title
 matches ranked highest and descriptions above body.
@@ -28,6 +29,17 @@ For every indexable page, Blume indexes its title, description, and body reduced
 to plain text — code blocks, images, and markup are stripped, so results stay
 relevant. The index is built from your source files, so it's identical in dev and
 production.
+
+## Tags
+
+Add `search.tags` to a page's frontmatter to group it under a filter in the
+search dialog — readers can narrow results to a tag with a click. Tags also
+become a facet on the hosted providers.
+
+```yaml
+search:
+  tags: [api, reference]
+```
 
 ## Providers
 

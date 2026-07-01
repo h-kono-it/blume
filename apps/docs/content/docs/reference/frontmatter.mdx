@@ -24,6 +24,11 @@ Every page accepts the following frontmatter. All fields are optional.
       default: "false",
       description: "Exclude from production builds.",
     },
+    lastModified: {
+      type: "string",
+      description:
+        'Pin the page\'s "last updated" date (ISO or YAML date); overrides the git-derived date.',
+    },
   }}
 />
 
@@ -33,7 +38,8 @@ Every page accepts the following frontmatter. All fields are optional.
 sidebar:
   label: Install
   order: 2
-  icon: Download
+  icon: download
+  badge: New
   hidden: false
 ```
 
@@ -42,7 +48,9 @@ sidebar:
 ```yaml lineNumbers
 seo:
   title: Install Blume
+  description: Install Blume and scaffold your first project.
   image: /og/install.png
+  canonical: https://acme.com/install
   noindex: false
 ```
 

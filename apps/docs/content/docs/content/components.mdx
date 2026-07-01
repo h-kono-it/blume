@@ -133,6 +133,24 @@ A negative or breaking state, such as a deprecation.
 <Badge variant="danger">Deprecated</Badge>
 ```
 
+## Icon
+
+Render an icon from Blume's built-in set by name — the same set the `icon` props
+on cards, tiles, tabs, and sidebar entries draw from. Names are lowercase and
+kebab-cased (`rocket`, `book-open`, `chevron-right`).
+
+<Icon icon="rocket" size={20} />
+
+```astro
+<Icon icon="rocket" size={20} />
+```
+
+`icon` is the icon name; `size` sets the pixel size (default `16`) and `color`
+tints it (any CSS color; defaults to `currentColor`). Pass a raw `<svg>` string,
+an image URL, or a local image path in place of a name to render your own art,
+and add a `label` to expose it to assistive tech — without one, the icon is
+decorative.
+
 ## File tree
 
 Illustrate a project or folder layout. Wrap a normal Markdown list and Blume
