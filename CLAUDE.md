@@ -1,8 +1,7 @@
 # Blume — agent notes
 
 Blume is an open-source, markdown-first docs framework on Astro/Vite, shipped as
-a single package (`packages/blume`). The plan/spec lives in `plan/` (do not
-reformat it).
+a single package (`packages/blume`). Outstanding work is tracked in `TODO.md`.
 
 ## Commands
 
@@ -44,5 +43,5 @@ MDAST plugins — `package-install` → package-manager tabs, `:::note` directiv
 - `.astro` files use PascalCase and are excluded from oxlint; the core theme is
   React-free (vanilla custom elements). React auto-enables only when the project
   has `.tsx`/`.jsx` or Ask AI is on.
-- Generated `.blume/` and `plan/` are excluded from lint/format.
+- Generated `.blume/` is excluded from lint/format.
 - Commit per milestone; keep the docs (`apps/docs/`) building.
