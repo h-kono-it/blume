@@ -19,10 +19,15 @@ interface Props {
   lang?: string;
   /** Show the brand language icon in the header (default on, like fences). */
   icons?: boolean;
+  /** Header title (a filename); falls back to the language label like fences. */
+  title?: string;
 }
 
-const { code, lang = "txt", icons } = Astro.props;
-const html = await highlightCode(code.replace(/\n+$/u, ""), lang, { icons });
+const { code, lang = "txt", icons, title } = Astro.props;
+const html = await highlightCode(code.replace(/\n+$/u, ""), lang, {
+  icons,
+  title,
+});
 ---
 
 <div class="prose max-w-none"><Fragment set:html={html} /></div>

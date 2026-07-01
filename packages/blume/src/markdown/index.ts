@@ -128,9 +128,26 @@ const astroCodeClassTransformer = (extra?: string): ShikiTransformer =>
     },
   }) as unknown as ShikiTransformer;
 
+/**
+ * Tag the `<pre>` with `data-language` — raw `codeToHtml` omits it (unlike
+ * Astro's Markdown Shiki), and the theme's code header keys off it. Applied only
+ * on the titled path so a titled standalone block renders the same header bar a
+ * fence would, while header-less panes (e.g. the Component source view) stay
+ * untouched.
+ */
+const languageAttrTransformer = (lang: string): ShikiTransformer =>
+  ({
+    name: "blume:data-language",
+    pre(node: { properties: Record<string, unknown> }) {
+      node.properties.dataLanguage ??= lang;
+    },
+  }) as unknown as ShikiTransformer;
+
 export interface HighlightCodeOptions extends BlumeShikiOptions {
   /** Extra `<pre>` class names, e.g. `blume-source` for a height-capped pane. */
   className?: string;
+  /** Header title (a filename), matching a fence's `title="..."` meta. */
+  title?: string;
 }
 
 /**
@@ -152,10 +169,17 @@ export const highlightCode = async (
     return await codeToHtml(code, {
       defaultColor: false,
       lang,
+      // The code-title transformer reads the fence meta; feeding a `title="..."`
+      // string here gives non-fence callers (e.g. `<CodeBlock title>`) the same
+      // `data-title` header a Markdown fence gets.
+      meta: options.title
+        ? { __raw: `title="${options.title.replaceAll('"', "")}"` }
+        : undefined,
       themes: CODE_THEMES,
       transformers: [
         ...blumeShikiTransformers({ icons: options.icons }),
         astroCodeClassTransformer(options.className),
+        ...(options.title ? [languageAttrTransformer(lang)] : []),
       ],
     });
   } catch {

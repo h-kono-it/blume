@@ -8,19 +8,16 @@ const aiResources = [
   {
     body: "One flag emits a machine-readable index and your full corpus, so coding agents and chat assistants can read the whole site.",
     icon: icons.fileText,
-    tag: "/llms.txt · /llms-full.txt",
     title: "llms.txt, built in",
   },
   {
     body: "Append .md to any page to fetch its raw source — ideal for LLMs and copy-as-Markdown workflows. Every page, dev and prod, no config.",
     icon: icons.fileCode,
-    tag: "/quickstart.md",
     title: "Markdown at every URL",
   },
   {
     body: "Every page can be copied as Markdown or opened in ChatGPT, Claude, v0, and more — pre-filled to answer questions about the page.",
     icon: icons.chat,
-    tag: "Copy · Open in chat",
     title: "Copy or open in chat",
   },
 ];
@@ -32,7 +29,7 @@ const mcpConnectCommand =
 
 <!-- Built for humans and models: the AI surfaces (Ask AI, MCP, llms.txt,
      raw Markdown, open-in-chat) as a bento of cards with two custom mocks. -->
-<section class="mx-auto max-w-4xl">
+<section class="mx-auto max-w-5xl">
   <div class="mx-auto max-w-2xl text-center">
     <h2 class="text-balance font-medium text-3xl tracking-tight sm:text-4xl">
       Built for humans and models.
@@ -46,45 +43,16 @@ const mcpConnectCommand =
 
   <div class="mt-12 grid gap-4 lg:grid-cols-2">
     <!-- Ask AI -->
-    <div class="flex flex-col rounded-blume border border-border p-6">
-      <div class="flex items-center gap-3">
-        <span
-          class="inline-flex size-10 shrink-0 items-center justify-center rounded-blume bg-muted text-accent"
-        >
-          <svg
-            class="size-5"
-            fill="none"
-            height="20"
-            stroke="currentColor"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            stroke-width="2"
-            viewBox="0 0 24 24"
-            width="20"
-            set:html={icons.sparkle}
-          ></svg>
-        </span>
-        <div>
-          <h3 class="font-medium text-base text-foreground">
-            Ask AI, in the page
-          </h3>
-          <p class="text-muted-foreground text-xs">
-            Streamed from the model you choose
-          </p>
-        </div>
-      </div>
-      <p class="mt-4 text-muted-foreground text-sm leading-relaxed">
-        An in-page assistant answers reader questions, backed by the AI SDK —
-        through the Vercel AI Gateway, OpenRouter, Inkeep, or any OpenAI-compatible
-        endpoint.
-      </p>
-      <!-- Mock chat panel -->
+    <div
+      class="flex flex-col overflow-hidden rounded-blume border border-border"
+    >
+      <!-- Mock chat panel (flush graphic) -->
       <div
-        class="mt-5 flex flex-1 flex-col gap-3 rounded-blume border border-border bg-muted/30 p-3"
+        class="flex flex-1 flex-col gap-3 border-border border-b bg-muted/30 p-6"
       >
         <div class="flex justify-end">
           <span
-            class="rounded-blume bg-foreground px-3 py-1.5 text-background text-xs"
+            class="rounded-blume bg-foreground px-3 py-1.5 text-background text-sm"
           >
             How do I send my first message?
           </span>
@@ -107,9 +75,9 @@ const mcpConnectCommand =
             ></svg>
           </span>
           <span
-            class="rounded-blume border border-border bg-background px-3 py-1.5 text-foreground text-xs leading-relaxed"
+            class="rounded-blume border border-border bg-background px-3 py-1.5 text-foreground text-sm leading-relaxed"
           >
-            Install the SDK, set your API key, then call
+            Install the SDK, set your API key, then call{" "}
             <code class="font-mono">comet.messages.send()</code> with a recipient
             and template.
           </span>
@@ -117,7 +85,7 @@ const mcpConnectCommand =
         <div
           class="mt-auto flex items-center gap-2 rounded-full border border-border bg-background py-1.5 pr-1.5 pl-3"
         >
-          <span class="flex-1 text-muted-foreground text-xs"> Ask anything… </span>
+          <span class="flex-1 text-muted-foreground text-sm"> Ask anything… </span>
           <span
             class="inline-flex size-6 shrink-0 items-center justify-center rounded-full bg-foreground text-background"
           >
@@ -136,58 +104,51 @@ const mcpConnectCommand =
           </span>
         </div>
       </div>
+      <!-- Text -->
+      <div class="p-6">
+        <div class="flex items-center gap-3">
+          <span
+            class="inline-flex size-10 shrink-0 items-center justify-center rounded-blume bg-muted text-accent"
+          >
+            <svg
+              class="size-5"
+              fill="none"
+              height="20"
+              stroke="currentColor"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              viewBox="0 0 24 24"
+              width="20"
+              set:html={icons.sparkle}
+            ></svg>
+          </span>
+          <div>
+            <h3 class="font-medium text-base text-foreground">
+              Ask AI, in the page
+            </h3>
+            <p class="text-muted-foreground text-xs">
+              Streamed from the model you choose
+            </p>
+          </div>
+        </div>
+        <p class="mt-4 text-muted-foreground text-sm leading-relaxed">
+          An in-page assistant answers reader questions, backed by the AI SDK —
+          through the Vercel AI Gateway, OpenRouter, Inkeep, or any
+          OpenAI-compatible endpoint.
+        </p>
+      </div>
     </div>
 
     <!-- MCP server -->
-    <div class="flex flex-col rounded-blume border border-border p-6">
-      <div class="flex items-center gap-3">
-        <span
-          class="inline-flex size-10 shrink-0 items-center justify-center rounded-blume bg-muted text-accent"
-        >
-          <svg
-            class="size-5"
-            fill="none"
-            height="20"
-            stroke="currentColor"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            stroke-width="2"
-            viewBox="0 0 24 24"
-            width="20"
-            set:html={icons.plug}
-          ></svg>
-        </span>
-        <div>
-          <h3 class="font-medium text-base text-foreground">
-            An MCP server for agents
-          </h3>
-          <p class="text-muted-foreground text-xs">
-            Search and read, no scraping
-          </p>
-        </div>
-      </div>
-      <p class="mt-4 text-muted-foreground text-sm leading-relaxed">
-        Host a Model Context Protocol server so Claude Code, Cursor, and VS Code
-        can search and read your docs directly — four read-only tools, discovery
-        documents, and copy-and-go install.
-      </p>
-      <!-- Mock terminal -->
-      <div
-        class="mt-5 flex flex-1 flex-col overflow-hidden rounded-blume border border-border bg-muted/30"
-      >
-        <div
-          class="flex items-center gap-1.5 border-border border-b bg-muted/40 px-3 py-2"
-        >
-          <span class="size-2 rounded-full bg-border"></span>
-          <span class="size-2 rounded-full bg-border"></span>
-          <span class="size-2 rounded-full bg-border"></span>
-          <span class="ml-auto font-mono text-[11px] text-muted-foreground">
-            Terminal
-          </span>
-        </div>
-        <div class="p-3 font-mono text-[11px] leading-relaxed">
+    <div
+      class="flex flex-col overflow-hidden rounded-blume border border-border"
+    >
+      <!-- Mock terminal (flush graphic) -->
+      <div class="flex flex-1 flex-col border-border border-b bg-muted/30">
+        <div class="p-6 font-mono text-[13px] leading-relaxed">
           <p class="break-all text-foreground">
-            <span class="text-muted-foreground">$</span>
+            <span class="text-muted-foreground">$</span>{" "}
             {mcpConnectCommand}
           </p>
           <p class="mt-2 text-accent">✓ Connected · 4 tools available</p>
@@ -195,6 +156,40 @@ const mcpConnectCommand =
             search_docs · get_page · list_pages · get_navigation
           </p>
         </div>
+      </div>
+      <!-- Text -->
+      <div class="p-6">
+        <div class="flex items-center gap-3">
+          <span
+            class="inline-flex size-10 shrink-0 items-center justify-center rounded-blume bg-muted text-accent"
+          >
+            <svg
+              class="size-5"
+              fill="none"
+              height="20"
+              stroke="currentColor"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              viewBox="0 0 24 24"
+              width="20"
+              set:html={icons.plug}
+            ></svg>
+          </span>
+          <div>
+            <h3 class="font-medium text-base text-foreground">
+              An MCP server for agents
+            </h3>
+            <p class="text-muted-foreground text-xs">
+              Search and read, no scraping
+            </p>
+          </div>
+        </div>
+        <p class="mt-4 text-muted-foreground text-sm leading-relaxed">
+          Host a Model Context Protocol server so Claude Code, Cursor, and VS
+          Code can search and read your docs directly — four read-only tools,
+          discovery documents, and copy-and-go install.
+        </p>
       </div>
     </div>
   </div>
@@ -224,9 +219,6 @@ const mcpConnectCommand =
           <p class="mt-2 text-muted-foreground text-sm leading-relaxed">
             {resource.body}
           </p>
-          <code class="mt-4 inline-block rounded-md bg-muted px-2 py-1 font-mono text-[11px] text-muted-foreground">
-            {resource.tag}
-          </code>
         </div>
       ))
     }

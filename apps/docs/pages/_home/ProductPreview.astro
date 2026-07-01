@@ -1,27 +1,85 @@
 ---
 // A faithful, static mock of a docs site built with Blume — the fictional
 // "Comet" brand (see `sampleBrand` in shared.ts) — framed by a light-grey panel
-// it sits into (padded top/left/right, flush bottom).
+// it sits into (padded top/left/right, flush bottom). The code block is the
+// real shipped <CodeBlock>, so it gets genuine Shiki highlighting, a language
+// icon, and the filename header exactly as a Markdown fence would.
+import CodeBlock from "blume/components/content/CodeBlock.astro";
+import Callout from "blume/components/content/Callout.astro";
+import { GITHUB_MARK } from "blume/components/github-mark.ts";
 import { copyIcon, icons, sampleBrand } from "./shared.ts";
 
 const title = sampleBrand.name;
 const logoSvg = sampleBrand.logo;
 
-// Code shown in the mock. A string rendered through an Astro expression so the
-// JSX/Markdown inside auto-escapes (no hand-written entities).
+// A fuller sidebar than the shared 3-group IA so the mock reads like a real,
+// mature docs site. Local to this preview (its taller panel has room) rather
+// than the shared `sampleBrand.sidebar`, which the height-capped
+// <FeatureBrowser> also renders and would overflow.
+const activeItem = "Quickstart";
+const sidebar = [
+  {
+    items: ["Introduction", "Quickstart", "Authentication", "SDKs"],
+    label: "Get started",
+  },
+  {
+    items: ["Messages", "Templates", "Batches", "Scheduling", "Attachments"],
+    label: "Sending",
+  },
+  {
+    items: ["Domains", "Webhooks", "Suppressions"],
+    label: "Deliverability",
+  },
+  {
+    items: ["API keys", "Rate limits", "Errors"],
+    label: "Reference",
+  },
+];
+
+// Right-rail outline; `sub` entries render indented under the heading above.
+const onThisPage = [
+  { label: "Install the SDK" },
+  { label: "Send a message" },
+  { label: "Use a template", sub: true },
+  { label: "Track delivery" },
+  { label: "Handle webhooks", sub: true },
+  { label: "Next steps" },
+];
+
+// Where next steps point — accent links at the foot of the page.
+const nextSteps = ["Authentication", "Webhooks reference", "API reference"];
+
+// Code shown in the mock. Strings highlighted at build time by <CodeBlock>.
+const installCode = "npm install comet";
 const mockupCode = `import { Comet } from "comet";
 
 const comet = new Comet(process.env.COMET_API_KEY);
 
-await comet.messages.send({
+const { id } = await comet.messages.send({
   to: "ada@example.com",
   template: "welcome",
+});
+
+console.log(\`Queued \${id}\`);`;
+
+const webhookCode = `app.post("/webhooks/comet", (req, res) => {
+  const event = comet.webhooks.verify(req);
+
+  if (event.type === "message.delivered") {
+    markDelivered(event.data.id);
+  }
+
+  res.sendStatus(200);
 });`;
+
+// The header copy glyph, shared by every code block in the mock. Static — the
+// landing page doesn't load the docs chrome's copy-to-clipboard handler.
+const copyButton = `<svg aria-hidden="true" class="absolute top-3.5 right-4 size-3.5 text-muted-foreground" fill="none" height="14" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="14">${copyIcon}</svg>`;
 ---
 
 <section>
   <div
-    class="overflow-hidden rounded-[2rem] bg-muted/50 px-4 pt-8 sm:px-12 sm:pt-14"
+    class="h-[660px] overflow-y-hidden rounded-[2rem] bg-muted/50 px-4 pt-8 sm:px-12 sm:pt-14"
   >
     <div
       class="overflow-hidden rounded-t-blume border border-border border-b-0 bg-background shadow-2xl shadow-foreground/10"
@@ -53,57 +111,12 @@ await comet.messages.send({
             <span>Changelog</span>
           </nav>
         </div>
-        <span
-          class="hidden items-center gap-2 rounded-full border border-border px-3 py-1.5 text-[13px] text-muted-foreground sm:flex"
-        >
-          <svg
-            class="size-4"
-            fill="none"
-            height="16"
-            stroke="currentColor"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            stroke-width="2"
-            viewBox="0 0 24 24"
-            width="16"
-            set:html={icons.search}
-          ></svg>
-          Search
-          <span class="ml-2 rounded border border-border px-1 font-mono">⌘K</span>
-        </span>
-      </div>
-      <!-- Three-pane body -->
-      <div
-        class="grid min-h-[360px] grid-cols-1 sm:min-h-[520px] sm:grid-cols-[220px_1fr] lg:grid-cols-[220px_1fr_200px]"
-      >
-        <aside class="hidden border-border border-r p-5 text-[13px] sm:block">
-          <p class="font-medium text-foreground">Get started</p>
-          <ul class="mt-3 space-y-2 text-muted-foreground">
-            <li>Introduction</li>
-            <li class="text-accent">Quickstart</li>
-            <li>Authentication</li>
-          </ul>
-          <p class="mt-5 font-medium text-foreground">Sending</p>
-          <ul class="mt-3 space-y-2 text-muted-foreground">
-            <li>Messages</li>
-            <li>Templates</li>
-            <li>Webhooks</li>
-          </ul>
-        </aside>
-        <div class="mx-auto min-w-0 max-w-2xl p-6 sm:p-8">
-          <p class="text-[13px] text-muted-foreground">Get started</p>
-          <h3 class="mt-1 font-semibold text-2xl text-foreground tracking-tight">
-            Quickstart
-          </h3>
-          <p class="mt-3 text-muted-foreground text-sm leading-relaxed">
-            Send your first message in minutes. Comet's REST API works with any
-            language — here's a request to get you started.
-          </p>
-          <div
-            class="mt-5 flex gap-2.5 rounded-blume border-accent border-l-2 bg-accent/5 p-4"
+        <div class="flex items-center gap-2">
+          <span
+            class="hidden items-center gap-2 rounded-full border border-border px-3 py-1.5 text-[13px] text-muted-foreground sm:flex"
           >
             <svg
-              class="mt-px size-4 shrink-0 text-accent"
+              class="size-4"
               fill="none"
               height="16"
               stroke="currentColor"
@@ -112,50 +125,193 @@ await comet.messages.send({
               stroke-width="2"
               viewBox="0 0 24 24"
               width="16"
-              set:html={icons.sparkle}
+              set:html={icons.search}
             ></svg>
-            <p class="text-[13px] text-foreground leading-relaxed">
-              <span class="font-medium">Tip</span> — store your API key in an
-              environment variable, never in source.
-            </p>
-          </div>
-          <div class="mt-5 overflow-hidden rounded-blume border border-border">
-            <div
-              class="flex items-center justify-between border-border border-b bg-muted/40 px-4 py-2 text-[13px] text-muted-foreground"
+            Search
+            <span class="ml-2 rounded border border-border px-1 font-mono"
+              >⌘K</span
             >
-              <span class="font-mono">send-message.ts</span>
-              <svg
-                class="size-3.5"
-                fill="none"
-                height="14"
-                stroke="currentColor"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                viewBox="0 0 24 24"
-                width="14"
-                set:html={copyIcon}
-              ></svg>
-            </div>
-            <pre
-              class="overflow-x-auto p-4 font-mono text-[13px] text-foreground leading-relaxed"><code>{mockupCode}</code></pre>
+          </span>
+          <span
+            aria-hidden="true"
+            class="hidden size-8 items-center justify-center rounded-full text-muted-foreground sm:inline-flex"
+          >
+            <svg
+              fill="currentColor"
+              height="17"
+              set:html={GITHUB_MARK}
+              viewBox="0 0 16 16"
+              width="17"
+              xmlns="http://www.w3.org/2000/svg"
+            ></svg>
+          </span>
+          <span
+            aria-hidden="true"
+            class="inline-flex size-8 items-center justify-center rounded-full text-muted-foreground"
+          >
+            <svg
+              class="size-[17px] dark:hidden"
+              fill="none"
+              height="17"
+              stroke="currentColor"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              viewBox="0 0 24 24"
+              width="17"
+              set:html={icons.sun}
+            ></svg>
+            <svg
+              class="hidden size-[17px] dark:block"
+              fill="none"
+              height="17"
+              stroke="currentColor"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              viewBox="0 0 24 24"
+              width="17"
+              set:html={icons.moon}
+            ></svg>
+          </span>
+        </div>
+      </div>
+      <!-- Three-pane body -->
+      <div
+        class="grid min-h-[360px] grid-cols-1 sm:min-h-[560px] sm:grid-cols-[220px_1fr] lg:grid-cols-[220px_1fr_200px]"
+      >
+        <aside class="hidden border-border border-r p-5 text-[13px] sm:block">
+          {
+            sidebar.map((group) => (
+              <div class="mb-5 last:mb-0">
+                <p class="font-medium text-foreground">{group.label}</p>
+                <ul class="mt-3 space-y-2 text-muted-foreground">
+                  {group.items.map((item) => (
+                    <li class={item === activeItem ? "text-accent" : ""}>
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))
+          }
+        </aside>
+        <div class="mx-auto min-w-0 max-w-2xl p-6 sm:p-8">
+          <div
+            class="font-medium text-4xl text-foreground leading-[1.1] tracking-tight"
+          >
+            Quickstart
+          </div>
+          <p class="mt-4 text-muted-foreground leading-relaxed">
+            Send your first transactional message in minutes. Comet's REST API
+            works with any language — this guide uses the official TypeScript
+            SDK.
+          </p>
+          <Callout type="tip">
+            Store your API key in an environment variable — never commit it to
+            source control.
+          </Callout>
+
+          <div
+            class="mt-10 font-medium text-foreground text-xl tracking-tight"
+          >
+            Install the SDK
+          </div>
+          <p class="mt-3 text-muted-foreground text-sm leading-relaxed">
+            Add Comet to your project with your package manager of choice. The
+            SDK ships with TypeScript types and runs on Node, Bun, and Deno.
+          </p>
+          <div class="relative mt-4 [&_pre]:my-0!">
+            <CodeBlock code={installCode} icons lang="bash" title="Terminal" />
+            <Fragment set:html={copyButton} />
+          </div>
+
+          <div
+            class="mt-10 font-medium text-foreground text-xl tracking-tight"
+          >
+            Send a message
+          </div>
+          <p class="mt-3 text-muted-foreground text-sm leading-relaxed">
+            Create a client with your API key, then call <code
+              class="rounded bg-muted px-1 py-0.5 font-mono text-[0.8em] text-foreground"
+              >messages.send</code
+            >. Every request returns an id you can use to track delivery.
+          </p>
+          <div class="relative mt-4 [&_pre]:my-0!">
+            <CodeBlock code={mockupCode} icons lang="ts" title="send-message.ts" />
+            <Fragment set:html={copyButton} />
+          </div>
+
+          <div
+            class="mt-8 font-medium text-[15px] text-foreground tracking-tight"
+          >
+            Use a template
+          </div>
+          <p class="mt-3 text-muted-foreground text-sm leading-relaxed">
+            Reference a template by slug and pass variables — Comet renders the
+            subject and body server-side, so your app never ships copy.
+          </p>
+
+          <div
+            class="mt-10 font-medium text-foreground text-xl tracking-tight"
+          >
+            Track delivery
+          </div>
+          <p class="mt-3 text-muted-foreground text-sm leading-relaxed">
+            Poll the message endpoint, or subscribe to webhooks for real-time
+            delivery, open, click, and bounce events as they happen.
+          </p>
+
+          <div
+            class="mt-8 font-medium text-[15px] text-foreground tracking-tight"
+          >
+            Handle webhooks
+          </div>
+          <p class="mt-3 text-muted-foreground text-sm leading-relaxed">
+            Verify the signature on each request, then react to the event —
+            here we mark a message delivered in our own database.
+          </p>
+          <div class="relative mt-4 [&_pre]:my-0!">
+            <CodeBlock code={webhookCode} icons lang="ts" title="webhook.ts" />
+            <Fragment set:html={copyButton} />
+          </div>
+
+          <div
+            class="mt-10 font-medium text-foreground text-xl tracking-tight"
+          >
+            Next steps
+          </div>
+          <div class="mt-4 flex flex-col gap-2.5 text-sm">
+            {
+              nextSteps.map((step) => (
+                <span class="inline-flex items-center gap-1.5 font-medium text-accent">
+                  {step}
+                  <span aria-hidden="true">→</span>
+                </span>
+              ))
+            }
           </div>
         </div>
-        <aside class="hidden border-border border-l p-5 text-[13px] lg:block">
+        <aside
+          class="hidden border-border border-l p-5 text-[13px] lg:block"
+        >
           <p class="font-medium text-foreground">On this page</p>
-          <ul class="mt-3 space-y-2 text-muted-foreground">
-            <li class="text-foreground">Install the SDK</li>
-            <li>Send a message</li>
-            <li>Handle webhooks</li>
+          <ul class="mt-3 space-y-2.5 text-muted-foreground">
+            {
+              onThisPage.map((item, index) => (
+                <li
+                  class:list={[
+                    item.sub && "pl-3",
+                    index === 0 && "text-foreground",
+                  ]}
+                >
+                  {item.label}
+                </li>
+              ))
+            }
           </ul>
         </aside>
       </div>
     </div>
   </div>
-  <p
-    class="mx-auto mt-6 max-w-md text-balance text-center text-muted-foreground text-sm"
-  >
-    Navigation, search, theming, and Open Graph images — all generated from a
-    folder of Markdown. Nothing to wire up.
-  </p>
 </section>
