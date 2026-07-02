@@ -413,8 +413,12 @@ describe("askEndpointTemplate", () => {
       'import askData from "../../generated/ask-data.json";'
     );
     expect(out).toContain("const ground = createAskContext(askData);");
-    expect(out).toContain("const { messages, page } = await request.json();");
-    expect(out).toContain("await ground(messages, page)");
+    expect(out).toContain("await ground(messages, body.page)");
+    // Hardened: validates the body, caps it, and handles stream errors.
+    expect(out).toContain("await request.json().catch(() => null)");
+    expect(out).toContain("!Array.isArray(messages)");
+    expect(out).toContain("status: 400");
+    expect(out).toContain("status: 500");
   });
 
   it("leaves the Inkeep endpoint ungrounded (it runs its own retrieval)", () => {
@@ -427,7 +431,7 @@ describe("askEndpointTemplate", () => {
     );
     expect(out).not.toContain("createAskContext");
     expect(out).not.toContain("ask-data.json");
-    expect(out).toContain("const { messages } = await request.json();");
+    expect(out).toContain("await request.json().catch(() => null)");
     expect(out).toContain("Answer using the project's documentation.");
   });
 
