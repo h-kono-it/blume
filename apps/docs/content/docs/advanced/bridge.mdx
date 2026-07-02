@@ -1,0 +1,74 @@
+---
+title: Bridge
+description: Run blume dev directly on a Mintlify codebase — no config, no migration, no file changes. Blume detects docs.json and serves it in place.
+---
+
+Bridge mode lets you point Blume at a **Mintlify** project and run it as-is. There's no config to write and no migration to commit: drop `blume dev` into a directory that has a `docs.json` (or legacy `mint.json`) and Blume detects it, synthesizes an equivalent config in memory, and serves your existing MDX — transformed to Blume idiom on the fly, on disk untouched.
+
+```bash
+cd my-mintlify-docs
+npx blume dev
+```
+
+```txt
+ℹ Detected docs.json — running in Mintlify bridge mode (no migration).
+  Run "blume migrate mintlify" to convert permanently.
+```
+
+It's the zero-commitment way to see what your docs look like on Blume — you can keep running `mintlify dev` in one terminal and `blume dev` in another, side by side, and decide later.
+
+## When it activates
+
+Bridge mode is entirely automatic, gated on two conditions:
+
+- **No Blume config.** There's no `blume.config.{ts,js,mjs}` at the project root. An explicit Blume config always wins — the moment one exists, Blume runs a normal project and bridge mode never triggers.
+- **A Mintlify config is present.** A `docs.json` or `mint.json` sits at the root.
+
+With both true, Blume treats the Mintlify config as its source of truth for that run.
+
+:::note Bridge mode applies to `blume build` too, not just `blume dev` — you can produce a static site from an unconverted Mintlify project. Only `blume dev` prints the detection notice. :::
+
+## What happens under the hood
+
+Bridge mode is the **read-only twin** of [`blume migrate mintlify`](/docs/advanced/migrate#mintlify): the same translation, without writing anything back.
+
+- **Config is synthesized in memory.** `docs.json` is translated to a Blume config — navigation, theme, and chrome mapped across — exactly as the migrator would, but nothing is written to disk.
+- **Content is served through a Mintlify source.** The config's content block is rewired to a single [`mintlify` content source](/docs/content/sources) rooted at the project. Each MDX page is transformed to Blume markup **at scan time** as it's read, so your files never change.
+- **Variables are inlined at scan time.** `docs.json` `variables` (`{{name}}`) are substituted into content as it's scanned — Blume has no runtime substitution.
+- **Assets are served in place.** Referenced folders like `images/` are served through [`content.assets`](/docs/content/sources) rather than moved to `public/`, so nothing is relocated.
+- **Languages map to i18n.** A multi-language `docs.json` maps to Blume's [`i18n`](/docs/content/i18n), with the language switch handled by Blume's locale routing instead of a nav selector.
+
+Because it reads the same `docs.json` and runs the same transforms, what you see in bridge mode is what you'd get from a full migration.
+
+## Bridge vs. migrate
+
+<CardGroup cols={2}>
+  <Card title="Bridge mode" icon="cable">
+    **Try Blume with zero changes.** Nothing is written; your Mintlify project
+    stays exactly as it is. Ideal for evaluating Blume, running both dev servers
+    side by side, or a reversible spike.
+  </Card>
+  <Card title="Migrate" href="/docs/advanced/migrate" icon="arrow-right">
+    **Convert for good.** [`blume migrate mintlify`](/docs/advanced/migrate)
+    rewrites your pages, config, and assets in place so Blume becomes the source
+    of truth. Do this once you've decided to switch.
+  </Card>
+</CardGroup>
+
+Everything you can do in bridge mode, you can do permanently by migrating — bridge is the preview, migrate is the commit.
+
+## Limitations
+
+- **Mintlify only.** Bridge detection is Mintlify-specific. The other frameworks — Fumadocs, Nextra, Starlight — need a [one-shot migration](/docs/advanced/migrate).
+- **Same idiom gaps as the migrator.** Components without a Blume equivalent are transformed on a best-effort basis; when you hit one, [migrate](/docs/advanced/migrate) and address the warnings, or switch that page to a Blume-native equivalent such as the [OpenAPI reference](/docs/advanced/api-reference).
+- **No runtime variables.** As with a migration, `{{variable}}` values are inlined at scan time rather than substituted at runtime.
+
+<CardGroup cols={2}>
+  <Card title="Migrate" href="/docs/advanced/migrate" icon="arrow-right">
+    Convert a Mintlify, Fumadocs, Nextra, or Starlight project permanently.
+  </Card>
+  <Card title="Content sources" href="/docs/content/sources" icon="folder-tree">
+    How the `mintlify` source and `content.assets` fit into Blume's content
+    graph.
+  </Card>
+</CardGroup>

@@ -1,0 +1,116 @@
+---
+title: Migrate
+description: Convert a Mintlify, Fumadocs, Nextra, or Starlight project to Blume in one command — config, content, navigation, and assets translated to idiomatic Blume.
+---
+
+Already have a docs site somewhere else? `blume migrate` is a one-shot codemod that converts a project from another docs framework into Blume — translating the config, rewriting each page to idiomatic Blume MDX, converting navigation files, and relocating assets, all in place. When it finishes you have a `blume.config.ts` and a tree that `blume dev` can serve.
+
+```bash
+npx blume migrate <tool>
+```
+
+The `<tool>` is the framework you're coming from:
+
+| Tool | Detects | Command |
+| --- | --- | --- |
+| [Mintlify](#mintlify) | `docs.json` / `mint.json` | `blume migrate mintlify` |
+| [Fumadocs](#fumadocs) | `content/docs` + `meta.json` | `blume migrate fumadocs` |
+| [Nextra](#nextra) | `content/` or `pages/` + `_meta` | `blume migrate nextra` |
+| [Starlight](#starlight) | `src/content/docs` + `astro.config.*` | `blume migrate starlight` |
+
+:::warning A migration **rewrites files in place** — pages, config, navigation, and assets. Commit (or stash) your work first so you can review the diff and roll back cleanly. :::
+
+## What a migration does
+
+Every migrator runs the same shape of work, tuned to the source framework:
+
+<Steps>
+  <Step title="Translate the config">
+    The framework's config — `docs.json`, a `starlight({...})` block, and so on — becomes a `blume.config.ts` at your project root, with navigation, theme, and site chrome mapped across.
+  </Step>
+  <Step title="Rewrite every page">
+    Each `.md`/`.mdx` file is rewritten to idiomatic Blume markup: framework callouts become [`:::` directives](/docs/content/syntax), components are renamed or converted, and frontmatter is mapped to Blume's [page schema](/docs/reference/frontmatter). Keys Blume doesn't recognize are dropped and reported.
+  </Step>
+  <Step title="Convert navigation">
+    Navigation files (`_meta.{js,ts,json}`, `meta.json`) become typed [`meta.ts`](/docs/content/meta) files, preserving order and titles.
+  </Step>
+  <Step title="Relocate assets and scripts">
+    Referenced asset folders are kept in place and served via [`content.assets`](/docs/content/sources); loose top-level files move under `public/`. Your `dev`/`build`/`start` npm scripts are repointed at the matching `blume` commands.
+  </Step>
+</Steps>
+
+When it's done the CLI prints how many files it touched, a list of **warnings** — anything that needs a human eye, like a component with no Blume equivalent or a dropped frontmatter key — and a reminder to review the generated config:
+
+```txt
+✔ Migrated 42 content file(s).
+⚠ Components without a Blume equivalent need manual review: <Frame>.
+⚠ Dropped unsupported page frontmatter keys: mode, "og:image".
+▶ Review blume.config.ts and run `blume dev`.
+```
+
+## Tools
+
+### Mintlify
+
+Reads `docs.json` (or legacy `mint.json`) and rewrites every page **in place** — content stays at the project root (`content.root` is `"."`).
+
+- Snippets under `/snippets` are inlined as includes; component snippets (e.g. `.jsx`) are kept and their imports rewritten to relative paths.
+- `docs.json` `variables` are inlined into content — Blume has no runtime `{{variable}}` substitution.
+- Multi-language projects map to [`i18n.locales`](/docs/content/i18n); the language nav selector is dropped in favor of Blume's locale switching.
+- Components with no Blume equivalent are flagged for manual review — reach for the [OpenAPI reference](/docs/advanced/api-reference) in place of Mintlify's API components.
+
+:::tip Want to preview Blume against a Mintlify codebase **without** rewriting anything? Run `blume dev` with no config and Blume serves `docs.json` as-is in [Bridge mode](/docs/advanced/bridge). Migrate when you're ready to commit. :::
+
+### Fumadocs
+
+Reads `content/docs` + `meta.json`. Moves pages into `docs/`, preserving the `/docs` route prefix, and rewrites Fumadocs MDX to Blume markup: callouts, `<Cards>`/`<Accordions>`/`<Files>`, `<Tabs items>`, and `<include>` directives are all converted. Each `meta.json` becomes a typed `meta.ts`.
+
+### Nextra
+
+Reads `content/` or `pages/` plus `_meta` files. Moves pages into `docs/`, rewrites `<Callout>`s to [directives](/docs/content/syntax), and converts every `_meta.{js,ts,json}` into a typed `meta.ts` — navigation order and titles preserved.
+
+### Starlight
+
+Reads `src/content/docs` + your `astro.config.*`. Translates the `starlight({...})` options into `blume.config.ts` and rewrites each page **in place** (content stays under `src/content/docs`): asides become directives, components are renamed, and frontmatter is mapped across.
+
+## After migrating
+
+<Steps>
+  <Step title="Review the config">
+    Open `blume.config.ts` and check the mapped navigation, theme, and site
+    settings. The migrator is thorough but conservative — some source options
+    have no Blume equivalent and are left out.
+  </Step>
+  <Step title="Read the warnings">
+    Each warning points at something the codemod couldn't fully translate. Work
+    through them before shipping.
+  </Step>
+  <Step title="Run the dev server">
+    Serve the migrated site. Blume [validates your content](/docs/reference/cli#validating-links) as it serves it, so broken links, missing anchors, and schema errors surface immediately.
+
+    ```bash
+    blume dev
+    ```
+
+  </Step>
+  <Step title="Delete leftovers">
+    Old framework files (lockfile entries, `astro.config`, `theme.config`,
+    framework dependencies) are left untouched so nothing is lost. Remove them
+    by hand once you've confirmed the site builds.
+  </Step>
+</Steps>
+
+<CardGroup cols={2}>
+  <Card title="Bridge mode" href="/docs/advanced/bridge" icon="cable">
+    Serve a Mintlify project with `blume dev` — no migration, no file changes.
+  </Card>
+  <Card title="CLI reference" href="/docs/reference/cli" icon="terminal">
+    Every command and flag, including `blume migrate`.
+  </Card>
+  <Card title="Content sources" href="/docs/content/sources" icon="folder-tree">
+    How Blume scans content, assets, and remote sources into a site.
+  </Card>
+  <Card title="Frontmatter" href="/docs/reference/frontmatter" icon="file-text">
+    The page schema your migrated frontmatter is mapped onto.
+  </Card>
+</CardGroup>
