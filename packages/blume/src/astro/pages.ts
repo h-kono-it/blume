@@ -21,7 +21,12 @@ export const discoverPages = async (
   return files.map((file) => {
     const rel = relative(pagesRoot, file);
     const withoutExt = rel.slice(0, rel.length - extname(rel).length);
-    const parts = withoutExt.split("/").filter((part) => part !== "index");
+    const parts = withoutExt.split("/");
+    // Only a trailing `index` maps to its parent dir; a folder literally named
+    // `index` (e.g. `index/foo.astro`) must keep its segment.
+    if (parts.at(-1) === "index") {
+      parts.pop();
+    }
     const pattern = parts.length === 0 ? "/" : `/${parts.join("/")}`;
     return { entrypoint: file, pattern };
   });

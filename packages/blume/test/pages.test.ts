@@ -14,6 +14,9 @@ const FILES = [
   "blog/index.astro",
   "blog/[slug].astro",
   "nested/deep/index.astro",
+  // A folder literally named `index` keeps its segment (only a trailing
+  // `index` file collapses to the parent).
+  "index/nested.astro",
 ];
 
 beforeAll(async () => {
@@ -39,6 +42,7 @@ describe("discoverPages", () => {
       "/about",
       "/blog",
       "/blog/[slug]",
+      "/index/nested",
       "/nested/deep",
     ]);
   });
