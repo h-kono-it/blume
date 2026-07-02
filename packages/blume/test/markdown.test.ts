@@ -151,6 +151,24 @@ describe(toPackageCommands, () => {
   it("keeps run scripts on each manager", () => {
     expect(toPackageCommands("npm run build").yarn).toBe("yarn run build");
   });
+
+  it("routes a global uninstall through yarn global remove", () => {
+    expect(toPackageCommands("npm uninstall -g eslint")).toStrictEqual({
+      bun: "bun remove -g eslint",
+      npm: "npm uninstall -g eslint",
+      pnpm: "pnpm remove -g eslint",
+      yarn: "yarn global remove eslint",
+    });
+  });
+
+  it("maps npm ci to a frozen install per manager", () => {
+    expect(toPackageCommands("npm ci")).toStrictEqual({
+      bun: "bun install --frozen-lockfile",
+      npm: "npm ci",
+      pnpm: "pnpm install --frozen-lockfile",
+      yarn: "yarn install --frozen-lockfile",
+    });
+  });
 });
 
 describe(codeTitleTransformer, () => {

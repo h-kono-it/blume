@@ -10,7 +10,14 @@ const WHITESPACE = /\s+/u;
 const WHITESPACE_RUN = /\s+/gu;
 const GLOBAL_FLAGS = new Set(["-g", "--global"]);
 
-type Operation = "add" | "create" | "exec" | "install" | "remove" | "run";
+type Operation =
+  | "add"
+  | "ci"
+  | "create"
+  | "exec"
+  | "install"
+  | "remove"
+  | "run";
 
 interface Intent {
   args: string[];
@@ -25,6 +32,9 @@ const normalizeVerb = (verb: string): Operation | null => {
     case "in":
     case "install": {
       return "add";
+    }
+    case "ci": {
+      return "ci";
     }
     case "create":
     case "init": {
@@ -125,10 +135,22 @@ const buildCommand = (manager: PackageManager, intent: Intent): string => {
       }
       return `${manager} dlx ${args}`;
     }
-    case "remove": {
+    case "ci": {
+      // `npm ci` maps to a frozen, lockfile-faithful install elsewhere.
       return manager === "npm"
-        ? `npm uninstall ${args}`
-        : `${manager} remove ${args}`;
+        ? "npm ci"
+        : `${manager} install --frozen-lockfile`;
+    }
+    case "remove": {
+      if (manager === "npm") {
+        return `npm uninstall ${args}`;
+      }
+      // Yarn Classic has no `remove -g`; the global form is `yarn global remove`.
+      if (manager === "yarn" && intent.args.some((a) => GLOBAL_FLAGS.has(a))) {
+        const pkgs = intent.args.filter((a) => !GLOBAL_FLAGS.has(a)).join(" ");
+        return `yarn global remove ${pkgs}`;
+      }
+      return `${manager} remove ${args}`;
     }
     case "run": {
       return `${manager} run ${args}`;
