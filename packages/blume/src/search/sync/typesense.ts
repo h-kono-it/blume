@@ -8,9 +8,13 @@ export interface TypesenseSyncConfig {
 }
 
 /**
- * Import the search records into a Typesense collection, creating the
- * collection on first run. Uses the admin key from `TYPESENSE_ADMIN_API_KEY`.
- * Throws on a missing key/config so the caller can warn.
+ * Import the search records into a Typesense collection. Uses the admin key
+ * from `TYPESENSE_ADMIN_API_KEY`. Throws on a missing key/config so the caller
+ * can warn.
+ *
+ * The collection is dropped and recreated on each sync so that pages deleted or
+ * renamed since the last sync don't linger as stale search hits that 404 when
+ * clicked (an upsert alone never removes them).
  */
 export const syncTypesense = async (
   records: SearchRecord[],
@@ -35,20 +39,24 @@ export const syncTypesense = async (
     ],
   });
 
-  try {
-    await client.collections(config.collection).retrieve();
-  } catch {
-    await client.collections().create({
-      fields: [
-        { name: "title", type: "string" },
-        { name: "description", optional: true, type: "string" },
-        { name: "content", type: "string" },
-        { name: "url", type: "string" },
-        { facet: true, name: "tag", optional: true, type: "string" },
-      ],
-      name: config.collection,
-    });
+  const collection = client.collections(config.collection);
+  const exists = await collection
+    .retrieve()
+    .then(() => true)
+    .catch(() => false);
+  if (exists) {
+    await collection.delete();
   }
+  await client.collections().create({
+    fields: [
+      { name: "title", type: "string" },
+      { name: "description", optional: true, type: "string" },
+      { name: "content", type: "string" },
+      { name: "url", type: "string" },
+      { facet: true, name: "tag", optional: true, type: "string" },
+    ],
+    name: config.collection,
+  });
 
   const documents = records.map((record) => ({
     content: record.content,

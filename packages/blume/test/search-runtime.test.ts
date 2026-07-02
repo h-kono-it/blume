@@ -49,6 +49,7 @@ let typesenseImport: (
   docs: Record<string, unknown>[],
   options: { action: string }
 ) => Promise<unknown>;
+let typesenseDelete: () => Promise<unknown>;
 
 // Turn an object factory into a `new`-able constructor — the SDKs are used as
 // `new Client(...)` etc., and a constructor that returns an object yields it.
@@ -64,7 +65,7 @@ mock.module("algoliasearch/lite", () => ({
 }));
 mock.module("algoliasearch", () => ({
   algoliasearch: () => ({
-    saveObjects: (args: SaveObjectsArgs) => algoliaSave(args),
+    replaceAllObjects: (args: SaveObjectsArgs) => algoliaSave(args),
   }),
 }));
 mock.module("@oramacloud/client", () => ({
@@ -82,6 +83,7 @@ mock.module("typesense", () => ({
   Client: asConstructor(() => ({
     collections: (_name?: string) => ({
       create: (schema: unknown) => typesenseCreate(schema),
+      delete: () => typesenseDelete(),
       documents: () => ({
         import: (
           docs: Record<string, unknown>[],
@@ -284,10 +286,15 @@ describe("hosted sync uploads", () => {
     process.env.TYPESENSE_ADMIN_API_KEY = "admin";
     const captured: {
       created?: boolean;
+      deleted?: boolean;
       docs?: Record<string, unknown>[];
       options?: { action: string };
     } = {};
     typesenseRetrieve = () => Promise.reject(new Error("not found"));
+    typesenseDelete = () => {
+      captured.deleted = true;
+      return Promise.resolve({});
+    };
     typesenseCreate = (schema) => {
       captured.created = true;
       return Promise.resolve(schema);
@@ -299,9 +306,31 @@ describe("hosted sync uploads", () => {
     };
     const { syncTypesense } = await import("../src/search/sync/typesense.ts");
     await syncTypesense(records, { collection: "docs", host: "h" });
+    // First run: no existing collection, so nothing to drop.
+    expect(captured.deleted).toBeUndefined();
     expect(captured.created).toBe(true);
     expect(captured.options?.action).toBe("upsert");
     expect(captured.docs?.[0]?.id).toBe("/a");
+  });
+
+  it("typesense drops an existing collection before recreating it", async () => {
+    process.env.TYPESENSE_ADMIN_API_KEY = "admin";
+    const captured: { created?: boolean; deleted?: boolean } = {};
+    typesenseRetrieve = () => Promise.resolve({});
+    typesenseDelete = () => {
+      captured.deleted = true;
+      return Promise.resolve({});
+    };
+    typesenseCreate = (schema) => {
+      captured.created = true;
+      return Promise.resolve(schema);
+    };
+    typesenseImport = () => Promise.resolve([]);
+    const { syncTypesense } = await import("../src/search/sync/typesense.ts");
+    await syncTypesense(records, { collection: "docs", host: "h" });
+    // A pre-existing collection is dropped so stale records don't survive.
+    expect(captured.deleted).toBe(true);
+    expect(captured.created).toBe(true);
   });
 
   it("the dispatcher runs the provider sync and reports success", async () => {

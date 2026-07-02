@@ -90,8 +90,10 @@ with this provider.
 ### Algolia
 
 The browser queries [Algolia](https://www.algolia.com) directly with your
-search-only key. Each `blume build` uploads the index using the admin key from
+search-only key. Each `blume build` replaces the index using the admin key from
 `ALGOLIA_ADMIN_API_KEY` (the build warns and skips the upload if it's unset).
+The whole index is replaced on every sync, so pages you delete or rename don't
+linger as stale results.
 
 ```ts blume.config.ts lineNumbers
 search: {
@@ -124,8 +126,10 @@ search: {
 ### Typesense
 
 Self-hosted or cloud [Typesense](https://typesense.org). The browser queries the
-collection with the search-only key; `blume build` creates the collection (if
-needed) and imports documents using `TYPESENSE_ADMIN_API_KEY`.
+collection with the search-only key; `blume build` recreates the collection and
+imports documents using `TYPESENSE_ADMIN_API_KEY`. The collection is dropped and
+rebuilt on every sync so deleted or renamed pages don't linger as stale results
+— if you hand-tune the collection's settings, reapply them after a build.
 
 ```ts blume.config.ts lineNumbers
 search: {
