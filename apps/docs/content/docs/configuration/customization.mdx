@@ -161,16 +161,19 @@ available:
 blume add
 ```
 
-Install a widget, or any built-in layout slot you want to customize — the
-header, sidebar, breadcrumbs, table of contents, or pagination:
+Install a layout slot (header, sidebar, breadcrumbs, table of contents,
+pagination, or feedback) or any content component (callout, card, tabs, steps,
+accordion, and more):
 
 ```bash
+blume add callout
 blume add pagination
 ```
 
-The copy imports the rest of the framework from `blume/*`, so it renders
-exactly like the built-in until you change it. `blume add` prints the
-`defineComponents` snippet to register it under the matching layout slot.
+The copy imports the rest of the framework from `blume/*`, so it renders exactly
+like the built-in until you change it. `blume add` prints the `defineComponents`
+snippet to register it — content components under `mdx`, layout pieces under
+`layout`.
 
 ## Eject
 

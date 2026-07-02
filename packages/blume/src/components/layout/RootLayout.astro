@@ -111,7 +111,7 @@ interface Props {
    * User layout-slot overrides from `components.ts` (`defineComponents`). Each
    * key replaces the matching built-in; unknown keys are ignored. Wired slots:
    * `Header`, `Logo`, `Search`, `Sidebar`, `MobileNav`, `Breadcrumbs`,
-   * `TableOfContents`, `Pagination`, plus the content-injection slots
+   * `TableOfContents`, `Pagination`, `Feedback`, plus the content-injection slots
    * `PageHeader`, `PageFooter`, and `Footer` (which have no built-in and render
    * only when overridden). `Layout` (replacing this whole component) is wired in
    * the generated page templates, not here.
@@ -188,6 +188,8 @@ const MobileNavSlot = layout.MobileNav
 const FooterSlot = resolveSlot(layout.Footer, Empty);
 const PageHeaderSlot = resolveSlot(layout.PageHeader, Empty);
 const PageFooterSlot = resolveSlot(layout.PageFooter, Empty);
+// The "Was this page helpful?" rating (rendered only when `feedback` is on).
+const FeedbackSlot = resolveSlot(layout.Feedback, PageFeedback);
 
 const strings = ui ?? EN_UI;
 // Filter search to the active language only when the site is multi-locale.
@@ -363,7 +365,7 @@ const bannerScript = banner?.dismissible
             </p>
           )
         }
-        {feedback && <PageFeedback strings={strings.feedback} />}
+        {feedback && <FeedbackSlot strings={strings.feedback} />}
         <PaginationSlot next={next} prev={prev} strings={strings.page} />
       </main>
       <aside

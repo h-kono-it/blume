@@ -2,10 +2,6 @@
 
 ## P2 — Concrete smaller gaps
 
-### Registry `blume add` (plan 05 / 07)
-
-- [ ] Ship all the prebuilt components as registry items beyond the 5 layout components: `feedback`, `code-group` in case users want to edit them and wire them back in using `components.ts`.
-
 ### Errors & diagnostics (plan 18)
 
 - [ ] Dev overlay (Blume diagnostics bridged into Vite/Astro overlay with snippet + fix + docs link)

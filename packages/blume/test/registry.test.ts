@@ -209,7 +209,7 @@ describe("rewriteImports branches", () => {
   });
 });
 
-describe("registry layout components", () => {
+describe("registry components", () => {
   const rewritten = registry.filter((item) =>
     item.files.some((file) => file.rewrite)
   );
@@ -224,11 +224,12 @@ describe("registry layout components", () => {
           source,
           packageSrc
         );
+        // A self-contained component may rewrite nothing; any `blume/*` spec it
+        // does produce must resolve to a real package file.
         const specs = [...out.matchAll(BLUME_SPEC)].flatMap((match) => {
           const path = match.groups?.path;
           return path ? [path] : [];
         });
-        expect(specs.length).toBeGreaterThan(0);
         for (const spec of specs) {
           expect(existsSync(join(packageSrc, spec))).toBe(true);
         }
