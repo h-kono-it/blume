@@ -13,8 +13,6 @@
 
 ### Deployment (plan 19)
 
-- [ ] Env-var fail-fast when a feature needs a secret (AI Gateway token, analytics keys, feedback creds)
-
 ### Config (plan 04)
 
 - [ ] Resolve orphan config fields (favicon/navbar/footer/icons/contextual/styling/banner) — prune or wire

@@ -125,6 +125,21 @@ Cloudflare Pages), `vercel.json` (Vercel), and `blume-redirects.json` — a
 structured manifest for anything else (nginx/Apache rules, an edge worker). A
 `_redirects` or `vercel.json` you ship in `public/` is left untouched.
 
+## Environment variables
+
+When a feature needs a runtime secret, Blume warns at `blume dev`/`build` if it's
+missing — so the problem surfaces early instead of at the first request:
+
+| Feature                                 | Variable                              |
+| --------------------------------------- | ------------------------------------- |
+| Ask AI (AI Gateway)                     | `AI_GATEWAY_API_KEY` (or Vercel OIDC) |
+| Ask AI (OpenRouter / OpenAI-compatible) | the provider's `apiKeyEnv`            |
+| Mixedbread search                       | `MIXEDBREAD_API_KEY`                  |
+
+Set them in `.env.local` for local dev and in your host's environment for
+production. Build-time secrets for search-index sync (Algolia, Orama Cloud,
+Typesense) are warned about separately during the sync step.
+
 ## Build summary
 
 Every build prints a summary — output mode, adapter, resolved site URL, search

@@ -10,6 +10,7 @@ import { serverFeatures } from "../core/server-features.ts";
 import { loadEnvFiles } from "./env.ts";
 import { reportInternalError } from "./internal-error.ts";
 import { logger, reportDiagnostics } from "./log.ts";
+import { checkRequiredSecrets } from "./required-secrets.ts";
 
 export interface PrepareOptions {
   root: string;
@@ -90,5 +91,9 @@ export const prepareProject = async (
   for (const warning of warnings) {
     logger.warn(warning);
   }
+
+  // Fail-fast on missing runtime secrets: warn now, not at the first request.
+  reportDiagnostics(checkRequiredSecrets(project.config), options.root);
+
   return project;
 };

@@ -36,6 +36,7 @@ const DOCS_PATHS: Record<string, string> = {
   BLUME_FRONTMATTER_INVALID: "/docs/reference/frontmatter",
   BLUME_META_INVALID: "/docs/content/meta",
   BLUME_META_LOAD_FAILED: "/docs/content/meta",
+  BLUME_MISSING_SECRET: "/docs/deployment",
   BLUME_NAV_DUPLICATE_LABEL: "/docs/content/navigation",
   BLUME_NAV_HIDDEN_IN_SIDEBAR: "/docs/content/navigation",
   BLUME_NAV_MISSING_PAGE: "/docs/content/navigation",
