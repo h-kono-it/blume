@@ -69,9 +69,30 @@ const changelogMetaSchema = z
   })
   .strict();
 
+/**
+ * A post author: a bare name/handle, or an object with a name plus optional
+ * avatar/URL. The object is passthrough so richer author metadata (social
+ * handles, roles) survives untouched — Blume doesn't render authors yet, so
+ * this exists to preserve the field (common on blog/changelog pages) rather
+ * than have a strict scan reject it.
+ */
+const authorSchema = z.union([
+  z.string(),
+  z
+    .object({
+      avatar: z.string().optional(),
+      image: z.string().optional(),
+      name: z.string(),
+      url: z.string().optional(),
+    })
+    .passthrough(),
+]);
+
 /** Frontmatter accepted on any content page. */
 const pageMetaBaseSchema = z
   .object({
+    /** Post author(s) for blog/changelog content; preserved, not yet rendered. */
+    authors: z.union([authorSchema, z.array(authorSchema)]).optional(),
     changelog: changelogMetaSchema.optional(),
     /** Publish date for feed-backed content like blog/changelog. */
     date: dateSchema.optional(),

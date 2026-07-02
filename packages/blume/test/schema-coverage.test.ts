@@ -15,6 +15,25 @@ describe("dateSchema normalization", () => {
   });
 });
 
+describe("authors frontmatter", () => {
+  it("preserves a single string author", () => {
+    const meta = pageMetaSchema.parse({ authors: "ada" });
+    expect(meta.authors).toBe("ada");
+  });
+
+  it("preserves an array of author objects with extra fields", () => {
+    const authors = [
+      { name: "Ada Lovelace", twitter: "@ada", url: "https://ada.dev" },
+    ];
+    const meta = pageMetaSchema.parse({ authors });
+    expect(meta.authors).toStrictEqual(authors);
+  });
+
+  it("still rejects an unknown top-level key", () => {
+    expect(pageMetaSchema.safeParse({ unknownKey: 1 }).success).toBeFalsy();
+  });
+});
+
 describe("banner color refinement", () => {
   it("accepts a banner color with a single side set", () => {
     const config = blumeConfigSchema.parse({

@@ -18,6 +18,11 @@ Every page accepts the following frontmatter. All fields are optional.
       type: "string",
       description: "Publish date for blog/changelog feeds (ISO or YAML date).",
     },
+    authors: {
+      type: "string | string[] | object[]",
+      description:
+        "Post author(s) for blog/changelog content — a name, or objects with a name plus optional avatar/url and any extra fields. Preserved as-is.",
+    },
     slug: { type: "string", description: "Override the generated slug." },
     draft: {
       type: "boolean",

@@ -20,7 +20,7 @@ Source: analysis of a large Mintlify site (two sub-sites — a product/API docs 
 
 - [x] **Translate wildcard redirects to Astro syntax.** `mintlifyRedirects` copies `from`/`to` verbatim, so a `/old/:slug*` → `/new/:slug*` redirect reaches Astro's `redirects` unchanged and never matches (Astro uses `[...slug]`, not `:slug*`). Convert `:param*` / `:param` path-to-regexp segments to Astro dynamic segments.
 
-- [ ] **Preserve `authors` frontmatter.** Blume's `pageMetaBaseSchema` (`src/core/schema.ts`) keeps `date` but not `authors`; the migrator drops it (seen on ~17 changelog/blog files). Add `authors` to the schema or fold it into an existing field.
+- [x] **Preserve `authors` frontmatter.** Blume's `pageMetaBaseSchema` (`src/core/schema.ts`) keeps `date` but not `authors`; the migrator drops it (seen on ~17 changelog/blog files). Add `authors` to the schema or fold it into an existing field.
 
 ### Low / quality
 
