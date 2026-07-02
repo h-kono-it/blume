@@ -13,7 +13,7 @@ library — with no app boilerplate to write or maintain. Blume generates and
 drives a hidden Astro project for you; run `blume eject` to a standalone Astro
 app whenever you want full control.
 
-**[Documentation](https://blume.dev)** · [Quickstart](https://blume.dev/docs/quickstart) · [Components](https://blume.dev/docs/content/components) · [CLI](https://blume.dev/docs/reference/cli)
+**[Documentation](https://useblume.dev)** · [Quickstart](https://useblume.dev/docs/quickstart) · [Components](https://useblume.dev/docs/content/components) · [CLI](https://useblume.dev/docs/reference/cli)
 
 ## Quickstart
 
@@ -82,7 +82,7 @@ Tailwind yourself.
 | `blume validate`       | Validate links across your content.                    |
 | `blume doctor`         | Diagnose config and content problems.                  |
 
-See the [CLI reference](https://blume.dev/docs/reference/cli) for every flag.
+See the [CLI reference](https://useblume.dev/docs/reference/cli) for every flag.
 
 ## How it works
 

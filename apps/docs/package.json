@@ -1,9 +1,9 @@
 {
-  "name": "@blume/docs",
+  "name": "docs",
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "blume dev --port 3000",
+    "dev": "blume dev",
     "build": "blume build",
     "preview": "blume preview"
   },

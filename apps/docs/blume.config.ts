@@ -1,9 +1,6 @@
 import { defineConfig } from "blume";
 
 export default defineConfig({
-  ai: {
-    llmsTxt: true,
-  },
   analytics: {
     vercel: true,
   },
@@ -26,9 +23,6 @@ export default defineConfig({
         type: "github-releases",
       },
     ],
-  },
-  deployment: {
-    site: "https://blume.dev",
   },
   description:
     "Open-source, markdown-first documentation powered by Astro and Vite.",

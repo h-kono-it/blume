@@ -83,7 +83,7 @@ describe("formatDiagnostic", () => {
     const out = formatDiagnostic(
       diag({
         column: 4,
-        docsUrl: "https://blume.dev/errors",
+        docsUrl: "https://useblume.dev/errors",
         file: "/root/docs/a.md",
         line: 12,
         suggestion: "Fix the link",
@@ -94,7 +94,7 @@ describe("formatDiagnostic", () => {
     expect(out).toContain("Something went wrong");
     expect(out).toContain("at docs/a.md:12:4");
     expect(out).toContain("fix: Fix the link");
-    expect(out).toContain("docs: https://blume.dev/errors");
+    expect(out).toContain("docs: https://useblume.dev/errors");
   });
 
   it("uses the absolute file path and omits position when no root or line", () => {

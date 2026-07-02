@@ -9,7 +9,7 @@ export default defineConfig({
   // `prefer-importing-vitest-globals` rule misreads `bun:test` imports.
   extends: [core, react, next],
   ignorePatterns: [
-    ...core.ignorePatterns,
+    ...(core.ignorePatterns ?? []),
     // Astro components are linted by `astro check`, not oxlint, which misparses
     // single-file `.astro` syntax (template + frontmatter).
     "**/*.astro",
