@@ -132,6 +132,20 @@ describe(validateLinks, () => {
     expect(diagnostics).toHaveLength(0);
   });
 
+  it("resolves relative links from an index page against its own route", async () => {
+    // `guides/index.mdx` (route `/guides`) linking `./setup` must resolve to
+    // `/guides/setup`, not `/setup`.
+    const diagnostics = await validate([
+      makePage({
+        id: "guides/index.mdx",
+        links: [link("./setup")],
+        route: "/guides",
+      }),
+      makePage({ id: "guides/setup.mdx", route: "/guides/setup" }),
+    ]);
+    expect(diagnostics).toHaveLength(0);
+  });
+
   it("warns on a missing anchor but accepts a real heading", async () => {
     const target = makePage({
       headings: [heading("Setup", "setup")],

@@ -1,6 +1,6 @@
 import { existsSync } from "node:fs";
 
-import { join } from "pathe";
+import { basename, join } from "pathe";
 
 import type {
   ContentGraph,
@@ -46,11 +46,29 @@ interface LinkContext {
 /** Outcome of classifying one link target. */
 type LinkResult = Diagnostic | "asset-unchecked" | null;
 
+/**
+ * Whether a page is a directory index (`…/index.md(x)`). Its route already *is*
+ * its directory, so a relative link must resolve against the route itself, not
+ * its parent — otherwise `./sibling` from `guides/index.mdx` (route `/guides`)
+ * would resolve to `/sibling` and be falsely flagged as broken.
+ */
+const isIndexPage = (page: PageRecord): boolean => {
+  const ref = page.source?.ref ?? page.sourcePath ?? "";
+  return /^index\.(?:md|mdx)$/iu.test(basename(ref));
+};
+
 /** Resolve a relative link target against the directory of a page route. */
-const resolveRelative = (pageRoute: string, target: string): string => {
+const resolveRelative = (
+  pageRoute: string,
+  target: string,
+  isIndex: boolean
+): string => {
   const segments = pageRoute.split("/").filter(Boolean);
-  // Drop the page's own segment so links resolve against its parent directory.
-  segments.pop();
+  // Drop a leaf page's own segment so links resolve against its parent
+  // directory. An index page's route already is its directory, so keep it.
+  if (!isIndex) {
+    segments.pop();
+  }
   for (const part of target.split("/")) {
     if (part === "" || part === ".") {
       continue;
@@ -295,7 +313,7 @@ const classifyLink = (
 
   const resolved = rawPath.startsWith("/")
     ? rawPath
-    : resolveRelative(page.route, rawPath);
+    : resolveRelative(page.route, rawPath, isIndexPage(page));
   return checkPathLink(resolved, fragment, target, site, ctx);
 };
 
