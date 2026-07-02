@@ -1,5 +1,6 @@
 import { BlumeError } from "../diagnostics.ts";
 import matter from "../frontmatter.ts";
+import type { Diagnostic } from "../types.ts";
 import {
   hashText,
   loadWithCache,
@@ -179,17 +180,45 @@ export const mdxRemoteSource = (
   };
 
   const load = async (): Promise<SourceLoadResult> => {
+    const skipped: Diagnostic[] = [];
     const result = await loadWithCache(
       options.name,
       cache,
       async () => {
         const refs = await enumerate();
-        return await Promise.all(refs.map(fetchEntry));
+        const settled = await Promise.all(
+          refs.map(async (ref) => {
+            try {
+              return await fetchEntry(ref);
+            } catch (error) {
+              skipped.push({
+                code: "BLUME_SOURCE_FETCH_FAILED",
+                message: `Source "${options.name}" skipped "${ref.ref}" (${(error as Error).message}); the rest were imported.`,
+                severity: "warning",
+              });
+              return null;
+            }
+          })
+        );
+        const entries = settled.filter(
+          (entry): entry is SourceEntry => entry !== null
+        );
+        // Only a total wipeout is a hard failure — let loadWithCache fall back
+        // to cache or fail loudly rather than silently importing nothing. A
+        // partial failure keeps the healthy pages and warns about the rest.
+        if (refs.length > 0 && entries.length === 0) {
+          skipped.length = 0;
+          throw new Error(`all ${refs.length} remote file(s) failed to fetch`);
+        }
+        return entries;
       },
       ctx.refresh ?? true
     );
     snapshot = new Map(result.entries.map((entry) => [entry.ref, entry]));
-    return result;
+    return {
+      ...result,
+      diagnostics: [...result.diagnostics, ...skipped],
+    };
   };
 
   const read = async (ref: string): Promise<string> => {

@@ -233,6 +233,30 @@ describe("mdxRemoteSource (files mode)", () => {
     expect(entries).toHaveLength(2);
     expect(diagnostics.map((d) => d.code)).toContain("BLUME_SOURCE_OFFLINE");
   });
+
+  it("skips a single failed file and imports the rest with a warning", async () => {
+    const cacheDir = join(await makeProject({}), ".cache");
+    const source = mdxRemoteSource(
+      {
+        // `gone.mdx` isn't in FILES, so fetchOk 404s it.
+        fetchImpl: fetchOk,
+        files: ["intro.mdx", "gone.mdx", "guide.md"],
+        include: ["**/*.{md,mdx}"],
+        name: "sdk",
+        url: "https://example.com/docs",
+      },
+      ctxFor(cacheDir)
+    );
+
+    const { entries, diagnostics } = await source.load();
+    expect(entries.map((entry) => entry.ref).toSorted()).toStrictEqual([
+      "guide.md",
+      "intro.mdx",
+    ]);
+    expect(diagnostics.map((d) => d.code)).toContain(
+      "BLUME_SOURCE_FETCH_FAILED"
+    );
+  });
 });
 
 describe("mdxRemoteSource (github mode)", () => {
