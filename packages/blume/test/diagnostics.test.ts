@@ -96,6 +96,22 @@ describe("diagnosticsFromZod", () => {
     expect(diagnostic?.column).toBe(3);
   });
 
+  it("doesn't match a key as the tail of a longer key", () => {
+    // `subtitle:` precedes `title:`; the `title` segment must skip it.
+    const source = "subtitle: ok\ntitle: 123\n";
+    const schema = z.object({ title: z.string() });
+    const result = schema.safeParse({ title: 123 });
+    if (result.success) {
+      throw new Error("expected a failure");
+    }
+    const [diagnostic] = diagnosticsFromZod(result.error, {
+      code: "BLUME_FRONTMATTER_INVALID",
+      source,
+    });
+    expect(diagnostic?.line).toBe(2);
+    expect(diagnostic?.column).toBe(1);
+  });
+
   it("leaves line/column unset when no source is given", () => {
     const result = z.object({ count: z.number() }).safeParse({ count: "x" });
     if (result.success) {

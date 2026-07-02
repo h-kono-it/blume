@@ -84,7 +84,12 @@ const locatePath = (
     if (typeof segment !== "string") {
       continue;
     }
-    const matcher = new RegExp(`${escapeRegExp(segment)}\\s*[:=]`, "gu");
+    // The negative lookbehind keeps a segment like `title` from matching the
+    // tail of an unrelated key such as `subtitle:`.
+    const matcher = new RegExp(
+      `(?<![\\w$])${escapeRegExp(segment)}\\s*[:=]`,
+      "gu"
+    );
     matcher.lastIndex = cursor;
     const match = matcher.exec(source);
     if (!match) {
