@@ -200,9 +200,7 @@ export const eject = async (root: string): Promise<string[]> => {
 
   if (config.seo.og.enabled) {
     files.push({
-      content: ogEndpointTemplate(
-        customOgRoutes(pages, config.title, config.description)
-      ),
+      content: ogEndpointTemplate(customOgRoutes(pages, config.title)),
       path: join(srcDir, "pages", "og", "[...slug].png.ts"),
     });
   }

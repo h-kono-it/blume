@@ -8,18 +8,18 @@ const page = (pattern: string) => ({
 });
 
 describe("customOgRoutes", () => {
-  it("titles the home with the site title and the description eyebrow", () => {
-    expect(customOgRoutes([page("/")], "Acme", "Fast docs")).toEqual([
-      { eyebrow: "Fast docs", slug: "index", title: "Acme" },
+  it("titles the home with the site title", () => {
+    expect(customOgRoutes([page("/")], "Acme")).toEqual([
+      { slug: "index", title: "Acme" },
     ]);
   });
 
-  it("titles a deeper page from its last segment, site-title eyebrow", () => {
+  it("titles a deeper page from its last segment", () => {
     expect(
       customOgRoutes([page("/pricing"), page("/getting-started")], "Acme")
     ).toEqual([
-      { eyebrow: "Acme", slug: "pricing", title: "Pricing" },
-      { eyebrow: "Acme", slug: "getting-started", title: "Getting Started" },
+      { slug: "pricing", title: "Pricing" },
+      { slug: "getting-started", title: "Getting Started" },
     ]);
   });
 
@@ -40,11 +40,5 @@ describe("customOgRoutes", () => {
     expect(
       customOgRoutes([page("/pricing"), page("/pricing")], "Acme")
     ).toHaveLength(1);
-  });
-
-  it("omits the eyebrow for the home when there's no description", () => {
-    const [home] = customOgRoutes([page("/")], "Acme");
-    expect(home?.eyebrow).toBeUndefined();
-    expect(home).toEqual({ eyebrow: undefined, slug: "index", title: "Acme" });
   });
 });

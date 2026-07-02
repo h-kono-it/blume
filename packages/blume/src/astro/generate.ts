@@ -887,7 +887,7 @@ export const generateRuntime = async (
   // Custom pages that should get a generated OG card (the home most of all).
   // Computed before the MCP `.well-known` routes are appended below — those are
   // private and filtered out anyway, but the intent is the user's pages.
-  const ogRoutes = customOgRoutes(pages, config.title, config.description);
+  const ogRoutes = customOgRoutes(pages, config.title);
 
   // The hosted MCP server. The `.well-known` discovery docs are injected as
   // prerendered routes alongside user pages; the server endpoint itself is a

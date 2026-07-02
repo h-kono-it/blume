@@ -721,31 +721,47 @@ const customRoutes = ${JSON.stringify(customRoutes)};
 export function getStaticPaths() {
   const seen = new Set();
   const paths = [];
-  const add = (slug, title, eyebrow) => {
+  const add = (slug, title) => {
     if (seen.has(slug)) {
       return;
     }
     seen.add(slug);
-    paths.push({ params: { slug }, props: { eyebrow, title } });
+    paths.push({ params: { slug }, props: { title } });
   };
   // A custom page wins over a content route sharing its path, so add it first.
   for (const route of customRoutes) {
-    add(route.slug, route.title, route.eyebrow);
+    add(route.slug, route.title);
   }
   for (const route of data.routes) {
-    add(
-      route.path === "/" ? "index" : route.path.slice(1),
-      route.title,
-      data.config.title
-    );
+    add(route.path === "/" ? "index" : route.path.slice(1), route.title);
   }
   return paths;
 }
 
+// Footer branding shared by every card, derived once from the resolved config.
+// The repo slug reuses the header link URL; the host comes from the site URL.
+const repoSlug = data.config.repoUrl
+  ? data.config.repoUrl.split("github.com/")[1]
+  : undefined;
+const siteHost = (() => {
+  if (!data.config.site) {
+    return undefined;
+  }
+  try {
+    return new URL(data.config.site).host;
+  } catch {
+    return undefined;
+  }
+})();
+
 export async function GET({ props }) {
   const png = await renderOgImage({
     accent: data.config.theme.accent,
-    eyebrow: props.eyebrow,
+    brand: data.config.title,
+    description: data.config.description,
+    logo: data.config.logo?.svg,
+    repo: repoSlug,
+    site: siteHost,
     title: props.title,
   });
   return new Response(png, {

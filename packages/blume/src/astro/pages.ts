@@ -45,10 +45,8 @@ export const routeIsTaken = (
 export interface OgCustomRoute {
   /** `og/<slug>.png` path segment; `index` for the site root. */
   slug: string;
-  /** Card title. */
+  /** Card headline. */
   title: string;
-  /** Small eyebrow line above the title. */
-  eyebrow?: string;
 }
 
 /** Skip private (`_partial`, `.well-known`) and Astro dynamic (`[param]`) parts. */
@@ -68,13 +66,12 @@ const humanizeSegment = (segment: string): string =>
  *
  * Dynamic (`[param]`) routes and private segments (`_partials`, `.well-known`)
  * are skipped: they aren't shareable pages. The home is titled with the site
- * title (eyebrow: the site description); a deeper page is titled from its last
- * path segment.
+ * title; a deeper page is titled from its last path segment. The card's brand
+ * lockup, description, and footer come from the resolved config at render time.
  */
 export const customOgRoutes = (
   pages: BlumePageRoute[],
-  siteTitle: string,
-  siteDescription?: string
+  siteTitle: string
 ): OgCustomRoute[] => {
   const seen = new Set<string>();
   const routes: OgCustomRoute[] = [];
@@ -91,11 +88,7 @@ export const customOgRoutes = (
     }
     seen.add(slug);
     const last = segments.at(-1);
-    routes.push(
-      last
-        ? { eyebrow: siteTitle, slug, title: humanizeSegment(last) }
-        : { eyebrow: siteDescription, slug, title: siteTitle }
-    );
+    routes.push({ slug, title: last ? humanizeSegment(last) : siteTitle });
   }
   return routes;
 };
