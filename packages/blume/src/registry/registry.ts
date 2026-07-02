@@ -219,6 +219,12 @@ const CONTENT_COMPONENTS: {
     name: "prompt",
     tag: "Prompt",
   },
+  {
+    description: "A responsive, privacy-friendly YouTube embed.",
+    file: "YouTube.astro",
+    name: "youtube",
+    tag: "YouTube",
+  },
 ];
 
 /** The built-in, Blume-owned source registry. */

@@ -134,6 +134,14 @@ describe("catchAllPageTemplate", () => {
     expect(out).toContain("Diff,");
   });
 
+  it("registers the YouTube content component", () => {
+    const out = catchAllPageTemplate({ ...exportOpts, mathEnabled: false });
+    expect(out).toContain(
+      'import YouTube from "blume/components/content/YouTube.astro"'
+    );
+    expect(out).toContain("YouTube,");
+  });
+
   it("imports Math and AskAI when those features are on", () => {
     const out = catchAllPageTemplate({
       askEnabled: true,

@@ -922,6 +922,7 @@ import TreeFile from "blume/components/content/TreeFile.astro";
 import TreeFolder from "blume/components/content/TreeFolder.astro";
 import TypeTable from "blume/components/content/TypeTable.astro";
 import Visibility from "blume/components/content/Visibility.astro";
+import YouTube from "blume/components/content/YouTube.astro";
 import Icon from "blume/components/Icon.astro";
 ${mathImport}import { mdxComponents as userMdx, layoutOverrides } from "../generated/components.ts";
 import { islandComponents } from "../generated/islands.ts";
@@ -967,6 +968,7 @@ const components = {
   Tree,
   TypeTable,
   Visibility,
+  YouTube,
   ${mathEntry}...islandComponents,
   ...userMdx,
 };

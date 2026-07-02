@@ -36,4 +36,5 @@ export const BUILTIN_MDX_TAGS = new Set<string>([
   "Tree",
   "TypeTable",
   "Visibility",
+  "YouTube",
 ]);

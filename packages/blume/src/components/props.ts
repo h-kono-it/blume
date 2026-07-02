@@ -65,4 +65,7 @@ export type TileProps = ComponentProps<
 export type TooltipProps = ComponentProps<
   typeof import("./content/Tooltip.astro").default
 >;
+export type YouTubeProps = ComponentProps<
+  typeof import("./content/YouTube.astro").default
+>;
 export type IconProps = ComponentProps<typeof import("./Icon.astro").default>;

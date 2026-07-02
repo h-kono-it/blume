@@ -303,6 +303,17 @@ Wrap an image or any visual in a centered, bordered frame with an optional `capt
 </Frame>
 ```
 
+## YouTube
+
+Embed a YouTube video in a responsive, privacy-friendly (`youtube-nocookie.com`) 16:9 frame that ships no client JavaScript. Pass a video `id` or a full `url`, plus an optional `title` (for accessibility) and a `start` time in seconds.
+
+<YouTube id="aqz-KE-bpKQ" title="Big Buck Bunny" />
+
+```astro lineNumbers
+<YouTube id="aqz-KE-bpKQ" title="Big Buck Bunny" />
+<YouTube url="https://youtu.be/aqz-KE-bpKQ" start={30} />
+```
+
 ## Color
 
 Show color swatches with copyable hex values — useful for documenting a palette or brand colors. Use `variant="compact"` for a swatch list, or `variant="table"` with `Color.Row` to group them. Each `Color.Item` takes a `name` and a `value` (a hex string, or `{ light, dark }` for theme-aware colors).
