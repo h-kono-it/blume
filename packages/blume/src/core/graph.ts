@@ -1,5 +1,5 @@
 import { localizeRoute, resolveFallbackLocale } from "./i18n.ts";
-import { validateNavIcons } from "./nav-diagnostics.ts";
+import { validateNavIcons, validateNavStructure } from "./nav-diagnostics.ts";
 import { buildNavigation } from "./navigation.ts";
 import type {
   FolderMeta,
@@ -119,9 +119,11 @@ export const buildContentGraph = (
     });
   }
 
-  // Icon typos (and, below, structural issues) are validated on the built
-  // navigation so every source — config, folder meta, frontmatter — is covered.
+  // Icon typos, duplicate labels, and hidden-page-in-sidebar are validated on
+  // the built navigation. Missing-target detection needs the full route set
+  // (incl. custom + generated pages), so it runs later in generateRuntime.
   diagnostics.push(...validateNavIcons(navigation));
+  diagnostics.push(...validateNavStructure(navigation, pages));
 
   return {
     diagnostics,

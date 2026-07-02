@@ -12,7 +12,6 @@
 ### Navigation (plan 06)
 
 - [ ] Render `navigation.selectors` (validates + builds into the graph but no component consumes it)
-- [ ] Nav diagnostics: missing pages referenced in config, duplicate labels at a level, hidden pages referenced by pagination
 
 ### Deployment (plan 19)
 

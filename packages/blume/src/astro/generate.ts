@@ -28,6 +28,7 @@ import type {
 } from "../core/data.ts";
 import { EN_UI, resolveUIStrings } from "../core/i18n-ui.ts";
 import { resolveFallbackLocale } from "../core/i18n.ts";
+import { validateNavTargets } from "../core/nav-diagnostics.ts";
 import { packageRoot } from "../core/package-root.ts";
 import type { BlumeProject } from "../core/project-graph.ts";
 import type { ResolvedConfig } from "../core/schema.ts";
@@ -1159,6 +1160,26 @@ export const generateRuntime = async (
     ...exampleDiscovery.warnings,
     ...overrideWarnings,
   ];
+
+  // Missing-navigation-target check, now that every servable route is known:
+  // content routes, custom `.astro` pages, the generated changelog, and any
+  // OpenAPI reference tabs.
+  const navTargetRoutes = new Set<string>([
+    ...project.graph.routes.keys(),
+    ...pages.map((page) => page.pattern),
+    ...referenceTabs(config).map((tab) => tab.path),
+  ]);
+  if (shouldGenerateChangelog(project)) {
+    navTargetRoutes.add("/changelog");
+  }
+  warnings.push(
+    ...validateNavTargets(project.graph.navigation, navTargetRoutes).map(
+      (diagnostic) =>
+        diagnostic.suggestion
+          ? `${diagnostic.message} ${diagnostic.suggestion}`
+          : diagnostic.message
+    )
+  );
 
   // Provider SDKs are optional peers; warn (rather than fail opaquely in Vite)
   // when the configured provider's package isn't installed. A dep is available

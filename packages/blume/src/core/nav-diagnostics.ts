@@ -1,5 +1,5 @@
 import { hasIcon } from "../theme/icons.ts";
-import type { Diagnostic, NavNode, Navigation } from "./types.ts";
+import type { Diagnostic, NavNode, Navigation, PageRecord } from "./types.ts";
 
 /**
  * Navigation diagnostics: catch icon typos and structural mistakes (missing
@@ -73,3 +73,133 @@ export const validateNavIcons = (navigation: Navigation): Diagnostic[] => {
   }
   return diagnostics;
 };
+
+/** Whether an internal path resolves to a page or a section that has pages. */
+const resolvesToPages = (routes: Set<string>, path: string): boolean =>
+  routes.has(path) || [...routes].some((route) => route.startsWith(`${path}/`));
+
+/**
+ * Warn when a config-linked tab/selector target has no matching page. `routes`
+ * must be the full set of servable routes — content, custom `.astro` pages, and
+ * generated routes — so this runs where all three are known (`generateRuntime`),
+ * not in the content-only graph build.
+ */
+export const validateNavTargets = (
+  navigation: Navigation,
+  routes: Set<string>
+): Diagnostic[] => {
+  const targets: { label: string; path: string }[] = [
+    ...navigation.tabs.map((tab) => ({ label: tab.label, path: tab.path })),
+    ...navigation.selectors.flatMap((selector) =>
+      selector.items.map((item) => ({ label: item.label, path: item.path }))
+    ),
+  ];
+  const diagnostics: Diagnostic[] = [];
+  const seen = new Set<string>();
+  for (const { label, path } of targets) {
+    // Only internal, non-anchor paths can be checked against routes.
+    if (!path.startsWith("/") || path.startsWith("/#") || seen.has(path)) {
+      continue;
+    }
+    if (!resolvesToPages(routes, path.split("#")[0] ?? path)) {
+      seen.add(path);
+      diagnostics.push({
+        code: "BLUME_NAV_MISSING_PAGE",
+        message: `Navigation entry "${label}" points to ${path}, but no page matches it.`,
+        severity: "warning",
+        suggestion: "Fix the path, or add a page at that route.",
+      });
+    }
+  }
+  return diagnostics;
+};
+
+/** Warn about two nav items sharing a label at the same sidebar level. */
+const duplicateLabelDiagnostics = (navigation: Navigation): Diagnostic[] => {
+  const diagnostics: Diagnostic[] = [];
+  const checkLevel = (nodes: NavNode[], where: string): void => {
+    const counts = new Map<string, number>();
+    for (const node of nodes) {
+      counts.set(node.label, (counts.get(node.label) ?? 0) + 1);
+    }
+    for (const [label, count] of counts) {
+      if (count > 1) {
+        diagnostics.push({
+          code: "BLUME_NAV_DUPLICATE_LABEL",
+          message: `Duplicate sidebar label "${label}" appears ${count} times ${where}.`,
+          severity: "warning",
+          suggestion: "Give the entries distinct titles.",
+        });
+      }
+    }
+    for (const node of nodes) {
+      if (node.kind === "group") {
+        checkLevel(node.children, `under "${node.label}"`);
+      }
+    }
+  };
+  const sidebars: { nodes: NavNode[]; where: string }[] = [
+    { nodes: navigation.sidebar, where: "at the top level" },
+    ...navigation.sidebarVariants.map((variant) => ({
+      nodes: variant.sidebar,
+      where: `in the "${variant.path}" section`,
+    })),
+  ];
+  for (const { nodes, where } of sidebars) {
+    checkLevel(nodes, where);
+  }
+  return diagnostics;
+};
+
+/** Warn when a page shown in the sidebar is marked hidden (so pagination hits it). */
+const hiddenInSidebarDiagnostics = (
+  navigation: Navigation,
+  pages: PageRecord[]
+): Diagnostic[] => {
+  const hidden = new Set(
+    pages.filter((page) => page.meta.sidebar.hidden).map((page) => page.id)
+  );
+  if (hidden.size === 0) {
+    return [];
+  }
+  const sidebars = [
+    navigation.sidebar,
+    ...navigation.sidebarVariants.map((variant) => variant.sidebar),
+  ];
+  const diagnostics: Diagnostic[] = [];
+  const seen = new Set<string>();
+  for (const sidebar of sidebars) {
+    for (const node of flattenNodes(sidebar)) {
+      if (
+        node.kind === "page" &&
+        hidden.has(node.pageId) &&
+        !seen.has(node.pageId)
+      ) {
+        seen.add(node.pageId);
+        diagnostics.push({
+          code: "BLUME_NAV_HIDDEN_IN_SIDEBAR",
+          message: `Page "${node.label}" is marked hidden but appears in the sidebar (and its pagination).`,
+          severity: "warning",
+          suggestion:
+            "Remove it from the navigation config, or unset sidebar.hidden.",
+        });
+      }
+    }
+  }
+  return diagnostics;
+};
+
+/**
+ * Structural navigation diagnostics that need only the built navigation +
+ * content pages: duplicate sidebar labels at a level, and hidden pages that
+ * still surface in the sidebar (so pagination lands on them). Target existence
+ * is checked separately by {@link validateNavTargets}, which needs the full
+ * route set.
+ */
+export const validateNavStructure = (
+  navigation: Navigation,
+  pages: PageRecord[]
+): Diagnostic[] => [
+  ...duplicateLabelDiagnostics(navigation),
+  ...hiddenInSidebarDiagnostics(navigation, pages),
+];
