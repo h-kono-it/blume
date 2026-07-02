@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "extends": "astro/tsconfigs/strict",
+  "include": [".blume/.astro/types.d.ts", ".blume/src/env.d.ts", "**/*"],
+  "exclude": [
+    "dist",
+    "diffs",
+    "examples",
+    ".blume/src/pages",
+    ".blume/src/generated",
+    ".blume/cache"
+  ]
+}

@@ -19,6 +19,7 @@ blume <command> [options]
 | `blume migrate <tool>` | Migrate from Mintlify, Starlight, Nextra, or Fumadocs. |
 | `blume sync`           | Re-fetch remote content sources and regenerate.        |
 | `blume eject`          | Promote the runtime into a standalone Astro app.       |
+| `blume check`          | Type-check the site with `astro check`.                |
 | `blume doctor`         | Diagnose config and content problems.                  |
 | `blume validate`       | Validate links across your content.                    |
 
@@ -31,9 +32,39 @@ blume <command> [options]
 - `blume preview --host --port <n>` — bind the preview server.
 - `blume sync --force` — re-fetch remote sources, dropping the cached snapshot first.
 - `blume add <item> --force` — overwrite files that already exist.
+- `blume check --preview` — include drafts and unpublished CMS content when checking.
+- `blume check --strict` — fail on content diagnostics as well as type errors.
 - `blume eject --yes` — skip the confirmation prompt.
 - `blume validate --external` — also check external links over the network.
 - `blume validate --strict` — exit non-zero on warnings too.
+
+## Type-checking
+
+`blume check` runs [`astro check`](https://docs.astro.build/en/reference/cli-reference/#astro-check)
+over your project. It regenerates the `.blume` runtime, syncs Astro's content
+types, then reports any TypeScript errors — in your `blume.config.ts`, in custom
+`.astro` pages, and in the components they import. It exits non-zero when there
+are errors, so it works as a `typecheck` step in CI:
+
+```json title="package.json"
+{
+  "scripts": {
+    "typecheck": "blume check"
+  }
+}
+```
+
+Add a `tsconfig.json` extending Astro's config to your project root so authored
+pages resolve `blume/*` imports and virtual modules like `blume:data`:
+
+```json title="tsconfig.json"
+{
+  "extends": "astro/tsconfigs/strict",
+  "include": [".blume/.astro/types.d.ts", ".blume/src/env.d.ts", "**/*"]
+}
+```
+
+Without a project `tsconfig.json`, only the generated runtime is checked.
 
 ## Validating links
 

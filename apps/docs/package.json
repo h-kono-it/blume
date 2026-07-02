@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "blume dev",
     "build": "blume build",
-    "preview": "blume preview"
+    "preview": "blume preview",
+    "typecheck": "blume check"
   },
   "dependencies": {
     "blume": "workspace:*"

@@ -3,6 +3,7 @@ import { defineCommand, runMain } from "citty";
 import { getBlumeVersion } from "../core/version.ts";
 import { addCommand } from "./commands/add.ts";
 import { buildCommand } from "./commands/build.ts";
+import { checkCommand } from "./commands/check.ts";
 import { devCommand } from "./commands/dev.ts";
 import { doctorCommand } from "./commands/doctor.ts";
 import { ejectCommand } from "./commands/eject.ts";
@@ -22,6 +23,7 @@ const main = defineCommand({
   subCommands: {
     add: addCommand,
     build: buildCommand,
+    check: checkCommand,
     dev: devCommand,
     doctor: doctorCommand,
     eject: ejectCommand,
