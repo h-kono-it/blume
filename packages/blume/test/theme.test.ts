@@ -27,6 +27,13 @@ describe("resolveAccent", () => {
   it("passes an unknown accent through as a raw CSS color", () => {
     expect(resolveAccent(themeOf({ accent: "#ff0000" }))).toBe("#ff0000");
   });
+
+  it("rejects a value that could break out of the CSS declaration", () => {
+    // A `;}` would end the rule and inject new ones; fall back to the default.
+    expect(resolveAccent(themeOf({ accent: "red;}body{display:none}" }))).toBe(
+      "oklch(0.62 0.16 250)"
+    );
+  });
 });
 
 describe("resolveRadius", () => {

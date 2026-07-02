@@ -1,8 +1,10 @@
 import type { ResolvedConfig } from "../core/schema.ts";
 
+const FALLBACK_ACCENT = "oklch(0.62 0.16 250)";
+
 /** Named accent presets mapped to OKLCH values. */
 const ACCENTS: Record<string, string> = {
-  blue: "oklch(0.62 0.16 250)",
+  blue: FALLBACK_ACCENT,
   green: "oklch(0.6 0.16 150)",
   orange: "oklch(0.68 0.17 50)",
   pink: "oklch(0.65 0.2 350)",
@@ -10,6 +12,19 @@ const ACCENTS: Record<string, string> = {
   red: "oklch(0.58 0.22 25)",
   teal: "oklch(0.6 0.12 195)",
 };
+
+// Characters valid in a CSS color value (hex, rgb/hsl/oklch functions, named
+// colors). Anything else — notably `;`, `{`, `}` — could break out of the
+// declaration and inject rules, so such a value is rejected.
+const CSS_COLOR = /^[\w\s#%.,()/+-]+$/u;
+
+/** Pass a raw color through only if it can't break out of a CSS declaration. */
+const safeColor = (value: string, fallback: string): string =>
+  CSS_COLOR.test(value.trim()) ? value.trim() : fallback;
+
+/** Like {@link safeColor} but drops an unsafe/absent value to `null`. */
+const safeColorOrNull = (value: string | undefined): string | null =>
+  value && CSS_COLOR.test(value.trim()) ? value.trim() : null;
 
 const RADII: Record<ResolvedConfig["theme"]["radius"], string> = {
   lg: "0.75rem",
@@ -66,7 +81,7 @@ const themeRootCss = (
       "--blume-action-foreground",
       options.action ? "oklch(1 0 0)" : null
     ),
-    ...cssToken("--blume-background", theme.background),
+    ...cssToken("--blume-background", safeColorOrNull(theme.background)),
     ...cssToken(
       "--blume-background-image",
       theme.backgroundImage ? backgroundImageCss(theme.backgroundImage) : null
@@ -83,7 +98,7 @@ const themeDarkCss = (
 ): string => {
   const tokens = [
     ...cssToken("--blume-accent", accentDark),
-    ...cssToken("--blume-background", theme.backgroundDark),
+    ...cssToken("--blume-background", safeColorOrNull(theme.backgroundDark)),
     ...cssToken(
       "--blume-background-image",
       theme.backgroundImageDark
@@ -106,7 +121,7 @@ ${tokens.join("\n")}
  * arbitrary colors without a config change.
  */
 export const resolveAccent = (theme: ResolvedConfig["theme"]): string =>
-  ACCENTS[theme.accent] ?? theme.accent;
+  ACCENTS[theme.accent] ?? safeColor(theme.accent, FALLBACK_ACCENT);
 
 /** Resolve the configured radius preset to a CSS length. */
 export const resolveRadius = (theme: ResolvedConfig["theme"]): string =>
@@ -118,11 +133,15 @@ export const resolveRadius = (theme: ResolvedConfig["theme"]): string =>
  * arbitrary colors without a config change.
  */
 export const buildThemeCss = (theme: ResolvedConfig["theme"]): string => {
-  const accent = ACCENTS[theme.accent] ?? theme.accent;
+  const accent =
+    ACCENTS[theme.accent] ?? safeColor(theme.accent, FALLBACK_ACCENT);
   const accentDark = theme.accentDark
-    ? (ACCENTS[theme.accentDark] ?? theme.accentDark)
+    ? (ACCENTS[theme.accentDark] ??
+      safeColor(theme.accentDark, FALLBACK_ACCENT))
     : null;
-  const action = theme.action ? (ACCENTS[theme.action] ?? theme.action) : null;
+  const action = theme.action
+    ? (ACCENTS[theme.action] ?? safeColor(theme.action, FALLBACK_ACCENT))
+    : null;
   const backgroundDecoration = backgroundDecorationCss(
     theme.backgroundDecoration
   );
