@@ -19,6 +19,7 @@ import { resolveAskBackend } from "../ai/ask.ts";
 import { buildRawMarkdown } from "../ai/markdown.ts";
 import { buildMcpData } from "../ai/mcp/data.ts";
 import { buildMcpDiscovery, buildMcpServerCard } from "../ai/mcp/discovery.ts";
+import { validateUsedComponents } from "../core/component-diagnostics.ts";
 import { analyzeComponentOverrides } from "../core/component-overrides.ts";
 import type {
   BlumeBanner,
@@ -40,6 +41,7 @@ import {
   hasReferences,
   referenceTabs,
 } from "../openapi/scalar.ts";
+import { registry } from "../registry/registry.ts";
 import { buildSearchDocuments } from "../search/documents.ts";
 import { searchProviderMeta, servesStaticIndex } from "../search/providers.ts";
 import { tailwindEntryTemplate } from "../theme/entry.ts";
@@ -875,7 +877,12 @@ const shouldGenerateChangelog = (project: BlumeProject): boolean => {
  */
 const buildComponentSlots = async (
   componentsFile: string | null
-): Promise<{ plan: ComponentSlotPlan; warnings: string[] }> => {
+): Promise<{
+  plan: ComponentSlotPlan;
+  /** MDX tags the overrides define (for the unknown-component check). */
+  tags: string[];
+  warnings: string[];
+}> => {
   const analysis = componentsFile
     ? analyzeComponentOverrides(
         await readFile(componentsFile, "utf-8"),
@@ -884,6 +891,9 @@ const buildComponentSlots = async (
     : null;
   return {
     plan: planComponentSlots(componentsFile, analysis),
+    tags: analysis
+      ? [...analysis.mdx, ...analysis.islands].map((entry) => entry.key)
+      : [],
     warnings: analysis ? analysis.warnings : [],
   };
 };
@@ -929,8 +939,11 @@ export const generateRuntime = async (
   // Statically analyze `components.ts` overrides (never executed): drives the
   // `islands` group, hydration on layout/mdx overrides, string-path resolution,
   // and the "framework component with no client mode" diagnostic.
-  const { plan: slotPlan, warnings: overrideWarnings } =
-    await buildComponentSlots(context.componentsFile);
+  const {
+    plan: slotPlan,
+    tags: overrideTags,
+    warnings: overrideWarnings,
+  } = await buildComponentSlots(context.componentsFile);
 
   // Each island/example framework enables its Astro renderer. React also
   // switches on for any project `.tsx`/`.jsx` and for Ask AI; Vue/Svelte are
@@ -1179,6 +1192,24 @@ export const generateRuntime = async (
         diagnostic.suggestion
           ? `${diagnostic.message} ${diagnostic.suggestion}`
           : diagnostic.message
+    )
+  );
+
+  // Unknown-component check: a `<Tag>` in MDX that isn't a built-in, an island,
+  // or a `components.ts` override. Needs the project's own components, known here.
+  const knownComponentTags = new Set<string>([
+    ...islandDiscovery.islands.map((island) => island.name),
+    ...overrideTags,
+  ]);
+  warnings.push(
+    ...validateUsedComponents(
+      project.graph.pages,
+      knownComponentTags,
+      new Set(registry.map((item) => item.name))
+    ).map((diagnostic) =>
+      diagnostic.suggestion
+        ? `${diagnostic.message} ${diagnostic.suggestion}`
+        : diagnostic.message
     )
   );
 

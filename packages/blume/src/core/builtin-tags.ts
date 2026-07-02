@@ -1,0 +1,39 @@
+/**
+ * The MDX component tags Blume ships (the keys of the catch-all's component map,
+ * plus composed sub-parts like `Color.Item`/`Tree.File`). Used by the
+ * missing-component diagnostic to tell an unknown `<Tag>` from a built-in. Keep
+ * in sync with the component map in `astro/templates.ts`.
+ */
+export const BUILTIN_MDX_TAGS = new Set<string>([
+  "Accordion",
+  "AccordionItem",
+  "AutoTypeTable",
+  "Badge",
+  "Callout",
+  "Card",
+  "CardGroup",
+  "CodeBlock",
+  "CodeGroup",
+  "Color",
+  "Column",
+  "Columns",
+  "Component",
+  "Diff",
+  "Expandable",
+  "FileTree",
+  "Frame",
+  "GithubInfo",
+  "Icon",
+  "Math",
+  "Panel",
+  "Prompt",
+  "Step",
+  "Steps",
+  "Tab",
+  "Tabs",
+  "Tile",
+  "Tooltip",
+  "Tree",
+  "TypeTable",
+  "Visibility",
+]);

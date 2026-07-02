@@ -148,6 +148,44 @@ export const extractLinks = (body: string): PageLink[] => {
   return links;
 };
 
+const INLINE_CODE = /`[^`]*`/gu;
+// Double-quoted strings hold JSX attribute values and JSON in `{...}` props; a
+// `<Tag>` written inside prose there (e.g. an "Astro <Font> integration" note)
+// isn't a real usage. Single quotes are left alone so prose apostrophes don't
+// swallow a real tag between two words.
+const DOUBLE_QUOTED = /"[^"]*"/gu;
+const JSX_OPEN = /<(?<tag>[A-Z][A-Za-z0-9]*)/gu;
+
+/**
+ * Capitalized JSX component tags used in an `.mdx` body (`<Callout>`,
+ * `<Tree.File>` → `Tree`). Skips fenced code, inline code, and double-quoted
+ * strings so code samples and prose don't count. Powers the missing-component
+ * diagnostic.
+ */
+export const extractComponentTags = (body: string): string[] => {
+  const tags = new Set<string>();
+  let inFence = false;
+  for (const line of body.split("\n")) {
+    if (CODE_FENCE.test(line.trimStart())) {
+      inFence = !inFence;
+      continue;
+    }
+    if (inFence) {
+      continue;
+    }
+    const clean = line
+      .replaceAll(INLINE_CODE, "")
+      .replaceAll(DOUBLE_QUOTED, "");
+    for (const match of clean.matchAll(JSX_OPEN)) {
+      const tag = match.groups?.tag;
+      if (tag) {
+        tags.add(tag);
+      }
+    }
+  }
+  return [...tags];
+};
+
 const deriveTitle = (
   meta: PageMeta,
   headings: Heading[],
@@ -223,6 +261,8 @@ export const normalizeEntry = (
   const base = {
     body: staged ? { format, text: entry.raw ?? entry.body.text } : undefined,
     collection: staged ? "staged" : undefined,
+    componentsUsed:
+      format === "mdx" ? extractComponentTags(entry.body.text) : undefined,
     contentType: meta.type ?? ctx.defaultType,
     description: meta.description,
     editUrl: entry.editUrl,

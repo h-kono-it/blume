@@ -6,18 +6,11 @@
 
 - [ ] Dev overlay (Blume diagnostics bridged into Vite/Astro overlay with snippet + fix + docs link)
 - [ ] Remap `.blume/` stack frames back to user source
-- [ ] Missing-component diagnostic (unknown MDX tag → suggest `blume add`)
 - [ ] Hydration-mismatch diagnostic
-
-### Navigation (plan 06)
-
-### Deployment (plan 19)
 
 ### Config (plan 04)
 
 - [ ] Resolve orphan config fields (favicon/navbar/footer/icons/contextual/styling/banner) — prune or wire
-
-### Content types & meta (plan 15 / 17)
 
 ---
 

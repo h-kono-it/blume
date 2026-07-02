@@ -113,6 +113,8 @@ export interface PageRecord {
   format: "md" | "mdx";
   /** Internal/asset links discovered in the page (for validation). */
   links: PageLink[];
+  /** Capitalized JSX component tags used in the body (`.mdx` only). */
+  componentsUsed?: string[];
   /** Resolved "last updated" ISO date, when the feature is enabled. */
   lastModified?: string;
 }

@@ -47,6 +47,7 @@ const DOCS_PATHS: Record<string, string> = {
   BLUME_SOURCE_OFFLINE: "/docs/content/sources",
   BLUME_SOURCE_SDK_MISSING: "/docs/content/sources",
   BLUME_SOURCE_UNAVAILABLE: "/docs/content/sources",
+  BLUME_UNKNOWN_COMPONENT: "/docs/configuration/customization",
   BLUME_UNKNOWN_ICON: "/docs/content/navigation",
 };
 
