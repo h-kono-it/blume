@@ -14,3 +14,12 @@ declare module "blume:search-client" {
   type Fn = import("./components/layout/search/types.ts").SearchFn;
   export const createSearch: () => Fn | Promise<Fn>;
 }
+
+// Package-only shim so `components/props.ts` can extract `.astro` prop types with
+// `ComponentProps<typeof import("./X.astro").default>` under the package's own
+// `tsc` (where the Astro TS plugin isn't active). Not shipped in `dist/types`, so
+// consumers keep Astro's real `.astro` types and get the true prop shapes.
+declare module "*.astro" {
+  const component: (props: Record<string, unknown>) => unknown;
+  export default component;
+}

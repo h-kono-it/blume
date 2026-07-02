@@ -1,11 +1,5 @@
 # Blume — TODO
 
-## P1 — Partially implemented (customization / override API, plan 05 / 16)
-
-- [ ] Export per-component prop types (`import type { CalloutProps } from "blume/components"`)
-
----
-
 ## P2 — Concrete smaller gaps
 
 ### Registry `blume add` (plan 05 / 07)

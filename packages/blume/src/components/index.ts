@@ -2,9 +2,8 @@
  * Public component contracts.
  *
  * Prop types for built-in components are exported here so users can type their
- * overrides (`import type { CalloutProps } from "blume/components"`). Concrete
- * component types are added as components land; the override descriptor types
- * below are stable today.
+ * overrides (`import type { CalloutProps } from "blume/components"`), alongside
+ * the override descriptor types.
  */
 export type {
   ComponentOverride,
@@ -12,3 +11,4 @@ export type {
   IslandDescriptor,
 } from "../core/define-components.ts";
 export type { HydrationMode } from "../core/schema.ts";
+export type * from "./props.ts";
