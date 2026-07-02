@@ -200,5 +200,10 @@ const bannerScript = banner?.dismissible
         />
       )
     }
+    <script>
+      // Dev-only: friendly hint after a React island hydration mismatch;
+      // tree-shaken out of production builds.
+      import "./hydration-hint.ts";
+    </script>
   </body>
 </html>

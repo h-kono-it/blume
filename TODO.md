@@ -5,7 +5,6 @@
 ### Errors & diagnostics (plan 18)
 
 - [ ] Remap `.blume/` stack frames back to user source
-- [ ] Hydration-mismatch diagnostic
 
 ### Config (plan 04)
 
