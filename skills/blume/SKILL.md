@@ -11,7 +11,7 @@ The core idea: **the framework _is_ the template.** There's no starter to clone 
 
 ## What makes it different
 
-- **Fast by default** — Static HTML on Astro/Vite. The core theme is React-free and ships **zero client JavaScript**, so pages score well on Core Web Vitals out of the box. You opt into server features only when you need them.
+- **Fast by default** — Static HTML on Astro/Vite. The core theme ships no client framework JS so pages score well on Core Web Vitals out of the box. You opt into server features only when you need them.
 - **AI-ready out of the box** — Emits `llms.txt`/`llms-full.txt`, serves any page's raw Markdown by appending `.md` to its URL, offers **Copy as Markdown** and **Open in chat** on every page, and can host an optional **Ask AI** assistant or an **MCP server** so coding agents read your docs directly.
 - **Zero configuration — even the template** — A folder of docs is a complete project. Navigation is inferred from files, search works in dev and production with no hosted service, and theming is a handful of tokens.
 - **Type-safe to the core** — `blume.config.ts` and every `meta.ts` are real TypeScript, validated by a schema and authored with `defineConfig` and `defineMeta`. Your editor autocompletes options and catches mistakes before a build.

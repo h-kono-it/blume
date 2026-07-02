@@ -33,7 +33,7 @@ Blume works with any package manager and never requires you to set up Astro or T
 ## Features
 
 - **Zero-config, even the template** — a folder of docs is a complete project. No starter to clone, no framework to learn. Configuration is opt-in, one file at a time.
-- **Fast by default** — static HTML on Astro and Vite; the core theme is React-free and ships **zero client JavaScript**, so pages score well on Core Web Vitals out of the box.
+- **Fast by default** — static HTML on Astro and Vite; the core theme ships no client framework JS so pages score well on Core Web Vitals out of the box.
 - **Type-safe config** — `blume.config.ts` and every `meta.ts` are real TypeScript, validated by a schema and authored with `defineConfig` / `defineMeta`, so your editor catches mistakes before a build.
 - **Components, no imports** — cards, columns, steps, tabs, accordions, badges, code groups, frames, file trees, type tables, live component previews, diffs, and more, usable in any MDX page.
 - **Local search** — Orama runs in dev and production with no hosted service; FlexSearch, Pagefind, Algolia, Typesense, Orama Cloud, and Mixedbread are one setting away.
