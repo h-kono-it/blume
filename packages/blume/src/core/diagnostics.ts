@@ -57,10 +57,48 @@ export const enrichDiagnostic = (diagnostic: Diagnostic): Diagnostic =>
     ? diagnostic
     : { ...diagnostic, docsUrl: resolveDocsUrl(diagnostic.code) };
 
+const REGEXP_SPECIAL = /[$()*+.?[\\\]^{|}]/gu;
+const escapeRegExp = (value: string): string =>
+  value.replaceAll(REGEXP_SPECIAL, String.raw`\$&`);
+
+/**
+ * Best-effort source position for a Zod issue path (e.g. `["seo", "title"]`) in
+ * the raw config / frontmatter text. Narrows key-by-key — finding each string
+ * segment as a `key:`/`key =` at or after the previous match — so a nested key
+ * lands under its parent. Array indices are skipped. Returns 1-based line/column,
+ * or undefined when nothing matches.
+ */
+const locatePath = (
+  source: string,
+  path: readonly (string | number)[]
+): { column: number; line: number } | undefined => {
+  let cursor = 0;
+  let found = -1;
+  for (const segment of path) {
+    if (typeof segment !== "string") {
+      continue;
+    }
+    const matcher = new RegExp(`${escapeRegExp(segment)}\\s*[:=]`, "gu");
+    matcher.lastIndex = cursor;
+    const match = matcher.exec(source);
+    if (!match) {
+      break;
+    }
+    found = match.index;
+    cursor = matcher.lastIndex;
+  }
+  if (found < 0) {
+    return;
+  }
+  const before = source.slice(0, found);
+  const lastNewline = before.lastIndexOf("\n");
+  return { column: found - lastNewline, line: before.split("\n").length };
+};
+
 /** Convert a ZodError into Blume diagnostics, anchored to a file. */
 export const diagnosticsFromZod = (
   error: ZodError,
-  options: { code: string; file?: string }
+  options: { code: string; file?: string; source?: string }
 ): Diagnostic[] =>
   error.issues.map((issue) => {
     const schemaPath = issue.path.join(".");
@@ -68,9 +106,14 @@ export const diagnosticsFromZod = (
       "received" in issue
         ? ` (received: ${JSON.stringify(issue.received)})`
         : "";
+    const position = options.source
+      ? locatePath(options.source, issue.path)
+      : undefined;
     return {
       code: options.code,
+      column: position?.column,
       file: options.file,
+      line: position?.line,
       message: schemaPath
         ? `${schemaPath}: ${issue.message}${received}`
         : `${issue.message}${received}`,

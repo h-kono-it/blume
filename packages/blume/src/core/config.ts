@@ -1,3 +1,5 @@
+import { existsSync, readFileSync } from "node:fs";
+
 import { detectMintlifyBridge } from "./bridge.ts";
 import type { BridgeDetection } from "./bridge.ts";
 import { applyDeploymentEnv } from "./deployment-env.ts";
@@ -73,9 +75,15 @@ export const loadConfig = async (
   const sourceFile = bridge?.configFile ?? configFile;
   const parsed = blumeConfigSchema.safeParse(raw ?? {});
   if (!parsed.success) {
+    // Read the raw config text (when on disk) so errors carry a line/column.
+    const source =
+      sourceFile && existsSync(sourceFile)
+        ? readFileSync(sourceFile, "utf-8")
+        : undefined;
     const diagnostics = diagnosticsFromZod(parsed.error, {
       code: "BLUME_CONFIG_INVALID",
       file: sourceFile ?? undefined,
+      source,
     });
     throw new BlumeError(
       diagnostics[0] ?? {

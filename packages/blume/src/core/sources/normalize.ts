@@ -1,3 +1,5 @@
+import { existsSync, readFileSync } from "node:fs";
+
 import GithubSlugger from "github-slugger";
 import { extname } from "pathe";
 
@@ -179,10 +181,19 @@ export const normalizeEntry = (
 
   const result = pageMetaSchema.safeParse(entry.data);
   if (!result.success) {
+    // Source text lets the error carry a line/column into the frontmatter block:
+    // `entry.raw` for non-filesystem sources, else the file itself (read only on
+    // this rare error path, so filesystem entries stay cheap in the happy path).
+    const source =
+      entry.raw ??
+      (entry.sourcePath && existsSync(entry.sourcePath)
+        ? readFileSync(entry.sourcePath, "utf-8")
+        : undefined);
     return {
       diagnostics: diagnosticsFromZod(result.error, {
         code: "BLUME_FRONTMATTER_INVALID",
         file: entry.sourcePath ?? `${ctx.source.name}:${entry.ref}`,
+        source,
       }),
       pages: [],
     };

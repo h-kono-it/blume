@@ -78,6 +78,33 @@ describe("diagnosticsFromZod", () => {
     const [diagnostic] = diagnosticsFromZod(result.error, { code: "BLUME_Z" });
     expect(diagnostic?.message).not.toContain("received:");
   });
+
+  it("resolves a nested path to a line/column in the source", () => {
+    const source = "title: Docs\nseo:\n  title: 123\n";
+    const schema = z.object({ seo: z.object({ title: z.string() }) });
+    const result = schema.safeParse({ seo: { title: 123 } });
+    if (result.success) {
+      throw new Error("expected a failure");
+    }
+    const [diagnostic] = diagnosticsFromZod(result.error, {
+      code: "BLUME_FRONTMATTER_INVALID",
+      file: "/a.md",
+      source,
+    });
+    // Narrowed under `seo:` to the nested `title:` on line 3.
+    expect(diagnostic?.line).toBe(3);
+    expect(diagnostic?.column).toBe(3);
+  });
+
+  it("leaves line/column unset when no source is given", () => {
+    const result = z.object({ count: z.number() }).safeParse({ count: "x" });
+    if (result.success) {
+      throw new Error("expected a failure");
+    }
+    const [diagnostic] = diagnosticsFromZod(result.error, { code: "BLUME_X" });
+    expect(diagnostic?.line).toBeUndefined();
+    expect(diagnostic?.column).toBeUndefined();
+  });
 });
 
 describe("formatDiagnostic", () => {
