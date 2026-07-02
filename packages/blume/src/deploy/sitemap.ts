@@ -1,4 +1,5 @@
 import type { BlumeProject } from "../core/project-graph.ts";
+import { escapeXml } from "./xml.ts";
 
 /**
  * Build a sitemap.xml from the route manifest. Returns null when the sitemap is
@@ -17,7 +18,14 @@ export const buildSitemap = (project: BlumeProject): string | null => {
       (page) =>
         !(page.meta.draft || page.meta.sidebar.hidden || page.meta.seo.noindex)
     )
-    .map((page) => `  <url><loc>${base}${page.route}</loc></url>`)
+    // `<loc>` must be a well-formed, XML-escaped URL: percent-encode the path,
+    // then escape XML metacharacters (notably `&`) so a route like
+    // `/Tips & Tricks` doesn't produce invalid XML that gets the whole sitemap
+    // rejected.
+    .map(
+      (page) =>
+        `  <url><loc>${escapeXml(encodeURI(`${base}${page.route}`))}</loc></url>`
+    )
     .toSorted();
 
   return `<?xml version="1.0" encoding="UTF-8"?>

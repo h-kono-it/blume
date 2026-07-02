@@ -1,5 +1,6 @@
 import type { BlumeProject } from "../core/project-graph.ts";
 import type { PageRecord } from "../core/types.ts";
+import { escapeXml } from "./xml.ts";
 
 /** A single feed entry derived from a content page. */
 export interface RssItem {
@@ -84,14 +85,6 @@ export const buildRssFeeds = (project: BlumeProject): RssFeed[] => {
   }
   return feeds;
 };
-
-const escapeXml = (value: string): string =>
-  value
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&apos;");
 
 const renderItem = (item: RssItem): string => {
   const parts = [

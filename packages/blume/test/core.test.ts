@@ -474,6 +474,16 @@ describe("sitemap", () => {
       buildSitemap(makeProject(pages, { seo: { sitemap: false } }))
     ).toBeNull();
   });
+
+  it("escapes and encodes routes so the XML stays well-formed", () => {
+    const pages = [makePage({ id: "a", route: "/Tips & Tricks", title: "T" })];
+    const xml = buildSitemap(makeProject(pages)) ?? "";
+    // `&` must be entity-escaped and the space percent-encoded.
+    expect(xml).toContain(
+      "<loc>https://example.com/Tips%20&amp;%20Tricks</loc>"
+    );
+    expect(xml).not.toContain("Tips & Tricks");
+  });
 });
 
 describe("robots.txt", () => {
