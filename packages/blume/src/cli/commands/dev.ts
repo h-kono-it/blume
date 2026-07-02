@@ -6,6 +6,7 @@ import { defineCommand } from "citty";
 import { generateRuntime } from "../../astro/generate.ts";
 import { showBlumeErrorOverlay } from "../../astro/integration.ts";
 import { scanProject } from "../../core/project-graph.ts";
+import { parsePort } from "../args.ts";
 import { acquireDevLock } from "../dev-lock.ts";
 import { logger } from "../log.ts";
 import { prepareProject } from "../prepare.ts";
@@ -42,7 +43,8 @@ export const devCommand = defineCommand({
     // Astro's dev server defaults to 4321 when no port is passed. Feeding the
     // resolved URL in as the `deployment.site` fallback lets site-gated features
     // (OG images, canonicals, sitemap) work locally without configuring a site.
-    const port = args.port ? Number(args.port) : 4321;
+    const explicitPort = parsePort(args.port);
+    const port = explicitPort ?? 4321;
     const devServerUrl = `http://localhost:${port}`;
     const project = await prepareProject({
       devServerUrl,
@@ -70,7 +72,7 @@ export const devCommand = defineCommand({
       server: {
         host: args.host ?? false,
         open: args.open ?? false,
-        port: args.port ? Number(args.port) : undefined,
+        port: explicitPort,
       },
     });
 

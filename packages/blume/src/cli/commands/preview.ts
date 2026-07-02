@@ -6,6 +6,7 @@ import { join } from "pathe";
 
 import { loadConfig } from "../../core/config.ts";
 import { resolveProjectContext } from "../../core/project.ts";
+import { parsePort } from "../args.ts";
 import { logger } from "../log.ts";
 
 export const previewCommand = defineCommand({
@@ -32,7 +33,7 @@ export const previewCommand = defineCommand({
       root: context.outDir,
       server: {
         host: args.host ?? false,
-        port: args.port ? Number(args.port) : undefined,
+        port: parsePort(args.port),
       },
     });
   },
