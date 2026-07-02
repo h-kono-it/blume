@@ -11,8 +11,6 @@
 
 ### CLI flags (plan 02)
 
-- [ ] `init`: `--template docs|api|sdk|changelog`, `--package-manager`, `--eject`
-
 ### Navigation (plan 06)
 
 - [ ] Render `navigation.selectors` (validates + builds into the graph but no component consumes it)

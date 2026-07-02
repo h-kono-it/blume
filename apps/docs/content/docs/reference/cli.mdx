@@ -26,6 +26,9 @@ blume <command> [options]
 ## Common flags
 
 - `blume init --content-dir <dir> --yes` — set the content folder (default `docs`) and skip prompts.
+- `blume init --template docs|api|sdk|changelog` — scaffold from a starter (API reference, SDK, or changelog instead of the plain docs seed).
+- `blume init --package-manager npm|pnpm|yarn|bun` — tailor the printed next-steps to your package manager.
+- `blume init --eject` — scaffold, then eject to a standalone Astro project (falls back to guiding you through `blume eject` when dependencies aren't installed yet).
 - `blume dev --host --port <n> --open`
 - `blume dev --content-dir <dir>` — scan a different content folder without editing `blume.config.ts`.
 - `blume dev --debug` — verbose Astro/Vite logging for troubleshooting.
