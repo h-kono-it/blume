@@ -4,6 +4,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { defineCommand } from "citty";
 import { basename, dirname, isAbsolute, join, relative } from "pathe";
 
+import { ensureGitignore } from "../../core/gitignore.ts";
 import { getBlumeVersion } from "../../core/version.ts";
 import { eject } from "../../registry/eject.ts";
 import { logger } from "../log.ts";
@@ -228,6 +229,14 @@ export const initCommand = defineCommand({
         .files(contentDir)
         .map((file) => writeFileSafe(join(root, file.path), file.content))
     );
+
+    // Keep Blume's generated runtime (`.blume/`) and build output (`dist/`) out
+    // of version control. Idempotent: creates `.gitignore` when absent and skips
+    // entries already present (trailing-slash agnostic).
+    const ignored = await ensureGitignore(root, [".blume/", "dist/"]);
+    if (ignored.length > 0) {
+      logger.success(`Added ${ignored.join(", ")} to .gitignore`);
+    }
 
     const commands = commandsFor(pm);
 

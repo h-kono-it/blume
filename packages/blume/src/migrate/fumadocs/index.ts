@@ -5,9 +5,9 @@ import { dirname, join, relative } from "pathe";
 import { glob } from "tinyglobby";
 
 import matter from "../../core/frontmatter.ts";
+import { ensureGitignore } from "../../core/gitignore.ts";
 import type { FolderMeta } from "../../core/schema.ts";
 import {
-  ensureGitignore,
   leftoverFiles,
   rewriteFrameworkScripts,
   writeBlumeConfig,

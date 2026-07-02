@@ -12,7 +12,6 @@ import {
   asLiteralArray,
   asLiteralString,
   attribute,
-  ensureGitignore,
   findOpenTagEnd,
   findStringEnd,
   isLiteralObject,
@@ -107,31 +106,6 @@ describe("rewriteFrameworkScripts", () => {
       "utf-8"
     );
     expect(await rewriteFrameworkScripts(root, /\bnext\b/u)).toBe(false);
-  });
-});
-
-describe("ensureGitignore", () => {
-  it("appends only the missing entries (trailing slash agnostic)", async () => {
-    const root = await tempDir();
-    await writeFile(join(root, ".gitignore"), "node_modules\ndist/\n", "utf-8");
-
-    expect(await ensureGitignore(root, [".blume/", "dist/"])).toEqual([
-      ".blume/",
-    ]);
-    expect(await readFile(join(root, ".gitignore"), "utf-8")).toContain(
-      ".blume/"
-    );
-  });
-
-  it("creates .gitignore when absent", async () => {
-    const root = await tempDir();
-    expect(await ensureGitignore(root, [".blume/", "dist/"])).toEqual([
-      ".blume/",
-      "dist/",
-    ]);
-    expect(await readFile(join(root, ".gitignore"), "utf-8")).toBe(
-      ".blume/\ndist/\n"
-    );
   });
 });
 
