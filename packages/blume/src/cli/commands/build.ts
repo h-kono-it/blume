@@ -59,33 +59,46 @@ const formatBytes = (bytes: number): string =>
     ? `${bytes} B`
     : `${(bytes / 1024).toFixed(bytes < 1024 * 100 ? 1 : 0)} kB`;
 
-/**
- * Print the client JavaScript Astro shipped, largest first, plus the total. A
- * dependency-free bundle report — the interactive weight of a docs site is its
- * `_astro/*.js`, so this surfaces regressions without a visualizer.
- */
-const reportBundleSizes = async (distDir: string): Promise<void> => {
+/** Sizes of `dist/_astro/*.<ext>`, largest first (empty when none exist). */
+const astroAssets = async (
+  distDir: string,
+  ext: string
+): Promise<{ name: string; size: number }[]> => {
   const astroDir = join(distDir, "_astro");
   if (!existsSync(astroDir)) {
-    logger.info("No client JavaScript emitted — the site ships zero JS.");
-    return;
+    return [];
   }
   const entries = await readdir(astroDir);
-  const files = entries.filter((name) => name.endsWith(".js"));
+  const files = entries.filter((name) => name.endsWith(`.${ext}`));
   const sized = await Promise.all(
     files.map(async (name) => {
       const info = await stat(join(astroDir, name));
       return { name, size: info.size };
     })
   );
-  sized.sort((a, b) => b.size - a.size);
-  const total = sized.reduce((sum, file) => sum + file.size, 0);
+  return sized.toSorted((a, b) => b.size - a.size);
+};
+
+const totalSize = (assets: { size: number }[]): number =>
+  assets.reduce((sum, asset) => sum + asset.size, 0);
+
+/**
+ * Print the client JavaScript Astro shipped, largest first, plus the total. A
+ * dependency-free bundle report — the interactive weight of a docs site is its
+ * `_astro/*.js`, so this surfaces regressions without a visualizer.
+ */
+const reportBundleSizes = async (distDir: string): Promise<void> => {
+  const sized = await astroAssets(distDir, "js");
+  if (sized.length === 0) {
+    logger.info("No client JavaScript emitted — the site ships zero JS.");
+    return;
+  }
   const rows = sized
     .slice(0, 15)
     .map((file) => `  ${formatBytes(file.size).padStart(8)}  ${file.name}`);
   logger.box(
     [
-      `Client JavaScript — ${sized.length} file(s), ${formatBytes(total)} total`,
+      `Client JavaScript — ${sized.length} file(s), ${formatBytes(totalSize(sized))} total`,
       "",
       ...rows,
       sized.length > 15 ? `  … and ${sized.length - 15} more` : null,
@@ -93,6 +106,46 @@ const reportBundleSizes = async (distDir: string): Promise<void> => {
       .filter((line) => line !== null)
       .join("\n")
   );
+};
+
+/**
+ * Enforce a performance budget on the built client assets: fail the build when
+ * total `_astro/*.js` (or `*.css`) exceeds the given kB cap. Budgets that would
+ * otherwise be "documented, not measured" become a real CI gate. Returns whether
+ * every budget passed.
+ */
+const enforceBudget = async (
+  distDir: string,
+  args: { "budget-css"?: string; "budget-js"?: string }
+): Promise<"fail" | "pass" | "skip"> => {
+  const checks: { ext: string; limitKb: number; name: string }[] = [
+    ...(args["budget-js"]
+      ? [{ ext: "js", limitKb: Number(args["budget-js"]), name: "JavaScript" }]
+      : []),
+    ...(args["budget-css"]
+      ? [{ ext: "css", limitKb: Number(args["budget-css"]), name: "CSS" }]
+      : []),
+  ];
+  if (checks.length === 0) {
+    return "skip";
+  }
+  let passed = true;
+  for (const check of checks) {
+    // oxlint-disable-next-line no-await-in-loop -- a couple of sequential reads
+    const total = totalSize(await astroAssets(distDir, check.ext));
+    const limit = check.limitKb * 1024;
+    if (total > limit) {
+      passed = false;
+      logger.error(
+        `${check.name} budget exceeded: ${formatBytes(total)} > ${check.limitKb} kB`
+      );
+    } else {
+      logger.success(
+        `${check.name} budget: ${formatBytes(total)} / ${check.limitKb} kB`
+      );
+    }
+  }
+  return passed ? "pass" : "fail";
 };
 
 export const buildCommand = defineCommand({
@@ -107,6 +160,14 @@ export const buildCommand = defineCommand({
     },
     base: {
       description: "Base path the site is served under (e.g. /docs).",
+      type: "string",
+    },
+    "budget-css": {
+      description: "Fail if total client CSS exceeds this many kB.",
+      type: "string",
+    },
+    "budget-js": {
+      description: "Fail if total client JavaScript exceeds this many kB.",
       type: "string",
     },
     output: {
@@ -216,6 +277,10 @@ export const buildCommand = defineCommand({
 
     if (args.analyze) {
       await reportBundleSizes(distDir);
+    }
+
+    if ((await enforceBudget(distDir, args)) === "fail") {
+      process.exit(1);
     }
 
     logger.success(`Built to ${distDir}`);
