@@ -393,6 +393,41 @@ describe("migrateMintlify end to end", () => {
     ).toBe(false);
   });
 
+  it("skips a page with a dangling snippet import instead of aborting", async () => {
+    const root = await project({
+      "broken.mdx":
+        '---\ntitle: Broken\n---\nimport Gone from "/snippets/missing.mdx";\n\n<Gone />\n',
+      "docs.json": JSON.stringify({
+        name: "Docs",
+        navigation: {
+          pages: [{ group: "Start", pages: ["index", "broken"] }],
+        },
+      }),
+      "index.mdx": "---\ntitle: Home\n---\n\n<Note>Hi</Note>\n",
+    });
+
+    // A missing snippet used to escape as a raw ENOENT and abort the whole
+    // migration mid-rewrite; now the page is skipped with a warning.
+    const result = await migrateMintlify(root);
+
+    expect(existsSync(join(root, "blume.config.ts"))).toBe(true);
+    // The healthy page still converted.
+    expect(await readFile(join(root, "index.mdx"), "utf-8")).toContain(
+      ":::note"
+    );
+    // The broken page is untouched and called out.
+    expect(await readFile(join(root, "broken.mdx"), "utf-8")).toContain(
+      'import Gone from "/snippets/missing.mdx";'
+    );
+    expect(
+      result.warnings.some(
+        (w) =>
+          w.includes("Skipped rewriting broken.mdx") &&
+          w.includes("/snippets/missing.mdx")
+      )
+    ).toBe(true);
+  });
+
   it("removes the source docs.json so the project can't fall back to bridge mode", async () => {
     const root = await project({
       "docs.json": JSON.stringify({

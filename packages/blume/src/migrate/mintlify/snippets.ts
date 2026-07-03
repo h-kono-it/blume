@@ -189,9 +189,20 @@ export const rewriteMintlifyMarkdownSnippets = async (
       );
     }
     seen.add(file);
-    const readFile = options.readFile ?? readFileFromDisk;
+    const readFile =
+      options.readFile ??
+      ((path: string): Promise<string> => readFileFromDisk(path, "utf-8"));
     try {
-      const raw = await readFile(file);
+      let raw: string;
+      try {
+        raw = await readFile(file);
+      } catch {
+        // A dangling import must fail with a message that names both ends —
+        // the caller downgrades it to a per-page warning and moves on.
+        throw new Error(
+          `snippet ${rootRelativePath(options.root, file)} (imported by ${rootRelativePath(options.root, options.filePath)}) does not exist`
+        );
+      }
       const content = matter(raw).content.trim();
       const transformed = await rewriteMintlifyMarkdownSnippets(content, {
         ...options,

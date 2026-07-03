@@ -1,7 +1,7 @@
 import { existsSync } from "node:fs";
 import { mkdir, readFile, rename, rm, stat, writeFile } from "node:fs/promises";
 
-import { dirname, join } from "pathe";
+import { dirname, join, relative } from "pathe";
 import { glob } from "tinyglobby";
 
 import { ensureGitignore } from "../../core/gitignore.ts";
@@ -275,6 +275,67 @@ const cleanupSnippets = async (
 };
 
 /**
+ * Rewrite every page to idiomatic Blume MDX in place, collecting what was
+ * dropped or kept for the migration summary. A page whose transform throws
+ * (a dangling snippet import, a snippet cycle) must not abort the whole
+ * migration mid-rewrite; it is left as-is with a warning.
+ */
+const rewritePagesInPlace = async (
+  files: string[],
+  options: {
+    root: string;
+    variables: Record<string, string>;
+    warnings: string[];
+  }
+): Promise<{
+  moved: number;
+  removedKeys: Set<string>;
+  unsupported: Set<string>;
+  keptComponents: Set<string>;
+}> => {
+  const { root, variables, warnings } = options;
+  let moved = 0;
+  const removedKeys = new Set<string>();
+  const unsupported = new Set<string>();
+  const keptComponents = new Set<string>();
+  for (const file of files) {
+    // oxlint-disable-next-line no-await-in-loop -- sequential fs writes
+    const raw = await readFile(file, "utf-8");
+    let result: Awaited<ReturnType<typeof transformMintlifyContent>>;
+    try {
+      // oxlint-disable-next-line no-await-in-loop -- sequential transforms
+      result = await transformMintlifyContent(raw, {
+        filePath: file,
+        root,
+        variables,
+      });
+    } catch (error) {
+      warnings.push(
+        `Skipped rewriting ${relative(root, file)}: ${(error as Error).message}. The page was left unconverted — fix it by hand.`
+      );
+      continue;
+    }
+    if (result.content !== raw) {
+      // oxlint-disable-next-line no-await-in-loop -- sequential fs writes
+      await mkdir(dirname(file), { recursive: true });
+      // oxlint-disable-next-line no-await-in-loop -- sequential fs writes
+      await writeFile(file, result.content, "utf-8");
+    }
+    for (const key of result.removed) {
+      removedKeys.add(key);
+    }
+    for (const name of result.unsupported) {
+      unsupported.add(name);
+    }
+    for (const name of result.components) {
+      keptComponents.add(name);
+    }
+    moved += 1;
+  }
+  return { keptComponents, moved, removedKeys, unsupported };
+};
+
+/**
  * Migrate a Mintlify project to Blume: translate `docs.json`/`mint.json` into
  * `blume.config.ts`, rewrite every page to idiomatic Blume MDX in place, and
  * relocate static assets. Content stays at the project root (`content.root`
@@ -337,36 +398,8 @@ export const migrateMintlifyProject = async (
     ],
   });
 
-  let moved = 0;
-  const removedKeys = new Set<string>();
-  const unsupported = new Set<string>();
-  const keptComponents = new Set<string>();
-  for (const file of files) {
-    // oxlint-disable-next-line no-await-in-loop -- sequential fs writes
-    const raw = await readFile(file, "utf-8");
-    // oxlint-disable-next-line no-await-in-loop -- sequential transforms
-    const result = await transformMintlifyContent(raw, {
-      filePath: file,
-      root,
-      variables,
-    });
-    if (result.content !== raw) {
-      // oxlint-disable-next-line no-await-in-loop -- sequential fs writes
-      await mkdir(dirname(file), { recursive: true });
-      // oxlint-disable-next-line no-await-in-loop -- sequential fs writes
-      await writeFile(file, result.content, "utf-8");
-    }
-    for (const key of result.removed) {
-      removedKeys.add(key);
-    }
-    for (const name of result.unsupported) {
-      unsupported.add(name);
-    }
-    for (const name of result.components) {
-      keptComponents.add(name);
-    }
-    moved += 1;
-  }
+  const { moved, removedKeys, unsupported, keptComponents } =
+    await rewritePagesInPlace(files, { root, variables, warnings });
 
   const assets = await relocateAssets(root, assetSegments(config));
   await cleanupSnippets(root, keptComponents, warnings);
