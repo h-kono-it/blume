@@ -1,8 +1,9 @@
 import { existsSync } from "node:fs";
 import { readFile, writeFile } from "node:fs/promises";
 
-import { isAbsolute, join, relative } from "pathe";
+import { basename, isAbsolute, join, relative } from "pathe";
 
+import { blumePackageJson, toPackageName } from "../core/package-json.ts";
 import type { BlumeConfig } from "../core/schema.ts";
 import { pageMetaSchema } from "../core/schema.ts";
 
@@ -101,6 +102,28 @@ export const rewriteFrameworkScripts = async (
  * framework files a migration leaves behind for the user to remove by hand. */
 export const leftoverFiles = (root: string, candidates: string[]): string[] =>
   candidates.filter((candidate) => existsSync(join(root, candidate)));
+
+/**
+ * Scaffold a minimal, runnable `package.json` when the migrated project has
+ * none. Config-only sources (e.g. a Mintlify `docs.json`) ship no npm manifest,
+ * so a fresh migration has nothing to run `blume dev` with; this writes a stub
+ * with `blume` as a dependency and `dev`/`build`/`doctor` scripts, making
+ * `npm install && npm run dev` work immediately. A pre-existing `package.json`
+ * is left untouched — {@link rewriteFrameworkScripts} repoints those instead.
+ * Returns true when a file was created.
+ */
+export const ensurePackageJson = async (root: string): Promise<boolean> => {
+  const pkgPath = join(root, "package.json");
+  if (existsSync(pkgPath)) {
+    return false;
+  }
+  await writeFile(
+    pkgPath,
+    blumePackageJson(toPackageName(basename(root))),
+    "utf-8"
+  );
+  return true;
+};
 
 // ---------------------------------------------------------------------------
 // Callout components -> Blume `:::` directives

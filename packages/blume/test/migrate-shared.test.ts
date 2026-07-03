@@ -12,6 +12,7 @@ import {
   asLiteralArray,
   asLiteralString,
   attribute,
+  ensurePackageJson,
   findOpenTagEnd,
   findStringEnd,
   isLiteralObject,
@@ -116,6 +117,38 @@ describe("leftoverFiles", () => {
     expect(leftoverFiles(root, ["next.config.ts", "source.config.ts"])).toEqual(
       ["next.config.ts"]
     );
+  });
+});
+
+describe("ensurePackageJson", () => {
+  it("scaffolds a runnable package.json when none exists", async () => {
+    const root = await tempDir();
+    expect(await ensurePackageJson(root)).toBe(true);
+
+    const pkg = JSON.parse(
+      await readFile(join(root, "package.json"), "utf-8")
+    ) as {
+      dependencies: Record<string, string>;
+      scripts: Record<string, string>;
+    };
+    expect(pkg.scripts.dev).toBe("blume dev");
+    expect(pkg.dependencies.blume).toMatch(/^\^\d/u);
+  });
+
+  it("leaves an existing package.json untouched", async () => {
+    const root = await tempDir();
+    await writeFile(
+      join(root, "package.json"),
+      JSON.stringify({ name: "existing" }),
+      "utf-8"
+    );
+    expect(await ensurePackageJson(root)).toBe(false);
+
+    const pkg = JSON.parse(
+      await readFile(join(root, "package.json"), "utf-8")
+    ) as { name: string; scripts?: unknown };
+    expect(pkg.name).toBe("existing");
+    expect(pkg.scripts).toBeUndefined();
   });
 });
 

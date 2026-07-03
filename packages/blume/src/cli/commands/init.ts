@@ -5,34 +5,9 @@ import { defineCommand } from "citty";
 import { basename, dirname, isAbsolute, join, relative } from "pathe";
 
 import { ensureGitignore } from "../../core/gitignore.ts";
-import { getBlumeVersion } from "../../core/version.ts";
+import { blumePackageJson, toPackageName } from "../../core/package-json.ts";
 import { eject } from "../../registry/eject.ts";
 import { logger } from "../log.ts";
-
-/**
- * Derive a valid npm package name from a directory name, falling back to
- * `docs` when nothing usable remains.
- */
-const toPackageName = (raw: string): string =>
-  raw
-    .toLowerCase()
-    .replaceAll(/[^a-z0-9._-]+/gu, "-")
-    .replaceAll(/^[-_.]+|[-_.]+$/gu, "") || "docs";
-
-const packageTemplate = (name: string, version: string): string => `{
-  "name": ${JSON.stringify(name)},
-  "private": true,
-  "type": "module",
-  "scripts": {
-    "dev": "blume dev",
-    "build": "blume build",
-    "doctor": "blume doctor"
-  },
-  "dependencies": {
-    "blume": "^${version}"
-  }
-}
-`;
 
 const TEMPLATES = ["docs", "api", "sdk", "changelog"] as const;
 type Template = (typeof TEMPLATES)[number];
@@ -221,7 +196,7 @@ export const initCommand = defineCommand({
     const starter = STARTERS[template];
     const createdPackage = await writeFileSafe(
       join(root, "package.json"),
-      packageTemplate(toPackageName(basename(root)), getBlumeVersion())
+      blumePackageJson(toPackageName(basename(root)))
     );
     await writeFileSafe(join(root, "blume.config.ts"), starter.config);
     await Promise.all(

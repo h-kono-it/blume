@@ -303,6 +303,17 @@ describe("migrateMintlify end to end", () => {
     // Snippets inlined and the directory removed.
     expect(existsSync(join(root, "snippets"))).toBe(false);
 
+    // A runnable package.json is scaffolded (Mintlify ships a config-only repo).
+    const pkg = JSON.parse(
+      await readFile(join(root, "package.json"), "utf-8")
+    ) as {
+      dependencies: Record<string, string>;
+      scripts: Record<string, string>;
+    };
+    expect(pkg.scripts.dev).toBe("blume dev");
+    expect(pkg.dependencies.blume).toMatch(/^\^\d/u);
+    expect(result.warnings.some((w) => w.includes("package.json"))).toBe(true);
+
     expect(result.moved).toBeGreaterThan(0);
     expect(result.warnings.some((w) => w.includes("public/"))).toBe(true);
     expect(result.warnings.some((w) => w.includes("content.assets"))).toBe(
@@ -351,6 +362,28 @@ describe("migrateMintlify end to end", () => {
         (w) => w.includes("dynamic redirect") && w.includes("/old/:slug*")
       )
     ).toBe(true);
+  });
+
+  it("keeps an existing package.json instead of scaffolding one", async () => {
+    const root = await project({
+      "docs.json": JSON.stringify({
+        name: "Docs",
+        navigation: { pages: [{ group: "Start", pages: ["index"] }] },
+      }),
+      "index.mdx": "---\ntitle: Home\n---\n\nHi.\n",
+      "package.json": JSON.stringify({ name: "existing", private: true }),
+    });
+
+    const result = await migrateMintlify(root);
+
+    const pkg = JSON.parse(
+      await readFile(join(root, "package.json"), "utf-8")
+    ) as { name: string; scripts?: unknown };
+    expect(pkg.name).toBe("existing");
+    expect(pkg.scripts).toBeUndefined();
+    expect(
+      result.warnings.some((w) => w.includes("Created a package.json"))
+    ).toBe(false);
   });
 
   it("migrates the bundled examples/mintlify fixture without throwing", async () => {

@@ -5,6 +5,7 @@ import { dirname, join } from "pathe";
 import { glob } from "tinyglobby";
 
 import type { BlumeConfig } from "../../core/schema.ts";
+import { ensurePackageJson } from "../shared.ts";
 import { assetSegments } from "./assets.ts";
 import { loadMintlifyConfig, partitionMintlifyRedirects } from "./config.ts";
 import { mintlifyI18n } from "./i18n.ts";
@@ -189,6 +190,21 @@ const applyRelocatedAssets = (
 };
 
 /**
+ * Scaffold a runnable `package.json` for the config-only Mintlify project (it
+ * ships no npm manifest) and note it in the warnings when one was created.
+ */
+const scaffoldPackageJson = async (
+  root: string,
+  warnings: string[]
+): Promise<void> => {
+  if (await ensurePackageJson(root)) {
+    warnings.push(
+      "Created a package.json with blume as a dependency; run `npm install`, then `npm run dev`."
+    );
+  }
+};
+
+/**
  * Delete the inlined markdown snippets. Component files (e.g. `.jsx`) are kept
  * because their imports were rewritten to resolve against `/snippets`.
  */
@@ -324,6 +340,7 @@ export const migrateMintlifyProject = async (
   }
   applyRelocatedAssets(config, assets, warnings);
   await writeBlumeConfig(root, config);
+  await scaffoldPackageJson(root, warnings);
 
   if (Object.keys(variables).length > 0) {
     warnings.push(
