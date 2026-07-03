@@ -274,6 +274,18 @@ const cleanupSnippets = async (
   }
 };
 
+// Root-absolute asset references in page content (`![…](/screenshots/a.png)`,
+// `src="/img/x.svg"`). Mintlify serves any top-level dir at the site root, so
+// dirs referenced only by content — not the config — must also be mounted.
+const CONTENT_ASSET_REF =
+  /(?:\]\(|src=["'])(?<path>\/[^\s"')]+\.(?:avif|bmp|gif|ico|jpe?g|mov|mp4|pdf|png|svg|webm|webp|zip))/giu;
+
+const contentAssetSegments = (content: string): string[] =>
+  [...content.matchAll(CONTENT_ASSET_REF)].flatMap((match) => {
+    const segment = match.groups?.path?.split("/")[1];
+    return segment ? [segment] : [];
+  });
+
 /**
  * Rewrite every page to idiomatic Blume MDX in place, collecting what was
  * dropped or kept for the migration summary. A page whose transform throws
@@ -292,12 +304,14 @@ const rewritePagesInPlace = async (
   removedKeys: Set<string>;
   unsupported: Set<string>;
   keptComponents: Set<string>;
+  assetDirs: Set<string>;
 }> => {
   const { root, variables, warnings } = options;
   let moved = 0;
   const removedKeys = new Set<string>();
   const unsupported = new Set<string>();
   const keptComponents = new Set<string>();
+  const assetDirs = new Set<string>();
   for (const file of files) {
     // oxlint-disable-next-line no-await-in-loop -- sequential fs writes
     const raw = await readFile(file, "utf-8");
@@ -330,9 +344,12 @@ const rewritePagesInPlace = async (
     for (const name of result.components) {
       keptComponents.add(name);
     }
+    for (const segment of contentAssetSegments(result.content)) {
+      assetDirs.add(segment);
+    }
     moved += 1;
   }
-  return { keptComponents, moved, removedKeys, unsupported };
+  return { assetDirs, keptComponents, moved, removedKeys, unsupported };
 };
 
 /**
@@ -398,10 +415,15 @@ export const migrateMintlifyProject = async (
     ],
   });
 
-  const { moved, removedKeys, unsupported, keptComponents } =
+  const { moved, removedKeys, unsupported, keptComponents, assetDirs } =
     await rewritePagesInPlace(files, { root, variables, warnings });
 
-  const assets = await relocateAssets(root, assetSegments(config));
+  // Config-referenced segments (logo/favicon/backgrounds + /images) plus dirs
+  // referenced only by page content — Mintlify serves every top-level dir at
+  // the site root, so both kinds must stay resolvable after migration.
+  const assets = await relocateAssets(root, [
+    ...new Set([...assetSegments(config), ...assetDirs]),
+  ]);
   await cleanupSnippets(root, keptComponents, warnings);
 
   if (config.content?.exclude) {

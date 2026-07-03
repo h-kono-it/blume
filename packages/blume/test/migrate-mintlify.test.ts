@@ -393,6 +393,27 @@ describe("migrateMintlify end to end", () => {
     ).toBe(false);
   });
 
+  it("serves asset dirs referenced only by content, not just the config", async () => {
+    const root = await project({
+      "docs.json": JSON.stringify({
+        name: "Docs",
+        navigation: { pages: [{ group: "Start", pages: ["index"] }] },
+      }),
+      "img/logo.svg": "<svg></svg>",
+      "index.mdx":
+        '---\ntitle: Home\n---\n\n![Shot](/screenshots/home.png)\n\n<img src="/img/logo.svg" />\n',
+      "screenshots/home.png": "png-bytes",
+    });
+
+    await migrateMintlify(root);
+
+    // Mintlify served /screenshots and /img at the site root; the migrated
+    // config must mount them too or every content image 404s.
+    const config = await readFile(join(root, "blume.config.ts"), "utf-8");
+    expect(config).toContain('"screenshots"');
+    expect(config).toContain('"img"');
+  });
+
   it("skips a page with a dangling snippet import instead of aborting", async () => {
     const root = await project({
       "broken.mdx":
