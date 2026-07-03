@@ -346,6 +346,34 @@ const bannerScript = banner?.dismissible
         aria-label="Primary"
         class="fixed top-16 start-0 z-[35] h-[calc(100dvh-4rem)] w-64 max-w-[80vw] -translate-x-[105%] overflow-y-auto border-border border-e bg-background px-5 pt-4 pb-6 transition-transform rtl:translate-x-[105%] [:where([data-blume-nav-open])_&]:translate-x-0! lg:sticky lg:z-auto lg:w-auto lg:max-w-none lg:translate-x-0! lg:border-e-0 lg:bg-transparent lg:px-4"
       >
+        {
+          // The header's tab bar is hidden below `md`, so the drawer is the only
+          // way to move between sections on mobile: list the tabs above the
+          // page tree, separated by a divider. Hidden from `md` up, where the
+          // header tabs take over.
+          navigation.tabs.length > 0 && (
+            <nav aria-label="Sections" class="mb-4 border-border border-b pb-4 md:hidden">
+              <ul class="m-0 list-none p-0">
+                {navigation.tabs.map((tab) => (
+                  <li>
+                    <a
+                      aria-current={
+                        page.route === tab.path ||
+                        (tab.path !== "/" && page.route.startsWith(tab.path))
+                          ? "page"
+                          : undefined
+                      }
+                      class="block rounded-[0.65rem] px-2.5 py-1.5 font-medium text-muted-foreground text-sm transition-colors hover:bg-muted hover:text-foreground aria-[current=page]:bg-muted aria-[current=page]:text-foreground"
+                      href={tab.path}
+                    >
+                      {tab.label}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </nav>
+          )
+        }
         <nav>
           {
             MobileNavSlot ? (
