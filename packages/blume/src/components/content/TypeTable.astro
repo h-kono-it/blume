@@ -37,19 +37,19 @@ const columns = "grid grid-cols-[1fr_2fr_auto] items-center gap-4";
         {entries.map(([name, info]) => (
         <details class="group/tt border-border border-t [[open]+&]:border-t-transparent open:rounded-blume open:border-transparent open:bg-background open:shadow-sm open:ring-1 open:ring-border">
           <summary class={`${columns} cursor-pointer list-none px-3 py-2.5 [&::-webkit-details-marker]:hidden`}>
-            <code class="min-w-0 break-words font-mono text-accent text-xs">
+            <code class="break-words font-mono text-accent text-xs">
               {name}
               {info.required ? "" : "?"}
             </code>
             {info.typeDescriptionLink ? (
               <a
-                class="min-w-0 break-words font-mono text-foreground text-xs underline-offset-2 hover:underline"
+                class="break-words font-mono text-foreground text-xs underline-offset-2 hover:underline"
                 href={info.typeDescriptionLink}
               >
                 {info.type}
               </a>
             ) : (
-              <code class="min-w-0 break-words font-mono text-foreground text-xs">
+              <code class="break-words font-mono text-foreground text-xs">
                 {info.type}
               </code>
             )}
@@ -81,7 +81,7 @@ const columns = "grid grid-cols-[1fr_2fr_auto] items-center gap-4";
             <div class="space-y-1.5">
               <div class={columns}>
                 <span class="text-muted-foreground">Type</span>
-                <code class="min-w-0 break-words font-mono text-foreground">
+                <code class="break-words font-mono text-foreground">
                   {info.type}
                 </code>
                 <span aria-hidden="true" class="size-3.5" />
@@ -89,7 +89,7 @@ const columns = "grid grid-cols-[1fr_2fr_auto] items-center gap-4";
               {info.default && (
                 <div class={columns}>
                   <span class="text-muted-foreground">Default</span>
-                  <code class="min-w-0 break-words font-mono text-foreground">
+                  <code class="break-words font-mono text-foreground">
                     {info.default}
                   </code>
                   <span aria-hidden="true" class="size-3.5" />

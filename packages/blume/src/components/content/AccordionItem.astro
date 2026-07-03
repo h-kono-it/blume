@@ -30,7 +30,7 @@ const accordionId = id ?? slugify(title);
   <summary
     class="flex cursor-pointer list-none items-center justify-between p-4 font-medium [&::-webkit-details-marker]:hidden"
   >
-    <span class="flex min-w-0 items-start gap-2">
+    <span class="flex items-start gap-2">
       {
         icon && (
           <Icon
@@ -40,7 +40,7 @@ const accordionId = id ?? slugify(title);
           />
         )
       }
-      <span class="min-w-0">
+      <span>
         <span class="block">{title}</span>
         {
           description && (

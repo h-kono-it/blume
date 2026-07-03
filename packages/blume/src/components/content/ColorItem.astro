@@ -21,7 +21,7 @@ const displayValue =
 
 <button
   aria-label={`Copy ${name} color ${displayValue}`}
-  class="group flex w-full min-w-0 cursor-pointer flex-col gap-2.5 text-center focus:outline-none"
+  class="group flex w-full cursor-pointer flex-col gap-2.5 text-center focus:outline-none"
   data-blume-color-copy={displayValue}
   style={`--blume-color-light:${lightValue};--blume-color-dark:${darkValue};`}
   type="button"
@@ -32,7 +32,7 @@ const displayValue =
     style="background:var(--blume-color-light)"
   >
   </span>
-  <span class="block min-w-0 leading-tight">
+  <span class="block leading-tight">
     <span class="block truncate font-semibold text-foreground text-sm">
       {name}
     </span>

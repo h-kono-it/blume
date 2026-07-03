@@ -128,9 +128,22 @@ ${options.sources.map((source) => `@source "${source}";`).join("\n")}
 }
 
 @layer base {
+  /* Nothing refuses to shrink below its intrinsic content width. This global
+     min-width reset defuses the classic flex/grid overflow — a long or
+     truncating child forcing its container (and the page) past the viewport
+     edge — so components don't need per-element min-w-0 overrides. */
+  * {
+    min-width: 0;
+  }
+  /* Interactive controls get a pointer cursor unless disabled. */
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
   html {
     scroll-behavior: smooth;
     scroll-padding-top: 4.5rem;
+    text-rendering: optimizeLegibility;
   }
   /* Headings use the display font (defaults to the body font when unset). */
   h1,

@@ -129,13 +129,13 @@ const initialId =
             {panel.route ? (
               <a
                 aria-current={panel.route === currentRoute ? "page" : undefined}
-                class="min-w-0 flex-1 truncate font-semibold text-foreground text-sm hover:underline"
+                class="flex-1 truncate font-semibold text-foreground text-sm hover:underline"
                 href={panel.route}
               >
                 {panel.label}
               </a>
             ) : (
-              <span class="min-w-0 flex-1 truncate font-semibold text-foreground text-sm">
+              <span class="flex-1 truncate font-semibold text-foreground text-sm">
                 {panel.label}
               </span>
             )}
@@ -161,7 +161,7 @@ const initialId =
                 class="block rounded-[0.65rem] px-2.5 py-1.5 text-muted-foreground text-sm transition-colors hover:bg-muted hover:text-foreground aria-[current=page]:bg-muted aria-[current=page]:font-medium aria-[current=page]:text-foreground"
                 href={item.route}
               >
-                <span class="flex min-w-0 items-center gap-2">
+                <span class="flex items-center gap-2">
                   {item.icon && (
                     <Icon
                       class="shrink-0 text-muted-foreground"
@@ -169,7 +169,7 @@ const initialId =
                       size={14}
                     />
                   )}
-                  <span class="min-w-0 flex-1 truncate">{item.label}</span>
+                  <span class="flex-1 truncate">{item.label}</span>
                   {item.badge && <span class={badgeClassFor(item.badge)}>{item.badge}</span>}
                   {item.deprecated && (
                     <span class={deprecatedClass}>deprecated</span>
@@ -192,7 +192,7 @@ const initialId =
           return (
             <li class={spacing}>
               <button
-                class="flex w-full min-w-0 items-center gap-2 rounded-[0.65rem] px-2.5 py-1.5 text-left font-medium text-foreground text-sm transition-colors hover:bg-muted"
+                class="flex w-full items-center gap-2 rounded-[0.65rem] px-2.5 py-1.5 text-left font-medium text-foreground text-sm transition-colors hover:bg-muted"
                 data-nav-to={id}
                 type="button"
               >
@@ -203,7 +203,7 @@ const initialId =
                     size={14}
                   />
                 )}
-                <span class="min-w-0 flex-1 truncate">{item.label}</span>
+                <span class="flex-1 truncate">{item.label}</span>
                 {item.badge && <span class={badgeClassFor(item.badge)}>{item.badge}</span>}
                 <Icon
                   class="shrink-0 text-muted-foreground"
@@ -228,7 +228,7 @@ const initialId =
                       aria-current={
                         item.route === currentRoute ? "page" : undefined
                       }
-                      class="-my-1 flex min-w-0 flex-1 items-center gap-1.5 rounded py-1 text-foreground transition-colors aria-[current=page]:font-semibold"
+                      class="-my-1 flex flex-1 items-center gap-1.5 rounded py-1 text-foreground transition-colors aria-[current=page]:font-semibold"
                       href={item.route}
                     >
                       {item.icon && (
@@ -238,7 +238,7 @@ const initialId =
                           size={14}
                         />
                       )}
-                      <span class="min-w-0 flex-1 truncate">{item.label}</span>
+                      <span class="flex-1 truncate">{item.label}</span>
                       {item.badge && (
                         <span class={badgeClassFor(item.badge)}>{item.badge}</span>
                       )}
@@ -252,7 +252,7 @@ const initialId =
                           size={14}
                         />
                       )}
-                      <span class="min-w-0 flex-1 truncate">{item.label}</span>
+                      <span class="flex-1 truncate">{item.label}</span>
                       {item.badge && (
                         <span class={badgeClassFor(item.badge)}>{item.badge}</span>
                       )}
@@ -279,11 +279,11 @@ const initialId =
         // `flat` (default): a non-collapsible header with its items beneath.
         return (
           <li class={spacing}>
-            <p class="mb-2 flex min-w-0 items-center gap-1.5 px-2.5 font-medium text-foreground text-sm">
+            <p class="mb-2 flex items-center gap-1.5 px-2.5 font-medium text-foreground text-sm">
               {item.route ? (
                 <a
                   aria-current={item.route === currentRoute ? "page" : undefined}
-                  class="-ml-1 flex min-w-0 flex-1 items-center gap-1.5 rounded px-1 py-0.5 text-foreground transition-colors hover:bg-muted aria-[current=page]:bg-muted"
+                  class="-ml-1 flex flex-1 items-center gap-1.5 rounded px-1 py-0.5 text-foreground transition-colors hover:bg-muted aria-[current=page]:bg-muted"
                   href={item.route}
                 >
                   {item.icon && (
@@ -293,7 +293,7 @@ const initialId =
                       size={14}
                     />
                   )}
-                  <span class="min-w-0 truncate">{item.label}</span>
+                  <span class="truncate">{item.label}</span>
                   {item.badge && (
                     <span class={`ml-auto ${badgeClassFor(item.badge)}`}>{item.badge}</span>
                   )}
@@ -307,7 +307,7 @@ const initialId =
                       size={14}
                     />
                   )}
-                  <span class="min-w-0 truncate">{item.label}</span>
+                  <span class="truncate">{item.label}</span>
                   {item.badge && (
                     <span class={`ml-auto ${badgeClassFor(item.badge)}`}>{item.badge}</span>
                   )}
