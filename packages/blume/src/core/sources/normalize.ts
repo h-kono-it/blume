@@ -59,6 +59,11 @@ const mapRoute = (
   const groups: string[] = [];
 
   for (const part of rawParts) {
+    // A leading/trailing/double slash yields an empty part; keeping it would
+    // produce a malformed route (`//foo`, `/foo/`) that nothing can link to.
+    if (part === "") {
+      continue;
+    }
     const group = groupLabel(part);
     if (group !== null) {
       groups.push(group);
@@ -207,8 +212,14 @@ const deriveTitle = (
   return titleCase(stripNumericPrefix(base.replace(extname(base), "")));
 };
 
-const withPrefix = (prefix: string | undefined, path: string): string =>
-  prefix ? `${prefix}/${path}` : path;
+/** Strip habitual leading/trailing slashes (`/getting-started`, `guides/`). */
+const trimSlashes = (value: string): string =>
+  value.replaceAll(/^\/+|\/+$/gu, "");
+
+const withPrefix = (prefix: string | undefined, path: string): string => {
+  const clean = prefix ? trimSlashes(prefix) : "";
+  return clean ? `${clean}/${path}` : path;
+};
 
 /**
  * Normalize one source entry into per-locale `PageRecord`s. This is the single
@@ -254,9 +265,12 @@ export const normalizeEntry = (
     : { locales: [""], navPath: entry.ref };
 
   const navPath = withPrefix(ctx.source.prefix, rawNavPath);
+  // The extension is re-appended so mapRoute's extname strip can't eat a
+  // dotted slug segment (`v1.2`). A slug that trims to nothing falls back.
+  const slug = meta.slug ? trimSlashes(meta.slug) : "";
   const routeInput = withPrefix(
     ctx.source.prefix,
-    meta.slug ? `${meta.slug}${ext}` : rawNavPath
+    slug ? `${slug}${ext}` : rawNavPath
   );
 
   const { segments, groups, route: logicalRoute } = mapRoute(routeInput);

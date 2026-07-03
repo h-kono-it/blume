@@ -104,6 +104,15 @@ describe("filesystemSource", () => {
   });
 });
 
+const routeOf = (data: Record<string, unknown>, prefix?: string) =>
+  normalizeEntry(
+    { body: { format: "md", text: "# X\n" }, data, ref: "page.md" },
+    {
+      defaultType: "doc",
+      source: { name: "s", prefix, staged: false },
+    }
+  ).pages[0];
+
 describe("normalizeEntry", () => {
   const fsEntry: SourceEntry = {
     body: { format: "md", text: "# Setup\n" },
@@ -149,6 +158,19 @@ describe("normalizeEntry", () => {
     expect(page?.body?.text).toBe("---\ntitle: Intro\n---\n# Intro\n");
     expect(page?.editUrl).toBe("https://example.com/edit/intro.mdx");
     expect(page?.title).toBe("Intro");
+  });
+
+  it("normalizes slashed slugs and prefixes into clean routes", () => {
+    const page = routeOf;
+    // A leading-slash slug (Mintlify/CMS habit) must not produce `//route`.
+    expect(page({ slug: "/getting-started" })?.route).toBe("/getting-started");
+    // A trailing slash must not produce `/route/`.
+    expect(page({ slug: "guides/" })?.route).toBe("/guides");
+    // Dotted slug segments survive (the appended extension absorbs extname).
+    expect(page({ slug: "releases/v1.2" })?.route).toBe("/releases/v1.2");
+    // Slashed prefixes normalize the same way.
+    expect(page({}, "/changelog")?.route).toBe("/changelog/page");
+    expect(page({}, "changelog/")?.route).toBe("/changelog/page");
   });
 
   it("reports a diagnostic for invalid frontmatter", () => {
