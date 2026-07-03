@@ -517,24 +517,53 @@ const toAstroRedirectPath = (path: string): string =>
     modifier === "*" || modifier === "+" ? `[...${name}]` : `[${name}]`
   );
 
-const mintlifyRedirects = (
+// A converted path is dynamic once it holds an Astro segment (`[id]`/`[...slug]`
+// from a `:param`). Blume redirects are static path-to-path: a dynamic segment
+// has no matching route, so Astro aborts the build ("destination does not match
+// any existing route"), and the platform redirect files emit the segment
+// verbatim, which no host understands. Such redirects are dropped, not emitted.
+const isDynamicRedirectPath = (path: string): boolean => path.includes("[");
+
+export interface MintlifyRedirectPartition {
+  /** Static redirects Blume can honor, translated to Blume's `from`/`to` shape. */
+  kept: NonNullable<BlumeConfig["redirects"]>;
+  /** Source paths of dynamic redirects dropped because Blume can't model them. */
+  dropped: string[];
+}
+
+/**
+ * Split a spec's redirects into the static ones Blume emits and the dynamic
+ * (wildcard/param) ones it drops. Keeping a dynamic redirect crashes the Astro
+ * build, so the migrator surfaces the dropped sources as a warning instead.
+ */
+export const partitionMintlifyRedirects = (
   spec: JsonObject
-): NonNullable<BlumeConfig["redirects"]> =>
-  asArray(spec.redirects).flatMap((redirect) => {
+): MintlifyRedirectPartition => {
+  const kept: NonNullable<BlumeConfig["redirects"]> = [];
+  const dropped: string[] = [];
+  for (const redirect of asArray(spec.redirects)) {
     const object = asObject(redirect);
     if (!object) {
-      return [];
+      continue;
     }
-    const from = asString(object.source) ?? asString(object.from);
-    const to =
+    const source = asString(object.source) ?? asString(object.from);
+    const destination =
       asString(object.destination) ??
       asString(object.to) ??
       asString(object.redirect);
-    if (!from || !to) {
-      return [];
+    if (!source || !destination) {
+      continue;
     }
-    return [{ from: toAstroRedirectPath(from), to: toAstroRedirectPath(to) }];
-  });
+    const from = toAstroRedirectPath(source);
+    const to = toAstroRedirectPath(destination);
+    if (isDynamicRedirectPath(from) || isDynamicRedirectPath(to)) {
+      dropped.push(source);
+    } else {
+      kept.push({ from, to });
+    }
+  }
+  return { dropped, kept };
+};
 
 interface OpenApiSourceDraft {
   label?: string;
@@ -897,7 +926,7 @@ export const loadMintlifyConfig = async (
       tabs: mintlifyTabs(spec),
     },
     openapi: mintlifyOpenapi(spec),
-    redirects: mintlifyRedirects(spec),
+    redirects: partitionMintlifyRedirects(spec).kept,
     search: {
       indexing: {
         includeHiddenPages: seo.indexing === "all",

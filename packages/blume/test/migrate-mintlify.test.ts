@@ -6,7 +6,10 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "pathe";
 
 import { migrateMintlify } from "../src/migrate/migrate.ts";
-import { loadMintlifyConfig } from "../src/migrate/mintlify/config.ts";
+import {
+  loadMintlifyConfig,
+  partitionMintlifyRedirects,
+} from "../src/migrate/mintlify/config.ts";
 import {
   rewriteMintlifyAccordions,
   rewriteMintlifyCallouts,
@@ -306,6 +309,48 @@ describe("migrateMintlify end to end", () => {
       true
     );
     expect(result.warnings.some((w) => w.includes("snippets"))).toBe(true);
+  });
+
+  it("rewrites accordions and drops dynamic redirects with a warning", async () => {
+    const root = await project({
+      "docs.json": JSON.stringify({
+        name: "Docs",
+        navigation: { pages: [{ group: "Start", pages: ["index"] }] },
+        redirects: [
+          { destination: "/new/:slug*", source: "/old/:slug*" },
+          { destination: "/stay", source: "/go" },
+        ],
+      }),
+      "index.mdx": [
+        "---",
+        "title: Home",
+        "---",
+        "",
+        "<AccordionGroup>",
+        '  <Accordion title="One">First.</Accordion>',
+        "</AccordionGroup>",
+      ].join("\n"),
+    });
+
+    const result = await migrateMintlify(root);
+
+    // Accordion group/item remapped to Blume's container/item shape.
+    const page = await readFile(join(root, "index.mdx"), "utf-8");
+    expect(page).toContain("<Accordion>");
+    expect(page).toContain('<AccordionItem title="One">');
+    expect(page).not.toContain("AccordionGroup");
+
+    // Dynamic redirect dropped from config; the static one is kept.
+    const config = await readFile(join(root, "blume.config.ts"), "utf-8");
+    expect(config).toContain('"from": "/go"');
+    expect(config).not.toContain("[...slug]");
+
+    // The drop is surfaced as a warning naming the source path.
+    expect(
+      result.warnings.some(
+        (w) => w.includes("dynamic redirect") && w.includes("/old/:slug*")
+      )
+    ).toBe(true);
   });
 
   it("migrates the bundled examples/mintlify fixture without throwing", async () => {
@@ -677,39 +722,30 @@ describe("loadMintlifyConfig branding", () => {
     expect(config.markdown?.math).toBe(false);
   });
 
-  it("translates path-to-regexp wildcard redirects to Astro segments", async () => {
-    const root = await project({
-      "docs.json": JSON.stringify({
-        name: "Wildcards",
-        redirects: [
-          { destination: "/new/:slug*", source: "/old/:slug*" },
-          { destination: "/users/:id", source: "/people/:id" },
-          { destination: "/b", source: "/a" },
-          {
-            destination: "https://x.example/:slug*",
-            source: "/ext/:slug*",
-          },
-        ],
-      }),
-    });
+  it("drops dynamic redirects Blume can't model, keeps static ones", async () => {
+    const spec = {
+      name: "Wildcards",
+      redirects: [
+        // Spread param → dynamic destination Astro can't resolve.
+        { destination: "/new/:slug*", source: "/old/:slug*" },
+        // Single param → dynamic destination Astro can't resolve.
+        { destination: "/users/:id", source: "/people/:id" },
+        // Fully static → the only redirect Blume can honor.
+        { destination: "/b", source: "/a" },
+        // Param carried into an external URL — still unresolvable, so dropped.
+        { destination: "https://x.example/:slug*", source: "/ext/:slug*" },
+      ],
+    };
 
+    const { kept, dropped } = partitionMintlifyRedirects(spec);
+    expect(kept).toEqual([{ from: "/a", to: "/b" }]);
+    expect(dropped).toEqual(["/old/:slug*", "/people/:id", "/ext/:slug*"]);
+
+    // The written config carries only the static redirect, so no build-breaking
+    // [...slug] destination reaches Astro.
+    const root = await project({ "docs.json": JSON.stringify(spec) });
     const config = await loadMintlifyConfig(root, join(root, "docs.json"));
-
-    expect(config.redirects).toContainEqual({
-      from: "/old/[...slug]",
-      to: "/new/[...slug]",
-    });
-    expect(config.redirects).toContainEqual({
-      from: "/people/[id]",
-      to: "/users/[id]",
-    });
-    // Paths without params pass through untouched.
-    expect(config.redirects).toContainEqual({ from: "/a", to: "/b" });
-    // Params convert, but the protocol colon is left alone.
-    expect(config.redirects).toContainEqual({
-      from: "/ext/[...slug]",
-      to: "https://x.example/[...slug]",
-    });
+    expect(config.redirects).toEqual([{ from: "/a", to: "/b" }]);
   });
 
   it("drops empty logo/favicon objects and maps code-theme variants", async () => {

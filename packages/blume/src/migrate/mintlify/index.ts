@@ -6,7 +6,7 @@ import { glob } from "tinyglobby";
 
 import type { BlumeConfig } from "../../core/schema.ts";
 import { assetSegments } from "./assets.ts";
-import { loadMintlifyConfig } from "./config.ts";
+import { loadMintlifyConfig, partitionMintlifyRedirects } from "./config.ts";
 import { mintlifyI18n } from "./i18n.ts";
 import { transformMintlifyContent } from "./transform.ts";
 
@@ -63,6 +63,22 @@ const droppedChromeWarnings = (
     );
   }
   return warnings;
+};
+
+/**
+ * Warn about dynamic (wildcard/param) redirects the migrator dropped. Blume
+ * redirects are static path-to-path, so a `:slug*`/`:id` source becomes an
+ * unroutable Astro destination — kept ones crash the build. Point the user at
+ * host-level rules that do support wildcards.
+ */
+const droppedRedirectWarnings = (spec: Record<string, unknown>): string[] => {
+  const { dropped } = partitionMintlifyRedirects(spec);
+  if (dropped.length === 0) {
+    return [];
+  }
+  return [
+    `Dropped ${dropped.length} dynamic redirect(s) Blume can't model as static path-to-path (${dropped.join(", ")}); re-add them as host-level rules (e.g. _redirects or vercel.json).`,
+  ];
 };
 
 /** Recursively drop `undefined`, empty arrays, and empty objects. */
@@ -247,6 +263,7 @@ export const migrateMintlifyProject = async (
       );
     }
     warnings.push(...droppedChromeWarnings(spec, config));
+    warnings.push(...droppedRedirectWarnings(spec));
   } else {
     warnings.push("No docs.json or mint.json found; writing a default config.");
     config = { content: { root: "." }, title: "Documentation" };
