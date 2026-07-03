@@ -418,6 +418,70 @@ describe("loadMintlifyConfig navigation shapes", () => {
   });
 });
 
+describe("loadMintlifyConfig OpenAPI", () => {
+  it("maps a per-group openapi source, mapping directory to a route and skipping endpoint refs", async () => {
+    const root = await project({
+      "docs.json": JSON.stringify({
+        name: "API",
+        navigation: {
+          groups: [
+            {
+              group: "Endpoints",
+              openapi: {
+                directory: "api-reference",
+                source: "https://api.example.com/openapi.json",
+              },
+              pages: ["GET /users", "POST /users"],
+            },
+          ],
+        },
+      }),
+    });
+
+    const config = await loadMintlifyConfig(root, join(root, "docs.json"));
+    expect(config.openapi?.enabled).toBe(true);
+    expect(config.openapi?.sources).toStrictEqual([
+      {
+        label: "Endpoints",
+        route: "/api-reference",
+        spec: "https://api.example.com/openapi.json",
+      },
+    ]);
+  });
+
+  it("collects top-level array and api.openapi specs, deduped against nav sources", async () => {
+    const root = await project({
+      "docs.json": JSON.stringify({
+        api: { openapi: "/c.json" },
+        name: "API",
+        navigation: {
+          groups: [{ group: "Ref", openapi: "/a.json", pages: ["intro"] }],
+        },
+        openapi: ["/a.json", "/b.json"],
+      }),
+    });
+
+    const config = await loadMintlifyConfig(root, join(root, "docs.json"));
+    expect(config.openapi?.sources).toStrictEqual([
+      { label: "Ref", spec: "/a.json" },
+      { spec: "/b.json" },
+      { spec: "/c.json" },
+    ]);
+  });
+
+  it("leaves openapi unset when no spec source is declared", async () => {
+    const root = await project({
+      "docs.json": JSON.stringify({
+        name: "Docs",
+        navigation: { groups: [{ group: "Guides", pages: ["intro"] }] },
+      }),
+    });
+
+    const config = await loadMintlifyConfig(root, join(root, "docs.json"));
+    expect(config.openapi).toBeUndefined();
+  });
+});
+
 describe("loadMintlifyConfig branding", () => {
   it("maps banner, background, redirects, and code theme", async () => {
     const root = await project({

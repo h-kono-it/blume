@@ -55,6 +55,7 @@ When it's done the CLI prints how many files it touched, a list of **warnings** 
 Reads `docs.json` (or legacy `mint.json`) and rewrites every page **in place** — content stays at the project root (`content.root` is `"."`).
 
 - Snippets under `/snippets` are inlined as includes; component snippets (e.g. `.jsx`) are kept and their imports rewritten to relative paths.
+- A Mintlify `openapi` spec — declared top-level or on a nav group (a path, URL, or `{ source, directory }`) — maps to Blume's [native OpenAPI reference](/docs/advanced/api-reference) (`openapi.sources`), which renders one real page per operation. A group's `directory` becomes the reference's route; endpoint refs like `GET /users` are dropped since Blume generates them from the spec.
 - `docs.json` `variables` are inlined into content — Blume has no runtime `{{variable}}` substitution.
 - Multi-language projects map to [`i18n.locales`](/docs/content/i18n); the language nav selector is dropped in favor of Blume's locale switching.
 - Components with no Blume equivalent are flagged for manual review — reach for the [OpenAPI reference](/docs/advanced/api-reference) in place of Mintlify's API components.

@@ -622,6 +622,97 @@ const mintlifyRedirects = (
     return [{ from: toAstroRedirectPath(from), to: toAstroRedirectPath(to) }];
   });
 
+interface OpenApiSourceDraft {
+  label?: string;
+  route?: string;
+  spec: string;
+}
+
+// A Mintlify `{ source, directory }` object's `directory` is the URL path its
+// generated pages mount under; map it to a Blume per-source `route`.
+const openapiRouteFromDirectory = (value: unknown): string | undefined => {
+  const directory = normalizeDirectory(asString(value) ?? "");
+  return directory.length > 0 ? `/${directory}` : undefined;
+};
+
+// Resolve a Mintlify `openapi` value (a spec string, an array, or a
+// `{ source, directory }` object) into spec sources. Endpoint refs (`GET /path`)
+// are skipped — Blume's native renderer generates those pages from the spec.
+const openapiSourcesFromValue = (
+  value: unknown,
+  context: { label?: string; route?: string }
+): OpenApiSourceDraft[] => {
+  if (typeof value === "string") {
+    if (value.length === 0 || API_ENDPOINT_REF.test(value)) {
+      return [];
+    }
+    return [
+      withoutUndefined({
+        label: context.label,
+        route: context.route,
+        spec: value,
+      }),
+    ];
+  }
+  if (Array.isArray(value)) {
+    return value.flatMap((item) => openapiSourcesFromValue(item, context));
+  }
+  const object = asObject(value);
+  if (!object) {
+    return [];
+  }
+  return openapiSourcesFromValue(object.source ?? object.openapi, {
+    label: context.label,
+    route: openapiRouteFromDirectory(object.directory) ?? context.route,
+  });
+};
+
+// Walk the navigation tree collecting every `openapi` source — a group or tab
+// can declare one alongside its pages — then fold in the top-level specs
+// (legacy `mint.json` `openapi`, newer `api.openapi`) and dedupe by spec so a
+// Mintlify API reference maps to Blume's native renderer instead of dropping.
+const mintlifyOpenapi = (spec: JsonObject): BlumeConfig["openapi"] => {
+  const drafts: OpenApiSourceDraft[] = [];
+
+  const visit = (node: unknown): void => {
+    if (Array.isArray(node)) {
+      for (const item of node) {
+        visit(item);
+      }
+      return;
+    }
+    const object = asObject(node);
+    if (!object) {
+      return;
+    }
+    if (hasOwn(object, "openapi")) {
+      drafts.push(
+        ...openapiSourcesFromValue(object.openapi, {
+          label: labelForNavItem(object),
+        })
+      );
+    }
+    for (const children of childNavigationArrays(object)) {
+      visit(children);
+    }
+  };
+
+  visit(spec.navigation);
+  drafts.push(...openapiSourcesFromValue(spec.openapi, {}));
+  drafts.push(...openapiSourcesFromValue(asObject(spec.api)?.openapi, {}));
+
+  const seen = new Set<string>();
+  const sources = drafts.flatMap((draft) => {
+    if (seen.has(draft.spec)) {
+      return [];
+    }
+    seen.add(draft.spec);
+    return [draft];
+  });
+
+  return sources.length > 0 ? { enabled: true, sources } : undefined;
+};
+
 const mintlifyLogo = (value: unknown): BlumeConfig["logo"] => {
   if (typeof value === "string") {
     return value;
@@ -844,6 +935,7 @@ export const loadMintlifyConfig = async (
       sidebarVariants: await mintlifySidebarVariants(spec),
       tabs: mintlifyTabs(spec),
     },
+    openapi: mintlifyOpenapi(spec),
     redirects: mintlifyRedirects(spec),
     search: {
       indexing: {

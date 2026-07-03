@@ -190,6 +190,12 @@ export const migrateMintlifyProject = async (
         `Mapped ${i18n.locales.length} languages to i18n.locales (default: ${i18n.defaultLocale}); review the locale labels.`
       );
     }
+    const openapiSources = config.openapi?.sources ?? [];
+    if (openapiSources.length > 0) {
+      warnings.push(
+        `Mapped ${openapiSources.length} OpenAPI spec source(s) to openapi.sources (native reference renderer); verify each spec path or URL resolves.`
+      );
+    }
   } else {
     warnings.push("No docs.json or mint.json found; writing a default config.");
     config = { content: { root: "." }, title: "Documentation" };
