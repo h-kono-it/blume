@@ -232,6 +232,16 @@ describe("discovery documents", () => {
     expect(discovery.servers[0]?.url).toBe("https://docs.example.com/mcp");
   });
 
+  it("keeps a subpath site's base path in the server URL", () => {
+    // new URL("/mcp", "https://acme.com/docs") drops the base; concatenation
+    // must keep it, matching how llms.txt builds page URLs.
+    const discovery = buildMcpDiscovery({
+      ...input,
+      site: "https://acme.com/docs",
+    }) as { servers: { url: string }[] };
+    expect(discovery.servers[0]?.url).toBe("https://acme.com/docs/mcp");
+  });
+
   it("lists the tool set in the server card", () => {
     const card = buildMcpServerCard(input) as { tools: { name: string }[] };
     expect(card.tools.map((tool) => tool.name).toSorted()).toEqual(

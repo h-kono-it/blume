@@ -10,7 +10,9 @@ export interface McpDiscoveryInput {
 
 /** The MCP server's address — absolute when a site is configured. */
 const serverUrl = (input: McpDiscoveryInput): string =>
-  input.site ? new URL(input.route, input.site).href : input.route;
+  // Concatenate rather than `new URL(route, site)` — a root-absolute route
+  // would drop the base path of a subpath deployment (`acme.com/docs`).
+  input.site ? `${input.site.replace(/\/+$/u, "")}${input.route}` : input.route;
 
 /**
  * The `/.well-known/mcp.json` discovery document: the minimal pointer agents use

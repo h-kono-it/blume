@@ -90,7 +90,9 @@ const normalizeRoute = (input: string): string => {
 
 /** Build the absolute (or root-relative) URL for a route. */
 const urlFor = (route: string, site: string | null): string =>
-  site ? new URL(route, site).href : route;
+  // Concatenate rather than `new URL(route, site)` — a root-absolute route
+  // would drop the base path of a subpath deployment (`acme.com/docs`).
+  site ? `${site.replace(/\/+$/u, "")}${route}` : route;
 
 const text = (value: string, isError = false) => ({
   content: [{ text: value, type: "text" as const }],
