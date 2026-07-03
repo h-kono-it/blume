@@ -314,6 +314,12 @@ describe("migrateMintlify end to end", () => {
     expect(pkg.dependencies.blume).toMatch(/^\^\d/u);
     expect(result.warnings.some((w) => w.includes("package.json"))).toBe(true);
 
+    // A .gitignore is scaffolded so Blume's generated output stays untracked.
+    const gitignore = await readFile(join(root, ".gitignore"), "utf-8");
+    expect(gitignore).toContain(".blume/");
+    expect(gitignore).toContain("dist/");
+    expect(result.warnings.some((w) => w.includes(".gitignore"))).toBe(true);
+
     expect(result.moved).toBeGreaterThan(0);
     expect(result.warnings.some((w) => w.includes("public/"))).toBe(true);
     expect(result.warnings.some((w) => w.includes("content.assets"))).toBe(

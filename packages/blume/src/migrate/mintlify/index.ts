@@ -4,6 +4,7 @@ import { mkdir, readFile, rename, rm, stat, writeFile } from "node:fs/promises";
 import { dirname, join } from "pathe";
 import { glob } from "tinyglobby";
 
+import { ensureGitignore } from "../../core/gitignore.ts";
 import type { BlumeConfig } from "../../core/schema.ts";
 import { ensurePackageJson } from "../shared.ts";
 import { assetSegments } from "./assets.ts";
@@ -190,10 +191,12 @@ const applyRelocatedAssets = (
 };
 
 /**
- * Scaffold a runnable `package.json` for the config-only Mintlify project (it
- * ships no npm manifest) and note it in the warnings when one was created.
+ * Scaffold the project files a config-only Mintlify repo lacks: a runnable
+ * `package.json` (it ships no npm manifest) and a `.gitignore` for Blume's
+ * generated `.blume/` runtime and `dist/` build output. Both are idempotent —
+ * an existing file is extended, not overwritten — and noted in the warnings.
  */
-const scaffoldPackageJson = async (
+const scaffoldProjectFiles = async (
   root: string,
   warnings: string[]
 ): Promise<void> => {
@@ -201,6 +204,10 @@ const scaffoldPackageJson = async (
     warnings.push(
       "Created a package.json with blume as a dependency; run `npm install`, then `npm run dev`."
     );
+  }
+  const ignored = await ensureGitignore(root, [".blume/", "dist/"]);
+  if (ignored.length > 0) {
+    warnings.push(`Added ${ignored.join(", ")} to .gitignore.`);
   }
 };
 
@@ -340,7 +347,7 @@ export const migrateMintlifyProject = async (
   }
   applyRelocatedAssets(config, assets, warnings);
   await writeBlumeConfig(root, config);
-  await scaffoldPackageJson(root, warnings);
+  await scaffoldProjectFiles(root, warnings);
 
   if (Object.keys(variables).length > 0) {
     warnings.push(
