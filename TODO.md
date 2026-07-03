@@ -16,7 +16,7 @@ Source: analysis of a large Mintlify site (two sub-sites — a product/API docs 
 
 ### Medium impact
 
-- [ ] **Migrate site chrome that's currently dropped** (`src/migrate/mintlify/config.ts`): `navbar.links` + `navbar.primary`, `footer.socials`, and `fonts.family` (Blume ships a `geist` slug, so map it). `contextual.options` and `metadata.timestamp` are ~covered by Blume defaults (PageActions, git-derived last-updated) — verify, then either map or document as no-ops.
+- [x] **Migrate site chrome that's currently dropped** (`src/migrate/mintlify/config.ts`): `navbar.links` + `navbar.primary`, `footer.socials`, and `fonts.family` (Blume ships a `geist` slug, so map it). `contextual.options` and `metadata.timestamp` are ~covered by Blume defaults (PageActions, git-derived last-updated) — verify, then either map or document as no-ops.
 
 - [x] **Translate wildcard redirects to Astro syntax.** `mintlifyRedirects` copies `from`/`to` verbatim, so a `/old/:slug*` → `/new/:slug*` redirect reaches Astro's `redirects` unchanged and never matches (Astro uses `[...slug]`, not `:slug*`). Convert `:param*` / `:param` path-to-regexp segments to Astro dynamic segments.
 

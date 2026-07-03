@@ -9,6 +9,7 @@ import type {
   ResolvedConfig,
   SidebarItemConfig,
 } from "../../core/schema.ts";
+import { GOOGLE_FONTS } from "../../theme/fonts.ts";
 
 type JsonObject = Record<string, unknown>;
 type NavigationSelectors = ResolvedConfig["navigation"]["selectors"];
@@ -869,6 +870,43 @@ const mintlifyMarkdown = (
   });
 };
 
+type ThemeFonts = NonNullable<NonNullable<BlumeConfig["theme"]>["fonts"]>;
+
+// Blume's curated Google-font family names, indexed by lowercased family so a
+// Mintlify `fonts.family: "Space Grotesk"` resolves to the `space-grotesk` slug.
+const FAMILY_TO_SLUG: Record<string, string> = Object.fromEntries(
+  Object.entries(GOOGLE_FONTS).map(([slug, def]) => [
+    def.family.toLowerCase(),
+    slug,
+  ])
+);
+
+const fontSlugForFamily = (value: unknown): string | undefined => {
+  const family = asString(value);
+  return family ? FAMILY_TO_SLUG[family.toLowerCase()] : undefined;
+};
+
+/**
+ * Map Mintlify `fonts` onto Blume `theme.fonts`. Mintlify sets one family for
+ * everything (`fonts.family`) or splits heading/body (`fonts.heading.family`,
+ * `fonts.body.family`); each maps to a curated Blume slug when one matches.
+ * Families outside Blume's set are left unset (defaults) and warned about.
+ */
+const mintlifyFonts = (value: unknown): ThemeFonts | undefined => {
+  const object = asObject(value);
+  if (!object) {
+    return undefined;
+  }
+  const heading = asObject(object.heading);
+  const body = asObject(object.body);
+  const fonts = withoutUndefined({
+    body: fontSlugForFamily(body?.family) ?? fontSlugForFamily(object.family),
+    display:
+      fontSlugForFamily(heading?.family) ?? fontSlugForFamily(object.family),
+  });
+  return Object.keys(fonts).length > 0 ? (fonts as ThemeFonts) : undefined;
+};
+
 const mintlifySeo = (value: unknown): NonNullable<BlumeConfig["seo"]> => {
   const object = asObject(value);
   const metatags = asObject(object?.metatags);
@@ -953,6 +991,7 @@ export const loadMintlifyConfig = async (
       backgroundDecoration: mintlifyBackgroundDecoration(spec.background),
       backgroundImage: backgroundImage.light,
       backgroundImageDark: backgroundImage.dark,
+      fonts: mintlifyFonts(spec.fonts ?? spec.font),
       mode:
         appearance.default === "light" ||
         appearance.default === "dark" ||

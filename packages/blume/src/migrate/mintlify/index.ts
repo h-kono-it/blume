@@ -15,6 +15,56 @@ export interface MintlifyMigrationResult {
   warnings: string[];
 }
 
+const asRecord = (value: unknown): Record<string, unknown> | undefined =>
+  value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : undefined;
+
+const hasFontFamily = (value: unknown): boolean => {
+  const object = asRecord(value);
+  if (!object) {
+    return false;
+  }
+  const named = (child: unknown): boolean =>
+    typeof asRecord(child)?.family === "string";
+  return (
+    typeof object.family === "string" ||
+    named(object.heading) ||
+    named(object.body)
+  );
+};
+
+/**
+ * Warn about Mintlify site chrome that Blume's config doesn't model, so it isn't
+ * dropped silently: header links (`navbar.links`/`navbar.primary`), footer
+ * socials (`footer.socials`), and fonts outside Blume's curated Google set. The
+ * contextual page menu and last-updated timestamp are covered by Blume defaults
+ * (page actions, git-derived dates), so they need no warning.
+ */
+const droppedChromeWarnings = (
+  spec: Record<string, unknown>,
+  config: BlumeConfig
+): string[] => {
+  const warnings: string[] = [];
+  const navbar = asRecord(spec.navbar);
+  if (navbar && (navbar.links || navbar.primary)) {
+    warnings.push(
+      "Header links (navbar.links/navbar.primary) have no blume.config equivalent and were dropped; re-add them with navigation.tabs or a Header layout override."
+    );
+  }
+  if (asRecord(spec.footer)?.socials) {
+    warnings.push(
+      "Footer social links (footer.socials) have no blume.config equivalent and were dropped; add them with a Footer layout override."
+    );
+  }
+  if (hasFontFamily(spec.fonts ?? spec.font) && !config.theme?.fonts) {
+    warnings.push(
+      "docs.json font family isn't in Blume's curated Google Fonts set; set theme.fonts to a supported slug or add @font-face rules in theme.css."
+    );
+  }
+  return warnings;
+};
+
 /** Recursively drop `undefined`, empty arrays, and empty objects. */
 const prune = (value: unknown): unknown => {
   if (Array.isArray(value)) {
@@ -196,6 +246,7 @@ export const migrateMintlifyProject = async (
         `Mapped ${openapiSources.length} OpenAPI spec source(s) to openapi.sources (native reference renderer); verify each spec path or URL resolves.`
       );
     }
+    warnings.push(...droppedChromeWarnings(spec, config));
   } else {
     warnings.push("No docs.json or mint.json found; writing a default config.");
     config = { content: { root: "." }, title: "Documentation" };

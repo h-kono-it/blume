@@ -494,6 +494,50 @@ describe("loadMintlifyConfig OpenAPI", () => {
   });
 });
 
+describe("loadMintlifyConfig fonts", () => {
+  it("maps a single font family to both display and body slugs", async () => {
+    const root = await project({
+      "docs.json": JSON.stringify({ fonts: { family: "Geist" }, name: "Docs" }),
+    });
+
+    const config = await loadMintlifyConfig(root, join(root, "docs.json"));
+    expect(config.theme?.fonts).toStrictEqual({
+      body: "geist",
+      display: "geist",
+    });
+  });
+
+  it("maps split heading/body families to their slugs", async () => {
+    const root = await project({
+      "docs.json": JSON.stringify({
+        fonts: {
+          body: { family: "Inter" },
+          heading: { family: "Space Grotesk" },
+        },
+        name: "Docs",
+      }),
+    });
+
+    const config = await loadMintlifyConfig(root, join(root, "docs.json"));
+    expect(config.theme?.fonts).toStrictEqual({
+      body: "inter",
+      display: "space-grotesk",
+    });
+  });
+
+  it("leaves fonts unset for a family outside the curated set", async () => {
+    const root = await project({
+      "docs.json": JSON.stringify({
+        fonts: { family: "Comic Sans MS" },
+        name: "Docs",
+      }),
+    });
+
+    const config = await loadMintlifyConfig(root, join(root, "docs.json"));
+    expect(config.theme?.fonts).toBeUndefined();
+  });
+});
+
 describe("loadMintlifyConfig branding", () => {
   it("maps banner, background, redirects, and code theme", async () => {
     const root = await project({
@@ -961,5 +1005,63 @@ describe("migrateMintlify config and asset variants", () => {
     const body = await readFile(join(root, "index.mdx"), "utf-8");
     expect(body).toContain("<ParamField");
     expect(result.warnings.some((w) => w.includes("ParamField"))).toBe(false);
+  });
+
+  it("warns about site chrome Blume has no config for, and maps a curated font", async () => {
+    const root = await project({
+      "docs.json": JSON.stringify({
+        fonts: { family: "Manrope" },
+        footer: { socials: { x: "https://x.example" } },
+        name: "Chrome",
+        navbar: {
+          links: [{ href: "https://gh.example", label: "GitHub" }],
+          primary: { href: "https://app.example", label: "Sign in" },
+        },
+        navigation: { pages: ["index"] },
+      }),
+      "index.mdx": "---\ntitle: Home\n---\n\nHi\n",
+    });
+
+    const result = await migrateMintlify(root);
+    expect(result.warnings.some((w) => w.includes("navbar.links"))).toBe(true);
+    expect(result.warnings.some((w) => w.includes("footer.socials"))).toBe(
+      true
+    );
+    // A curated family maps, so no font warning fires.
+    expect(result.warnings.some((w) => w.includes("Google Fonts"))).toBe(false);
+    const config = await readFile(join(root, "blume.config.ts"), "utf-8");
+    expect(config).toContain('"display": "manrope"');
+  });
+
+  it("warns when a docs.json font family is outside the curated set", async () => {
+    const root = await project({
+      "docs.json": JSON.stringify({
+        fonts: { family: "Comic Sans MS" },
+        name: "Fonts",
+        navigation: { pages: ["index"] },
+      }),
+      "index.mdx": "---\ntitle: Home\n---\n\nHi\n",
+    });
+
+    const result = await migrateMintlify(root);
+    expect(
+      result.warnings.some((w) => w.includes("curated Google Fonts set"))
+    ).toBe(true);
+  });
+
+  it("maps a split heading font family without warning", async () => {
+    const root = await project({
+      "docs.json": JSON.stringify({
+        fonts: { heading: { family: "Space Grotesk" } },
+        name: "Fonts",
+        navigation: { pages: ["index"] },
+      }),
+      "index.mdx": "---\ntitle: Home\n---\n\nHi\n",
+    });
+
+    const result = await migrateMintlify(root);
+    expect(result.warnings.some((w) => w.includes("Google Fonts"))).toBe(false);
+    const config = await readFile(join(root, "blume.config.ts"), "utf-8");
+    expect(config).toContain('"display": "space-grotesk"');
   });
 });
