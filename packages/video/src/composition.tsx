@@ -12,7 +12,6 @@ import {
 } from "remotion";
 
 import { EcosystemConstellation } from "@/components/remocn/ecosystem-constellation";
-import { MicroScaleFade } from "@/components/remocn/micro-scale-fade";
 import { SharedAxisY } from "@/components/remocn/shared-axis-y";
 import { ShortSlideRight } from "@/components/remocn/short-slide-right";
 import { SoftBlurIn } from "@/components/remocn/soft-blur-in";
@@ -35,7 +34,6 @@ const { fontFamily: GEIST_MONO } = loadGeistMono("normal", {
 
 // Text rides directly on the gradient photo (no dark overlay).
 const WHITE = "#ffffff";
-const WHITE_MUTED = "rgba(255,255,255,0.78)";
 const SANS =
   "var(--font-geist-sans), -apple-system, BlinkMacSystemFont, sans-serif";
 
@@ -162,34 +160,39 @@ const SceneContentSources = () => (
   </>
 );
 
-// ─── Scene 6 · The close (1101–1191) ────────────────────────────────────────
-const SceneCta = () => (
+// ─── Scene 6 · Open source (1101–1191) ──────────────────────────────────────
+// Same two-line blur-in as the opening tagline, reprised as a beat before the
+// install prompt: the second line trails the first by 0.25s (8f @30fps).
+const SceneOpenSource = () => (
   <>
-    {/* The close — transparent so the background carries through, with the caret
-        running out to the final frame. */}
-    <Sequence durationInFrames={90} layout="none">
-      <Typewriter
-        text="npm i blume"
-        fontSize={64}
-        charsPerSecond={16}
-        color={WHITE}
-        cursorColor={WHITE}
-        background="transparent"
-      />
-    </Sequence>
-    <Sequence from={30} durationInFrames={60} layout="none">
-      <Positioned dy={78}>
-        <MicroScaleFade
-          text="Free and open source, forever."
-          fontSize={26}
-          color={WHITE_MUTED}
-        />
+    <Positioned dy={-37}>
+      <SoftBlurIn text="Open source" fontSize={70} color={WHITE} />
+    </Positioned>
+    <Sequence from={8} layout="none">
+      <Positioned dy={37}>
+        <SoftBlurIn text="Free forever" fontSize={70} color={WHITE} />
       </Positioned>
     </Sequence>
   </>
 );
 
-// ─── Scene 7 · Logo sign-off (1191–1281) ────────────────────────────────────
+// ─── Scene 7 · The close (1191–1281) ────────────────────────────────────────
+const SceneCta = () => (
+  // The close — transparent so the background carries through, with the caret
+  // running out to the final frame.
+  <Sequence durationInFrames={90} layout="none">
+    <Typewriter
+      text="npm i blume"
+      fontSize={64}
+      charsPerSecond={16}
+      color={WHITE}
+      cursorColor={WHITE}
+      background="transparent"
+    />
+  </Sequence>
+);
+
+// ─── Scene 8 · Logo sign-off (1281–1371) ────────────────────────────────────
 // Wordmark trimmed ~20% off the 152 default so it reads a touch tighter next
 // to the dot mark, which keeps its size.
 const SceneLogo = () => <BlumeLogo color={WHITE} wordmarkSize={122} />;
@@ -252,9 +255,12 @@ export const LaunchVideo = () => {
             <SceneContentSources />
           </Sequence>
           <Sequence from={1101} durationInFrames={90} layout="none">
-            <SceneCta />
+            <SceneOpenSource />
           </Sequence>
           <Sequence from={1191} durationInFrames={90} layout="none">
+            <SceneCta />
+          </Sequence>
+          <Sequence from={1281} durationInFrames={90} layout="none">
             <SceneLogo />
           </Sequence>
         </div>
