@@ -392,32 +392,44 @@ export const contentConfigTemplate = (options: {
   staged?: boolean;
   /** Base dir for the staged collection; defaults to `<outDir>/content`. */
   stagedBase?: string;
+  /**
+   * Whether any filesystem (non-staged) source feeds the `docs` collection.
+   * When false (e.g. Mintlify bridge mode, where every page is staged), the
+   * collection globs nothing — see below.
+   */
+  filesystem?: boolean;
 }): string => {
   const { context, config } = options;
   const stagedBase = options.stagedBase ?? stagedContentDir(context.outDir);
 
   // Fold the content excludes into the glob as negative patterns so the `docs`
-  // collection never walks into ignored trees. This matters when `content.root`
-  // is the project root (Mintlify bridge mode, or a migrated `.`-rooted project):
-  // without it the collection would scan `node_modules`, `snippets`, etc.
-  //
-  // Blume's own output dir sits under the content root in that case, and Astro's
-  // content-layer watcher walks the whole `base` — so it would otherwise watch
-  // (and its glob loader re-sync) `.blume/` on every dev-server write, churning
-  // the console and double-loading the staged bodies under `.blume/content`.
-  // `content.exclude` only carries the source's declared excludes, so add the
-  // runtime dir explicitly when it resolves inside the content root.
+  // collection doesn't ingest ignored trees (`node_modules`, `snippets`, the
+  // staged bodies under `.blume/content`, …) as entries. This matters when
+  // `content.root` is the project root (a migrated `.`-rooted project).
   const outDirRel = relative(context.contentRoot, context.outDir);
   const outDirIgnore =
     outDirRel && !outDirRel.startsWith("..") && !isAbsolute(outDirRel)
       ? [`!${outDirRel}/**`]
       : [];
-  const docsPattern = [
-    ...config.content.include,
-    ...(config.content.exclude ?? []).map((pattern) => `!${pattern}`),
-    "!**/node_modules/**",
-    ...outDirIgnore,
-  ];
+
+  // With no filesystem source, no route renders through `docs`, so glob nothing.
+  // Beyond skipping wasted work, this is the only thing that keeps Astro's
+  // content-layer *watcher* out of `.blume/`: bridge mode roots the collection
+  // at the project dir (which contains `.blume/.astro/fonts`, rewritten on every
+  // request), and the watcher's match test is `picomatch.isMatch(path, pattern)`
+  // — with array-OR semantics, any `!ignored/**` negation *matches* unrelated
+  // files, so negative patterns can't exclude a subtree there. An empty pattern
+  // matches nothing, so the watcher stays silent. The collection is still
+  // declared below so `getCollection("docs")` / `getEntry` resolve (to empty).
+  const filesystem = options.filesystem ?? true;
+  const docsPattern = filesystem
+    ? [
+        ...config.content.include,
+        ...(config.content.exclude ?? []).map((pattern) => `!${pattern}`),
+        "!**/node_modules/**",
+        ...outDirIgnore,
+      ]
+    : [];
 
   // Non-filesystem sources render through a parallel `staged` collection backed
   // by materialized MDX, so the filesystem `docs` collection stays untouched.

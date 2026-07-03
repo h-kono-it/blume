@@ -973,6 +973,11 @@ export const generateRuntime = async (
   // entryId so i18n duplicates of one entry write a single file.
   const staged = collectStaged(project);
   const hasStaged = staged.size > 0;
+  // Only emit a project-scanning `docs` collection when a filesystem source
+  // actually feeds it. Bridge mode has just the staged Mintlify source, so the
+  // `docs` glob would otherwise scan (and watch) the whole project root for
+  // nothing — see contentConfigTemplate.
+  const hasFilesystemSource = project.sources.some((source) => !source.staged);
 
   const structural = await Promise.all([
     write(
@@ -1003,7 +1008,12 @@ export const generateRuntime = async (
     write(join(srcDir, "env.d.ts"), envTemplate()),
     write(
       join(srcDir, "content.config.ts"),
-      contentConfigTemplate({ config, context, staged: hasStaged })
+      contentConfigTemplate({
+        config,
+        context,
+        filesystem: hasFilesystemSource,
+        staged: hasStaged,
+      })
     ),
     write(
       join(srcDir, "pages", "[...slug].astro"),

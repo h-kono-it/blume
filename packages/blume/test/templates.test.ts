@@ -587,10 +587,12 @@ describe("contentConfigTemplate", () => {
   });
 
   it("excludes the runtime dir when it sits inside the content root", () => {
-    // Bridge mode: content root is the project root, so `.blume/` is nested.
+    // Migrated `.`-rooted project: content root is the project root with a real
+    // filesystem source, so `.blume/` is nested and must be excluded.
     const out = contentConfigTemplate({
       config,
       context: context({ contentRoot: "/p", outDir: "/p/.blume" }),
+      filesystem: true,
     });
     expect(out).toContain('"!.blume/**"');
   });
@@ -599,6 +601,22 @@ describe("contentConfigTemplate", () => {
     // Default: content root is `/p/docs`, runtime is `/p/.blume` (outside it).
     const out = contentConfigTemplate({ config, context: context() });
     expect(out).not.toContain(".blume/**");
+  });
+
+  it("globs nothing when no filesystem source feeds the docs collection", () => {
+    // Bridge mode: every page is staged, so the project-rooted `docs` glob would
+    // only scan (and watch) `.blume/` for nothing. Empty pattern keeps it — and
+    // Astro's content watcher — silent, while the collection stays declared.
+    const out = contentConfigTemplate({
+      config,
+      context: context({ contentRoot: "/p", outDir: "/p/.blume" }),
+      filesystem: false,
+      staged: true,
+    });
+    expect(out).toContain("const docs = defineCollection(");
+    expect(out).toContain("pattern: []");
+    expect(out).not.toContain('"!**/node_modules/**"');
+    expect(out).toContain("export const collections = { docs, staged };");
   });
 });
 
