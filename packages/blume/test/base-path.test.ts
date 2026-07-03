@@ -1,0 +1,34 @@
+import { describe, expect, it } from "bun:test";
+
+import {
+  joinBase,
+  stripBase,
+  withTrailingSlash,
+} from "../src/components/islands/base-path.ts";
+
+// Astro's default trailingSlash: "ignore" passes deployment.base through
+// as-is, so BASE_URL may be "/docs" or "/docs/". Both must behave alike:
+// naive `${base}api/ask` under a bare "/docs" produced /docsapi/ask (404).
+describe("island base-path helpers", () => {
+  it("guarantees a trailing slash", () => {
+    expect(withTrailingSlash("/")).toBe("/");
+    expect(withTrailingSlash("/docs")).toBe("/docs/");
+    expect(withTrailingSlash("/docs/")).toBe("/docs/");
+  });
+
+  it("joins endpoint paths under any base shape", () => {
+    expect(joinBase("/", "api/ask")).toBe("/api/ask");
+    expect(joinBase("/docs", "api/ask")).toBe("/docs/api/ask");
+    expect(joinBase("/docs/", "api/ask")).toBe("/docs/api/ask");
+  });
+
+  it("strips the base from a pathname for page grounding", () => {
+    expect(stripBase("/", "/guide")).toBe("/guide");
+    expect(stripBase("/docs", "/docs/guide")).toBe("/guide");
+    expect(stripBase("/docs/", "/docs/guide")).toBe("/guide");
+    // The bare base itself is the base-less root.
+    expect(stripBase("/docs", "/docs")).toBe("/");
+    // Unrelated paths pass through untouched.
+    expect(stripBase("/docs", "/other")).toBe("/other");
+  });
+});

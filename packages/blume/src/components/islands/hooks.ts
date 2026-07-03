@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { BlumeClientData } from "../../core/data.ts";
 import type { SearchFn, SearchResult } from "../layout/search/types.ts";
+import { joinBase, stripBase } from "./base-path.ts";
 
 /**
  * React hooks for Blume islands.
@@ -117,16 +118,11 @@ export interface UseAskAI {
   reset: () => void;
 }
 
-const ASK_ENDPOINT = `${import.meta.env.BASE_URL}api/ask`.replace("//", "/");
+const ASK_ENDPOINT = joinBase(import.meta.env.BASE_URL, "api/ask");
 
 /** The current route with the deployment base stripped, for page grounding. */
-const currentPath = (): string => {
-  const base = import.meta.env.BASE_URL;
-  const path = window.location.pathname;
-  return base.length > 1 && path.startsWith(base)
-    ? `/${path.slice(base.length)}`
-    : path;
-};
+const currentPath = (): string =>
+  stripBase(import.meta.env.BASE_URL, window.location.pathname);
 
 /**
  * Stream answers from the Ask AI endpoint. Mirrors the built-in Ask AI island so

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
 
 import type { UIStrings } from "../../core/i18n-ui.ts";
+import { joinBase, stripBase } from "./base-path.ts";
 
 interface ChatMessage {
   id: number;
@@ -27,16 +28,11 @@ const nextId = (): number => {
 
 // The endpoint and page path both honor the deployment `base` so grounding works
 // under a non-root base path (the server matches base-less document routes).
-const ASK_ENDPOINT = `${import.meta.env.BASE_URL}api/ask`.replace("//", "/");
+const ASK_ENDPOINT = joinBase(import.meta.env.BASE_URL, "api/ask");
 
 /** The current route with the deployment base stripped, for page-context lookup. */
-const currentPath = (): string => {
-  const base = import.meta.env.BASE_URL;
-  const path = window.location.pathname;
-  return base.length > 1 && path.startsWith(base)
-    ? `/${path.slice(base.length)}`
-    : path;
-};
+const currentPath = (): string =>
+  stripBase(import.meta.env.BASE_URL, window.location.pathname);
 
 const BUTTON_CLASS =
   "inline-flex h-9 cursor-pointer items-center gap-2 rounded-blume border border-border bg-muted px-2.5 text-muted-foreground text-sm hover:border-accent disabled:opacity-50";
