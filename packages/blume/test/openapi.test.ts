@@ -421,6 +421,29 @@ describe("render-mdx", () => {
     );
     expect(empty.body).not.toContain("## unused");
   });
+
+  it("synthesizes a section for a tag an operation references but the spec never declares", () => {
+    // The operation's tagSlug isn't in `spec.tags`, so overviewMdx must add the
+    // section from the operation itself — using its display tag name.
+    const op = {
+      deprecated: false,
+      description: "",
+      key: "ping",
+      method: "get" as const,
+      operationId: "ping",
+      path: "/ping",
+      route: "/api/webhooks/ping",
+      summary: "Ping",
+      tag: "Webhooks",
+      tagSlug: "webhooks",
+    };
+    const page = overviewMdx(specData({ operations: { ping: op } }));
+    // The undeclared tag still gets a markdown heading + its operation list.
+    expect(page.body).toContain("## Webhooks");
+    expect(page.body).toContain(
+      '<ApiTagOperations source="api" tag="webhooks" />'
+    );
+  });
 });
 
 describe("source.openApiSource", () => {
