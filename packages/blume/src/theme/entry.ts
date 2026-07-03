@@ -395,6 +395,15 @@ blume-diff {
   display: block;
   overflow-x: auto;
   padding: 0 1.25rem;
+  /* The scroller is only as tall as the code, so an overlay scrollbar would
+     draw on top of the last line; hide it (wheel/trackpad/keyboard scrolling
+     still works). */
+  scrollbar-width: none;
+}
+
+.prose
+  :where(pre:not(.twoslash, .twoslash pre, .not-prose *) > code)::-webkit-scrollbar {
+  display: none;
 }
 
 /* Word wrap (markdown.code.wrap): long lines wrap instead of scrolling. The
