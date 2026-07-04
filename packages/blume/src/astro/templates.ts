@@ -355,9 +355,17 @@ export default defineConfig({
     // native bindings resolve at runtime and isolated linkers don't bundle
     // symlinked store copies (which would surface their children as unresolvable
     // imports). See RENDER_EXTERNAL_DEPS / prerenderDepsPlugin.
+    //
+    // The SSR externals go through the legacy \`ssr.external\` key rather than
+    // \`environments.ssr\`: defining a user-owned \`environments.ssr\` block
+    // collides with the internal environment Astro 7 builds the server under and
+    // detaches the adapter's server entrypoint from the rolldown input, so the
+    // SSR entry is emitted as \`index.mjs\` instead of the \`entry.mjs\` the
+    // Vercel adapter's \`astro:build:done\` hook then fails to find. \`prerender\`
+    // is Astro-only and has no legacy equivalent, so it stays under \`environments\`.
+    ssr: { external: ${JSON.stringify(RENDER_EXTERNAL_DEPS)} },
     environments: {
       prerender: { resolve: { external: ${JSON.stringify(RENDER_EXTERNAL_DEPS)} } },
-      ssr: { resolve: { external: ${JSON.stringify(RENDER_EXTERNAL_DEPS)} } },
     },
     resolve: {
       alias: {

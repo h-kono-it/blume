@@ -390,7 +390,11 @@ describe("astroConfigTemplate", () => {
     expect(out).toContain('"@takumi-rs/core"');
     expect(out).toContain('"@astrojs/markdown-satteri"');
     expect(out).toMatch(/prerender: \{ resolve: \{ external: \[/u);
-    expect(out).toMatch(/ssr: \{ resolve: \{ external: \[/u);
+    // SSR externals use the legacy `ssr.external` key, not `environments.ssr`: a
+    // user-owned `environments.ssr` block collides with the internal environment
+    // Astro 7 builds the server under and mis-names the adapter's server entry.
+    expect(out).toMatch(/ssr: \{ external: \[/u);
+    expect(out).not.toMatch(/environments: \{[^}]*ssr:/su);
     expect(out).not.toContain("adapter:");
     expect(out).toContain(`"blume:examples": ${JSON.stringify(EXAMPLES_PATH)}`);
     // The dev watcher ignores Astro's cache dir so a migrated (`.`-rooted)
