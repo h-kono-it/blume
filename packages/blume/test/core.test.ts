@@ -1,5 +1,6 @@
 import { describe, expect, it } from "bun:test";
 
+import { buildAgentReadability } from "../src/ai/agent-readability.ts";
 import {
   astroConfigTemplate,
   runtimeDependencies,
@@ -516,6 +517,106 @@ describe("robots.txt", () => {
 
   it("returns null when disabled", () => {
     expect(buildRobots(makeProject([], { seo: { robots: false } }))).toBeNull();
+  });
+
+  it("declares every Content-Signal as yes by default", () => {
+    const robots = buildRobots(makeProject([])) ?? "";
+    expect(robots).toContain(
+      "Content-Signal: search=yes, ai-input=yes, ai-train=yes"
+    );
+  });
+
+  it("restricts an individual signal while leaving the rest yes", () => {
+    const robots =
+      buildRobots(
+        makeProject([], { seo: { contentSignals: { aiTrain: false } } })
+      ) ?? "";
+    expect(robots).toContain(
+      "Content-Signal: search=yes, ai-input=yes, ai-train=no"
+    );
+  });
+
+  it("omits the Content-Signal line when disabled with false", () => {
+    const robots =
+      buildRobots(makeProject([], { seo: { contentSignals: false } })) ?? "";
+    expect(robots).toContain("User-agent: *");
+    expect(robots).not.toContain("Content-Signal:");
+  });
+});
+
+describe("agent-readability.json", () => {
+  it("indexes the Markdown mirror and sitemap with absolute URLs", () => {
+    const manifest = buildAgentReadability(makeProject([]));
+    expect(manifest?.name).toBe("Docs");
+    expect(manifest?.site).toBe("https://example.com");
+    expect(manifest?.artifacts).toMatchObject({
+      markdown: {
+        contentNegotiation: "text/markdown",
+        pattern: "https://example.com/{route}.md",
+      },
+      sitemap: "https://example.com/sitemap.xml",
+    });
+  });
+
+  it("returns null when disabled", () => {
+    expect(
+      buildAgentReadability(
+        makeProject([], { seo: { agentReadability: false } })
+      )
+    ).toBeNull();
+  });
+
+  it("advertises llms.txt, MCP, Ask AI, feeds, and content usage when configured", () => {
+    const manifest = buildAgentReadability(
+      makeProject([postPage("changes", "/blog/changes", "blog", {})], {
+        ai: { ask: { enabled: true }, llmsTxt: true },
+        github: { owner: "inthhq", repo: "leadtype" },
+        mcp: { enabled: true },
+        seo: { contentSignals: { aiTrain: false, search: true } },
+      })
+    );
+    expect(manifest?.artifacts).toMatchObject({
+      askApi: "https://example.com/api/ask",
+      feeds: ["https://example.com/blog/rss.xml"],
+      llmsFullTxt: "https://example.com/llms-full.txt",
+      llmsTxt: "https://example.com/llms.txt",
+      mcp: {
+        discovery: "https://example.com/.well-known/mcp.json",
+        url: "https://example.com/mcp",
+      },
+    });
+    expect(manifest?.contentUsage).toStrictEqual({
+      "ai-input": true,
+      "ai-train": false,
+      search: true,
+    });
+    expect(manifest?.repository).toBe("https://github.com/inthhq/leadtype");
+  });
+
+  it("echoes the content-usage policy by default and drops it when disabled", () => {
+    const on = buildAgentReadability(makeProject([]));
+    expect(on?.contentUsage).toStrictEqual({
+      "ai-input": true,
+      "ai-train": true,
+      search: true,
+    });
+    const off = buildAgentReadability(
+      makeProject([], { seo: { contentSignals: false } })
+    );
+    expect(off?.contentUsage).toBeUndefined();
+  });
+
+  it("uses root-relative URLs and omits the sitemap without a site", () => {
+    const manifest = buildAgentReadability(
+      makeProject([], { ai: { llmsTxt: true }, deployment: {} })
+    );
+    const artifacts = (manifest?.artifacts ?? {}) as Record<string, unknown>;
+    expect(manifest?.site).toBeNull();
+    expect(artifacts).toMatchObject({
+      llmsTxt: "/llms.txt",
+      markdown: { pattern: "/{route}.md" },
+    });
+    expect(artifacts.sitemap).toBeUndefined();
   });
 });
 

@@ -154,7 +154,7 @@ Ship your own `public/sitemap.xml` to take over — Blume never overwrites a fil
 
 ## Robots
 
-Blume writes a `robots.txt` that allows all crawlers and adds a `Sitemap:` line pointing to the sitemap when one is available. On by default:
+Blume writes a `robots.txt` that allows all crawlers, declares your [content signals](#content-signals), and adds a `Sitemap:` line pointing to the sitemap when one is available. On by default:
 
 ```ts blume.config.ts lineNumbers
 seo: {
@@ -164,9 +164,67 @@ seo: {
 
 ```txt robots.txt
 User-agent: *
+Content-Signal: search=yes, ai-input=yes, ai-train=yes
 Allow: /
 
 Sitemap: https://docs.example.com/sitemap.xml
 ```
+
+### Content signals
+
+The `Content-Signal` line — the emerging content-usage convention — declares how AI crawlers may reuse your docs. Blume emits it **on by default with every signal set to `yes`**, matching its stance that docs are open to humans and agents alike:
+
+- `search` — traditional and AI search indexing
+- `aiInput` — grounding / RAG at answer time
+- `aiTrain` — model training
+
+Restrict any signal by setting it to `false`; the ones you leave out stay `yes`:
+
+```ts blume.config.ts lineNumbers
+seo: {
+  contentSignals: {
+    aiTrain: false, // opt out of training, keep search + grounding
+  },
+}
+```
+
+```txt robots.txt
+User-agent: *
+Content-Signal: search=yes, ai-input=yes, ai-train=no
+Allow: /
+```
+
+Set `contentSignals: false` to drop the declaration entirely:
+
+```ts blume.config.ts lineNumbers
+seo: {
+  contentSignals: false,
+}
+```
+
+<TypeTable
+  type={{
+    "seo.contentSignals": {
+      type: "boolean | object",
+      description:
+        "Content-Signal declaration. true or omitted emits all signals as yes; false drops the line; an object sets signals individually.",
+    },
+    "contentSignals.search": {
+      type: "boolean",
+      description: "Allow use for search indexing (search). Default true.",
+    },
+    "contentSignals.aiInput": {
+      type: "boolean",
+      description:
+        "Allow use for AI grounding / RAG at answer time (ai-input). Default true.",
+    },
+    "contentSignals.aiTrain": {
+      type: "boolean",
+      description: "Allow use for AI model training (ai-train). Default true.",
+    },
+  }}
+/>
+
+Content signals express a preference, not access control: they tell well-behaved crawlers how you'd like your content used, and it's on the crawler to honour them.
 
 Ship your own `public/robots.txt` to take over.

@@ -5,6 +5,7 @@ import { build } from "astro";
 import { defineCommand } from "citty";
 import { join } from "pathe";
 
+import { buildAgentReadability } from "../../ai/agent-readability.ts";
 import { buildLlmsFiles } from "../../ai/llms.ts";
 import { ensureGitignore } from "../../core/gitignore.ts";
 import type { BlumeProject } from "../../core/project-graph.ts";
@@ -218,6 +219,19 @@ const publishBuildArtifacts = async (
     logger.success("Generated robots.txt");
   }
 
+  const agentReadability = buildAgentReadability(project);
+  if (
+    agentReadability &&
+    !existsSync(join(distDir, "agent-readability.json"))
+  ) {
+    await writeFile(
+      join(distDir, "agent-readability.json"),
+      `${JSON.stringify(agentReadability, null, 2)}\n`,
+      "utf-8"
+    );
+    logger.success("Generated agent-readability.json");
+  }
+
   await emitRedirectFiles(project.config, distDir);
 
   const { config } = project;
@@ -231,6 +245,7 @@ const publishBuildArtifacts = async (
       `Redirects  ${config.redirects.length}`,
       `Sitemap    ${sitemap ? "yes" : "no (set deployment.site)"}`,
       `Robots     ${robots ? "yes" : "no"}`,
+      `Agent JSON ${agentReadability ? "yes" : "no"}`,
       `LLM files  ${config.ai.llmsTxt ? "yes" : "no"}`,
       `Server features  ${features.length > 0 ? features.join(", ") : "none"}`,
     ].join("\n")

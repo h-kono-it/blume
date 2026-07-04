@@ -759,9 +759,52 @@ const rssConfigSchema = z
   })
   .strict();
 
+/**
+ * robots.txt `Content-Signal` preferences — the emerging content-usage
+ * declaration for how crawlers may reuse the site. Each field maps to one
+ * signal:
+ * - `search` → `search` (traditional and AI search indexing)
+ * - `aiInput` → `ai-input` (grounding / RAG use at answer time)
+ * - `aiTrain` → `ai-train` (model training)
+ */
+const contentSignalsObjectSchema = z
+  .object({
+    aiInput: z.boolean().default(true),
+    aiTrain: z.boolean().default(true),
+    search: z.boolean().default(true),
+  })
+  .strict();
+
+/**
+ * Content signals accept a boolean shorthand or a per-signal object, and
+ * normalize to `{ search, aiInput, aiTrain }` — or `null` when disabled, so
+ * robots.txt omits the declaration entirely. On by default (`true`): Blume
+ * declares the docs open to search and agents. `false` opts out; an object
+ * restricts individual signals (unset signals stay `yes`).
+ */
+const contentSignalsSchema = z
+  .union([z.boolean(), contentSignalsObjectSchema])
+  .transform((value) => {
+    if (value === true) {
+      return contentSignalsObjectSchema.parse({});
+    }
+    if (value === false) {
+      return null;
+    }
+    return value;
+  });
+
 /** Discoverability features: OG images, feeds, sitemap, structured data. */
 const seoConfigSchema = z
   .object({
+    /**
+     * Emit `agent-readability.json` at the site root: a manifest that indexes
+     * the agent-facing surface (llms.txt, Markdown mirrors, MCP server, feeds)
+     * so agents can discover it without scraping HTML.
+     */
+    agentReadability: z.boolean().default(true),
+    /** robots.txt `Content-Signal` usage declaration (on by default). */
+    contentSignals: contentSignalsSchema.default(true),
     og: ogConfigSchema.default({}),
     /** Generate robots.txt (with a Sitemap reference when available). */
     robots: z.boolean().default(true),
@@ -990,3 +1033,7 @@ export type LocaleConfig = z.infer<typeof localeSchema>;
 export type BlumeConfig = z.input<typeof blumeConfigSchema>;
 /** A configured search backend. */
 export type SearchProvider = (typeof searchProviders)[number];
+/** Resolved robots.txt `Content-Signal` preferences (`null` when disabled). */
+export type ContentSignals = z.infer<typeof contentSignalsSchema>;
+/** The resolved per-signal policy object (present when signals are enabled). */
+export type ContentSignalPolicy = NonNullable<ContentSignals>;

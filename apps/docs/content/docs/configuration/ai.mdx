@@ -175,6 +175,43 @@ A static build with `mcp.enabled` fails fast with a message telling you to set `
 claude mcp add --transport http my-docs https://docs.example.com/mcp
 ```
 
+## Agent readability
+
+Blume writes an **`/agent-readability.json`** manifest at your site root that indexes the agent-facing surface described on this page — so an agent can discover it in a single fetch instead of guessing at conventions or scraping HTML. Unlike the features above, it's on by default:
+
+```ts blume.config.ts lineNumbers
+seo: {
+  agentReadability: true,
+}
+```
+
+The manifest lists only what you've enabled — the [raw Markdown](#raw-markdown) mirror pattern, [`llms.txt`](#llmstxt) and `llms-full.txt`, the [MCP server](#mcp-server) and its discovery document, the [Ask AI](#ask-ai) endpoint, the [sitemap](/docs/configuration/seo#sitemap), and [RSS feeds](/docs/configuration/seo#rss-feeds) — alongside your site name, description, source repository, and the [content-signal](/docs/configuration/seo#content-signals) usage policy. URLs are absolute when [`deployment.site`](/docs/deployment) is set and root-relative otherwise:
+
+```json agent-readability.json
+{
+  "artifacts": {
+    "markdown": {
+      "contentNegotiation": "text/markdown",
+      "pattern": "https://docs.example.com/{route}.md"
+    },
+    "llmsFullTxt": "https://docs.example.com/llms-full.txt",
+    "llmsTxt": "https://docs.example.com/llms.txt",
+    "mcp": {
+      "discovery": "https://docs.example.com/.well-known/mcp.json",
+      "url": "https://docs.example.com/mcp"
+    }
+  },
+  "description": "Docs for the Acme API.",
+  "generator": "blume@1.0.0",
+  "name": "Acme Docs",
+  "site": "https://docs.example.com",
+  "contentUsage": { "search": true, "ai-input": true, "ai-train": true },
+  "repository": "https://github.com/acme/docs"
+}
+```
+
+Set `seo.agentReadability` to `false` to skip it, or ship your own `public/agent-readability.json` to take over — Blume never overwrites a file you place in `public/`.
+
 ## Agent skill
 
 Building a Blume site with the help of a coding agent? Install the Blume [agent skill](https://docs.claude.com/en/docs/claude-code/skills) so it knows how Blume works without you explaining it:
