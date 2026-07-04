@@ -19,6 +19,28 @@ interface Suggestion {
   label: string;
 }
 
+/**
+ * The panel's chrome glyphs, resolved server-side in `AskAI.astro` and passed in
+ * as ready-to-inline Lucide bodies so this client island ships no icon data.
+ */
+interface AskIcons {
+  arrowUp: string;
+  chat: string;
+  clear: string;
+  close: string;
+  copy: string;
+}
+
+// Empty bodies so the island still renders (iconless) if instantiated without
+// the Astro wrapper that resolves the real Lucide glyphs.
+const EMPTY_ICONS: AskIcons = {
+  arrowUp: "",
+  chat: "",
+  clear: "",
+  close: "",
+  copy: "",
+};
+
 // English fallback so the island renders even if no dictionary is passed.
 const DEFAULT_ASK: UIStrings["ask"] = {
   clear: "Clear conversation",
@@ -52,16 +74,6 @@ marked.setOptions({ breaks: true, gfm: true });
 
 const renderMarkdown = (content: string): string =>
   DOMPurify.sanitize(marked.parse(content, { async: false }));
-
-// Lucide 24×24 glyphs, inlined so the island carries no icon runtime.
-const ICON = {
-  arrowUp: '<path d="m5 12 7-7 7 7"/><path d="M12 19V5"/>',
-  chat: '<path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/>',
-  clear:
-    '<path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/>',
-  close: '<path d="m6 17 5-5-5-5"/><path d="m13 17 5-5-5-5"/>',
-  copy: '<rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>',
-};
 
 const Glyph = ({ path, size = 16 }: { path: string; size?: number }) => (
   <svg
@@ -97,9 +109,11 @@ const ANSWER_CLASS =
   "prose prose-sm max-w-none text-foreground [&_a]:inline-flex [&_a]:items-center [&_a]:gap-1 [&_a]:rounded-full [&_a]:bg-muted [&_a]:px-2 [&_a]:py-1 [&_a]:align-middle [&_a]:font-medium [&_a]:text-[0.7rem] [&_a]:leading-none [&_a]:text-muted-foreground! [&_a]:no-underline! [&_a:hover]:text-foreground!";
 
 const AskAI = ({
+  icons = EMPTY_ICONS,
   strings,
   suggestions = EMPTY_SUGGESTIONS,
 }: {
+  icons?: AskIcons;
   strings?: UIStrings["ask"];
   suggestions?: Suggestion[];
 }) => {
@@ -255,7 +269,7 @@ const AskAI = ({
             title={t.copy}
             type="button"
           >
-            <Glyph path={ICON.copy} />
+            <Glyph path={icons.copy} />
           </button>
           <button
             aria-label={t.clear}
@@ -265,7 +279,7 @@ const AskAI = ({
             title={t.clear}
             type="button"
           >
-            <Glyph path={ICON.clear} />
+            <Glyph path={icons.clear} />
           </button>
           <button
             aria-label={t.close}
@@ -274,7 +288,7 @@ const AskAI = ({
             title={t.close}
             type="button"
           >
-            <Glyph path={ICON.close} size={18} />
+            <Glyph path={icons.close} size={18} />
           </button>
         </div>
       </header>
@@ -362,7 +376,7 @@ const AskAI = ({
           disabled={busy || input.trim().length === 0}
           type="submit"
         >
-          <Glyph path={ICON.arrowUp} />
+          <Glyph path={icons.arrowUp} />
         </button>
       </form>
     </aside>
@@ -378,7 +392,7 @@ const AskAI = ({
         title={t.title}
         type="button"
       >
-        <Glyph path={ICON.chat} size={18} />
+        <Glyph path={icons.chat} size={18} />
       </button>
       {mounted && createPortal(panel, document.body)}
     </>

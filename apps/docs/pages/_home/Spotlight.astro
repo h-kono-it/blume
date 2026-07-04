@@ -1,4 +1,6 @@
 ---
+import { glyph } from "./shared.ts";
+
 // Customer spotlight — a single full-bleed card: a decorative photo covers the
 // whole container with a dark scrim over it (heavier on the left), the copy
 // (logo, two-tone headline, two stats, and a CTA pill) sits on the left, and a
@@ -122,9 +124,8 @@ const customerLogos = [
             stroke-width="2"
             viewBox="0 0 24 24"
             width="16"
-          >
-            <path d="m9 18 6-6-6-6"></path>
-          </svg>
+            set:html={glyph("chevron-right")}
+          />
         </a>
       </div>
     </div>

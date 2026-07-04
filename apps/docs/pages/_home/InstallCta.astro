@@ -1,10 +1,11 @@
 ---
 // Closing call-to-action: the shared install box plus doc/get-started buttons.
-import { installBox } from "./shared.ts";
+import InstallBox from "./InstallBox.astro";
+import { glyph } from "./shared.ts";
 
 const docsHref = "/docs";
 const startHref = "/docs/quickstart";
-const arrowRight = '<path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>';
+const arrowRight = glyph("arrow-right");
 const primaryButton =
   "inline-flex items-center gap-2 rounded-full bg-foreground px-5 py-2.5 font-medium text-background text-sm transition-opacity hover:opacity-90";
 const secondaryButton =
@@ -20,7 +21,7 @@ const secondaryButton =
   <p class="mx-auto mt-4 text-balance text-muted-foreground">
     Install today and ship a production-grade docs site in minutes.
   </p>
-  <div class="mt-8" set:html={installBox}></div>
+  <div class="mt-8"><InstallBox /></div>
   <div class="mt-8 flex flex-wrap items-center justify-center gap-3">
     <a class={secondaryButton} href={docsHref}>Read the docs</a>
     <a class={primaryButton} href={startHref}>

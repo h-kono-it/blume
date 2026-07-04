@@ -7,7 +7,8 @@
 import CodeBlock from "blume/components/content/CodeBlock.astro";
 import Callout from "blume/components/content/Callout.astro";
 import { GITHUB_MARK } from "blume/components/github-mark.ts";
-import { copyIcon, icons, sampleBrand } from "./shared.ts";
+import CopyGlyph from "./CopyGlyph.astro";
+import { icons, sampleBrand } from "./shared.ts";
 
 const title = sampleBrand.name;
 const logoSvg = sampleBrand.logo;
@@ -71,10 +72,6 @@ const webhookCode = `app.post("/webhooks/comet", (req, res) => {
 
   res.sendStatus(200);
 });`;
-
-// The header copy glyph, shared by every code block in the mock. Static — the
-// landing page doesn't load the docs chrome's copy-to-clipboard handler.
-const copyButton = `<svg aria-hidden="true" class="absolute top-3.5 right-4 size-3.5 text-muted-foreground" fill="none" height="14" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="14">${copyIcon}</svg>`;
 ---
 
 <section>
@@ -223,7 +220,7 @@ const copyButton = `<svg aria-hidden="true" class="absolute top-3.5 right-4 size
           </p>
           <div class="relative mt-4 [&_pre]:my-0!">
             <CodeBlock code={installCode} icons lang="bash" title="Terminal" />
-            <Fragment set:html={copyButton} />
+            <CopyGlyph />
           </div>
 
           <div
@@ -239,7 +236,7 @@ const copyButton = `<svg aria-hidden="true" class="absolute top-3.5 right-4 size
           </p>
           <div class="relative mt-4 [&_pre]:my-0!">
             <CodeBlock code={mockupCode} icons lang="ts" title="send-message.ts" />
-            <Fragment set:html={copyButton} />
+            <CopyGlyph />
           </div>
 
           <div
@@ -273,7 +270,7 @@ const copyButton = `<svg aria-hidden="true" class="absolute top-3.5 right-4 size
           </p>
           <div class="relative mt-4 [&_pre]:my-0!">
             <CodeBlock code={webhookCode} icons lang="ts" title="webhook.ts" />
-            <Fragment set:html={copyButton} />
+            <CopyGlyph />
           </div>
 
           <div

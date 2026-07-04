@@ -2,7 +2,7 @@
 // "Built for humans and models" — the AI surfaces (Ask AI, MCP, llms.txt, raw
 // Markdown, open-in-chat) as a bento of cards with two custom mocks. The two big
 // cards are hand-written; the compact machine-readable cards render from a map.
-import { icons } from "./shared.ts";
+import { glyph, icons } from "./shared.ts";
 
 const aiResources = [
   {
@@ -99,8 +99,8 @@ const mcpConnectCommand =
               stroke-width="2"
               viewBox="0 0 24 24"
               width="14"
-              ><path d="m5 12 7-7 7 7"></path><path d="M12 19V5"></path></svg
-            >
+              set:html={glyph("arrow-up")}
+            />
           </span>
         </div>
       </div>

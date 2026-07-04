@@ -4,7 +4,8 @@
 // and <Callout> so the preview is genuinely Blume-rendered, not a look-alike.
 import Callout from "blume/components/content/Callout.astro";
 import CodeBlock from "blume/components/content/CodeBlock.astro";
-import { copyIcon } from "./shared.ts";
+import Icon from "blume/components/Icon.astro";
+import CopyGlyph from "./CopyGlyph.astro";
 
 // Declared as a string and rendered through an Astro expression so the
 // Markdown inside auto-escapes (no hand-written entities).
@@ -39,10 +40,6 @@ const configCode = `export default {
   title: "Docs",
 };`;
 const packageManagers = ["npm", "pnpm", "yarn", "bun"];
-
-// Static header copy glyph for the rendered code block (the landing page
-// doesn't load the docs chrome's copy-to-clipboard handler).
-const copyButton = `<svg aria-hidden="true" class="absolute top-3.5 right-4 size-3.5 text-muted-foreground" fill="none" height="14" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="14">${copyIcon}</svg>`;
 ---
 
 <!-- Write Markdown. Render components. -->
@@ -91,23 +88,12 @@ const copyButton = `<svg aria-hidden="true" class="absolute top-3.5 right-4 size
           >
             <span><span class="text-muted-foreground">npm</span> install blume</span
             >
-            <svg
-              class="size-3.5 text-muted-foreground"
-              fill="none"
-              height="14"
-              stroke="currentColor"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              viewBox="0 0 24 24"
-              width="14"
-              set:html={copyIcon}
-            ></svg>
+            <Icon class="size-3.5 text-muted-foreground" name="copy" size={14} />
           </div>
         </div>
         <div class="relative mt-4 [&_pre]:my-0!">
           <CodeBlock code={configCode} icons lang="ts" title="blume.config.ts" />
-          <Fragment set:html={copyButton} />
+          <CopyGlyph />
         </div>
         <Callout type="tip">
           Search, theming, and navigation work out of the box.

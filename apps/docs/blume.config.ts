@@ -35,6 +35,12 @@ export default defineConfig({
       },
     ],
   },
+  // Ask AI and the MCP server need on-demand rendering, so the site deploys as
+  // a Vercel server function rather than a static export.
+  deployment: {
+    adapter: "vercel",
+    output: "server",
+  },
   description:
     "Open-source, markdown-first documentation powered by Astro and Vite.",
   export: true,

@@ -29,9 +29,21 @@ const items = suggestions.map((suggestion) => ({
   icon: svgFor(suggestion.icon),
   label: suggestion.label,
 }));
+
+// The panel's own chrome glyphs resolve here too, so the client island carries
+// no icon data. Each value is the bare Lucide body; the island's <Glyph> wraps
+// it in a sized, stroke-styled <svg>. Keyed by role → Lucide icon name.
+const bodyFor = (name: string): string => resolveIcon(name)?.body ?? "";
+const icons = {
+  arrowUp: bodyFor("arrow-up"),
+  chat: bodyFor("message-circle"),
+  clear: bodyFor("trash-2"),
+  close: bodyFor("chevrons-right"),
+  copy: bodyFor("copy"),
+};
 ---
 
-<AskAI client:load strings={strings} suggestions={items} />
+<AskAI client:load icons={icons} strings={strings} suggestions={items} />
 
 <style is:global>
   :root {

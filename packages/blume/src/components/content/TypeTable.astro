@@ -4,6 +4,12 @@
 // the accent-colored prop name (with a `?` suffix when optional) and its type;
 // expanded, the row lifts into a card showing the description and a Type/Default
 // detail grid. Uses native <details>/<summary> so the core stays React-free.
+import { resolveIcon } from "../../theme/icons.ts";
+
+// The row disclosure caret; resolved from Lucide at build time and injected into
+// the summary's `<svg>` (which supplies size and the rotate-on-open transition).
+const chevronDown = resolveIcon("chevron-down")?.body ?? "";
+
 interface TypeEntry {
   default?: string;
   description?: string;
@@ -64,9 +70,8 @@ const columns = "grid grid-cols-[1fr_2fr_auto] items-center gap-4";
               stroke-width="2"
               viewBox="0 0 24 24"
               width="16"
-            >
-              <path d="m6 9 6 6 6-6" />
-            </svg>
+              set:html={chevronDown}
+            />
           </summary>
 
           <div class="border-border border-t px-3 py-3 text-xs">

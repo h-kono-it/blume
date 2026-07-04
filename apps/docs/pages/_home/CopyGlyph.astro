@@ -1,0 +1,13 @@
+---
+// The static copy glyph pinned to the top-right of the mock code blocks on the
+// homepage (ProductPreview + MarkdownShowcase). Purely decorative — the landing
+// page doesn't load the docs chrome's copy-to-clipboard handler, so it's a look,
+// not a working button.
+import Icon from "blume/components/Icon.astro";
+---
+
+<Icon
+  class="absolute top-3.5 right-4 size-3.5 text-muted-foreground"
+  name="copy"
+  size={14}
+/>

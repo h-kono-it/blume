@@ -3,12 +3,13 @@
 // links. The install box copy button uses the page-level delegated
 // `data-blume-copy-install` handler in index.astro.
 import data from "blume:data";
-import { installBox } from "./shared.ts";
+import InstallBox from "./InstallBox.astro";
+import { glyph } from "./shared.ts";
 
 const { config } = data;
 const repoUrl = config.repoUrl;
 const docsHref = "/docs";
-const chevronRight = '<path d="m9 18 6-6-6-6"/>';
+const chevronRight = glyph("chevron-right");
 
 // Latest GitHub release for the hero badge, resolved at build time. Falls back
 // to 0.0.0 when there's no release — or the API is unreachable/rate-limited — so
@@ -72,7 +73,7 @@ if (repoMatch?.groups) {
   </p>
 
   <!-- Install command -->
-  <div class="mt-9" set:html={installBox}></div>
+  <div class="mt-9"><InstallBox /></div>
 
   <div class="mt-7 flex items-center justify-center gap-6 text-sm">
     <a
