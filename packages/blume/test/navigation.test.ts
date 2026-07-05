@@ -29,6 +29,27 @@ const page = (
   translationKey: route,
 });
 
+const changelogPage = (
+  ref: string,
+  title: string,
+  date: string
+): PageRecord => ({
+  contentType: "changelog",
+  format: "md",
+  groups: [],
+  headings: [],
+  id: `changelog/${ref}`,
+  links: [],
+  locale: "",
+  meta: pageMetaSchema.parse({ date, type: "changelog" }),
+  navPath: `changelog/${ref}`,
+  route: `/changelog/${ref}`,
+  segments: [],
+  source: { name: "releases", ref },
+  title,
+  translationKey: `/changelog/${ref}`,
+});
+
 const asGroup = (node: NavNode | undefined) => {
   if (!node || node.kind !== "group") {
     throw new Error("expected a group node");
@@ -171,6 +192,26 @@ describe("buildNavigation — filesystem sidebar", () => {
     expect(group.label).toBe("Guides");
     expect(group.collapsed).toBe(true);
     expect(labels(group.children)).toStrictEqual(["Beta", "Alpha"]);
+  });
+
+  it("orders changelog entries newest-first by publish date", () => {
+    // Dates deliberately disagree with label order to prove the sort keys on
+    // the publish date, not the version string.
+    const nav = buildNavigation(
+      [
+        changelogPage("v6-0-0", "app@6.0.0", "2024-01-01"),
+        changelogPage("v5-6-4", "app@5.6.4", "2024-03-01"),
+        changelogPage("v5-6-0", "app@5.6.0", "2024-05-01"),
+      ],
+      { folderMeta: empty }
+    );
+
+    const group = asGroup(nav.sidebar[0]);
+    expect(labels(group.children)).toStrictEqual([
+      "app@5.6.0",
+      "app@5.6.4",
+      "app@6.0.0",
+    ]);
   });
 });
 

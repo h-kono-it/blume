@@ -108,6 +108,16 @@ const pageOrder = (page: PageRecord, filename: string): number => {
   if (filename.replace(extname(filename), "") === "index") {
     return Number.NEGATIVE_INFINITY;
   }
+  // Changelog entries read newest-first, matching the generated timeline. Sort
+  // on the negated publish timestamp so a later date yields a smaller order
+  // under the ascending comparator; undated entries fall back to filename order.
+  if (page.contentType === "changelog") {
+    const iso = page.meta.date ?? page.meta.changelog?.date;
+    const time = iso ? Date.parse(iso) : Number.NaN;
+    if (!Number.isNaN(time)) {
+      return -time;
+    }
+  }
   return numericOrder(filename);
 };
 
