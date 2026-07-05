@@ -304,6 +304,14 @@ describe("resolveIcon (Lucide-only)", () => {
     expect(hasIcon("definitely-not-an-icon-xyz")).toBeFalsy();
   });
 
+  it("keeps hasIcon and resolveIcon in exact agreement on unknown prefixes", () => {
+    // `tabler:check` used to pass hasIcon (bare `check` exists in Lucide) while
+    // resolveIcon returned null — callers then rendered an empty icon slot and
+    // the nav diagnostics stayed silent.
+    expect(resolveIcon("tabler:check")).toBeNull();
+    expect(hasIcon("tabler:check")).toBeFalsy();
+  });
+
   it("does not resolve prototype member names up the chain", () => {
     // `constructor:x` in content used to pull the Object constructor out of the
     // lookup maps and crash the build with a TypeError deep in resolution.

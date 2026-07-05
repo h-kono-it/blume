@@ -39,6 +39,11 @@ describe("renderOgImage", () => {
     await expectPng({ accent: "purple", brand: "Acme", title: "Short" });
   });
 
+  it("renders an emoji-leading brand without splitting the surrogate pair", async () => {
+    // `charAt(0)` used to emit a lone surrogate half, blanking the mark.
+    await expectPng({ brand: "🚀 Rocket Docs", title: "Hi" });
+  });
+
   it("renders a square currentColor logo, hex accent, and long description", async () => {
     await expectPng({
       accent: "#123456",

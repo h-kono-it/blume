@@ -79,14 +79,10 @@ export const resolveIcon = (name: string): ResolvedIcon | null => {
   return fromSet(DEFAULT_SET, normalized);
 };
 
-/** Whether a name resolves to a known Lucide icon. */
-export const hasIcon = (name: string): boolean => {
-  if (resolveIcon(name)) {
-    return true;
-  }
-  const normalized = normalize(name);
-  const bare = normalized.includes(":")
-    ? normalized.slice(normalized.indexOf(":") + 1)
-    : normalized;
-  return Object.values(SETS).some((set) => getIconData(set, bare) !== null);
-};
+/**
+ * Whether a name resolves to a renderable icon. Exactly mirrors
+ * {@link resolveIcon}: a laxer check (e.g. matching the bare name under an
+ * unknown prefix) would let callers suppress their fallback and diagnostics
+ * for a name `<Icon>` then renders as nothing.
+ */
+export const hasIcon = (name: string): boolean => resolveIcon(name) !== null;

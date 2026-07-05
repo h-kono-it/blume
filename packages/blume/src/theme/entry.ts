@@ -435,6 +435,9 @@ blume-diff {
   font-size: 0.8125rem;
 }
 
+/* GFM renders cells as <td><code> directly, which the descendant form alone
+   never matches (a cell is not its own descendant). */
+.prose :where(td, th) > code,
 .prose :where(td, th) :not(pre) > code {
   white-space: nowrap;
 }

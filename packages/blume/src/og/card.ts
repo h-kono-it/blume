@@ -145,7 +145,9 @@ export const renderOgImage = (options: OgCardOptions): Promise<Buffer> => {
   const accent = resolveAccent(options.accent ?? "blue");
   const brand = options.brand?.trim();
   const logo = options.logo?.trim();
-  const initial = brand ? brand.charAt(0).toUpperCase() : "";
+  // Slice by code point, not code unit — `charAt(0)` would split a leading
+  // surrogate pair (an emoji brand initial) into a lone half that renders blank.
+  const initial = brand ? ([...brand][0]?.toUpperCase() ?? "") : "";
   const description = options.description?.trim();
   const repo = options.repo?.trim();
   const site = options.site?.trim();
