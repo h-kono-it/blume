@@ -67,10 +67,12 @@ const themeRootCss = (
       "--blume-action-foreground",
       options.action ? "oklch(1 0 0)" : null
     ),
-    ...cssToken("--blume-background", safeColorOrNull(theme.background)),
+    ...cssToken("--blume-background", safeColorOrNull(theme.background?.light)),
     ...cssToken(
       "--blume-background-image",
-      theme.backgroundImage ? backgroundImageCss(theme.backgroundImage) : null
+      theme.backgroundImage?.light
+        ? backgroundImageCss(theme.backgroundImage.light)
+        : null
     ),
     `  --blume-radius: ${options.radius};`,
   ]
@@ -96,11 +98,11 @@ const themeDarkCss = (
       "--blume-action-foreground",
       options.action ? "oklch(1 0 0)" : null
     ),
-    ...cssToken("--blume-background", safeColorOrNull(theme.backgroundDark)),
+    ...cssToken("--blume-background", safeColorOrNull(theme.background?.dark)),
     ...cssToken(
       "--blume-background-image",
-      theme.backgroundImageDark
-        ? backgroundImageCss(theme.backgroundImageDark)
+      theme.backgroundImage?.dark
+        ? backgroundImageCss(theme.backgroundImage.dark)
         : null
     ),
   ].filter(Boolean);

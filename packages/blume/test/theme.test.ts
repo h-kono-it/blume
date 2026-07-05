@@ -84,14 +84,25 @@ describe("buildThemeCss — backgrounds and dark mode", () => {
     const css = buildThemeCss(
       themeOf({
         accent: { dark: "purple", light: "blue" },
-        backgroundDark: "oklch(0.2 0 0)",
-        backgroundImageDark: "/dark.png",
+        background: { dark: "oklch(0.2 0 0)" },
+        backgroundImage: { dark: "/dark.png" },
       })
     );
     expect(css).toContain(':root[data-theme="dark"] {');
     expect(css).toContain("--blume-accent: oklch(0.58 0.2 290);");
     expect(css).toContain("--blume-background: oklch(0.2 0 0);");
     expect(css).toContain('--blume-background-image: url("/dark.png");');
+    // A dark-only override must not leak into the light-mode :root block.
+    const root = css.slice(0, css.indexOf(':root[data-theme="dark"]'));
+    expect(root).not.toContain("--blume-background");
+  });
+
+  it("applies a string background to both modes", () => {
+    const css = buildThemeCss(themeOf({ background: "oklch(0.5 0 0)" }));
+    const dark = css.slice(css.indexOf(':root[data-theme="dark"]'));
+    const root = css.slice(0, css.indexOf(':root[data-theme="dark"]'));
+    expect(root).toContain("--blume-background: oklch(0.5 0 0);");
+    expect(dark).toContain("--blume-background: oklch(0.5 0 0);");
   });
 
   it("treats prototype member names as raw colors, not presets", () => {

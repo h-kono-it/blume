@@ -91,17 +91,19 @@ Need a font that isn't listed, or want to drop back to the system stack? Overrid
 
 ### Dark-mode colors
 
-A string `accent` applies to both color modes. Pass a `{ light, dark }` object for a different accent per mode, and set `background` / `backgroundDark` to override the page background per mode:
+`accent` and `background` follow one rule: a string applies to both color modes, and a `{ light, dark }` object sets each mode individually:
 
 ```ts blume.config.ts lineNumbers
 theme: {
   accent: { light: "blue", dark: "teal" },
-  background: "#ffffff",     // light-mode page background
-  backgroundDark: "#0a0a0a", // dark-mode page background
+  background: {
+    light: "#ffffff",
+    dark: "#0a0a0a",
+  },
 }
 ```
 
-Each color takes a named preset or any CSS color.
+Each color takes a named preset or any CSS color. For `background` (and `backgroundImage`) either key can be omitted to override a single mode — `background: { dark: "#0a0a0a" }` keeps the default light background.
 
 ### Action color
 
@@ -115,12 +117,14 @@ theme: {
 
 ### Background image
 
-Set a background image behind your content with `backgroundImage` (and `backgroundImageDark` for a dark variant) — a URL or a path under `public/`:
+Set a background image behind your content with `backgroundImage` — a URL or a path under `public/`. Like the colors, a string applies to both modes and a `{ light, dark }` object sets each mode's image:
 
 ```ts blume.config.ts lineNumbers
 theme: {
-  backgroundImage: "/bg-light.svg",
-  backgroundImageDark: "/bg-dark.svg",
+  backgroundImage: {
+    light: "/bg-light.svg",
+    dark: "/bg-dark.svg",
+  },
 }
 ```
 

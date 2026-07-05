@@ -440,6 +440,23 @@ const fontSlug = z.string().refine(isFontSlug, (value) => ({
   message: `Unknown font "${value}". Supported fonts: ${FONT_SLUGS.join(", ")}.`,
 }));
 
+/**
+ * An optional per-mode theme value: a string applies to both color modes; a
+ * `{ light, dark }` object sets each mode individually (either may be
+ * omitted to override a single mode).
+ */
+const perModeValueSchema = z
+  .union([
+    z.string(),
+    z
+      .object({ dark: z.string().optional(), light: z.string().optional() })
+      .strict(),
+  ])
+  .optional()
+  .transform((value) =>
+    typeof value === "string" ? { dark: value, light: value } : value
+  );
+
 const themeConfigSchema = z
   .object({
     accent: z
@@ -452,10 +469,8 @@ const themeConfigSchema = z
         typeof value === "string" ? { dark: value, light: value } : value
       ),
     action: z.string().optional(),
-    background: z.string().optional(),
-    backgroundDark: z.string().optional(),
-    backgroundImage: z.string().optional(),
-    backgroundImageDark: z.string().optional(),
+    background: perModeValueSchema,
+    backgroundImage: perModeValueSchema,
     fonts: z
       .object({
         body: fontSlug.default("inter"),
