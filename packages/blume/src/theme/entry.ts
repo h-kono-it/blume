@@ -435,6 +435,10 @@ blume-diff {
   font-size: 0.8125rem;
 }
 
+.prose :where(td, th) :not(pre) > code {
+  white-space: nowrap;
+}
+
 blume-tabs pre,
 .not-prose > div > pre {
   background: var(--blume-code-background);
