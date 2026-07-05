@@ -53,13 +53,21 @@ The optional `changelog` object adds richer metadata for the timeline and feed:
 
 ## The timeline page
 
-Once you have at least one `type: changelog` entry, Blume generates a **`/changelog`** page automatically. Each entry renders newest-first with its date, label, and `category` tag in a left rail beside its content:
+Once you have at least one `type: changelog` entry, Blume generates a **`/changelog`** page automatically. It renders as a focused, full-width timeline — no sidebar or table of contents — with each entry newest-first, showing its date, label, and `category` tag in a left rail beside its content:
 
-- The entry **title** becomes its label — or `v{version}` when there's no title.
+- The entry **title** becomes its label — or `v{version}` when there's no title. It links to that entry's own page, so a release is both a line in the timeline and a shareable permalink.
 - The `category` renders as a tag next to the date.
 - Drafts and `sidebar.hidden` entries are skipped.
 
 The page appears only when nothing already occupies the `/changelog` route. To replace it with your own design, add a [custom page](/docs/advanced/custom-pages) at `pages/changelog.astro` — it takes over and Blume stops generating the default timeline.
+
+### Grouped by major version
+
+When your versions follow [semver](https://semver.org) and span more than one major, Blume paginates the timeline by major version. Only the newest major line is shown, with a **Show N.x releases** button at the bottom that reveals the next-oldest major one click at a time:
+
+- Detection is automatic — no configuration. It kicks in only when every listed release parses as `major.minor.patch` and there is more than one major; otherwise the timeline stays flat.
+- It tolerates the scoped tags monorepos publish, so `pkg@2.0.0` groups under `2.x` and `pkg@1.4.0` under `1.x`.
+- It's progressive enhancement: every release is still in the page's HTML (and its RSS feed and search index), so readers without JavaScript — and crawlers — see the complete history. The button only collapses older majors once the page hydrates.
 
 ## From GitHub Releases
 

@@ -126,6 +126,12 @@ interface Props {
   clientData?: BlumeClientData | null;
   /** Table-of-contents settings (`toc` config): visibility + heading range. */
   toc?: { enabled: boolean; maxLevel: number; minLevel: number };
+  /**
+   * Content-column preset. `"bare"` (the generated changelog index) drops both
+   * the sidebar and the table of contents and centers a single wide column;
+   * everything else uses the standard sidebar + content + TOC grid.
+   */
+  contentLayout?: "default" | "bare";
 }
 
 const {
@@ -169,6 +175,7 @@ const {
   layout = {},
   clientData,
   toc = { enabled: true, maxLevel: 3, minLevel: 2 },
+  contentLayout = "default",
 } = Astro.props;
 
 // Serialized once for island hooks; `<` escaped so content can't break the tag.
@@ -205,16 +212,28 @@ const searchLocale =
 // API operation pages own a two-column body (docs + request panel) and their own
 // right rail, so they drop the table of contents and widen the content column.
 const isApiOperation = pageType === "openapi-operation";
+// A "bare" page (the changelog index) is a standalone landing: no sidebar, no
+// TOC, just a wider centered column of content.
+const isBare = contentLayout === "bare";
+const showSidebar = !isBare;
+const showToc = !(isApiOperation || isBare);
 const tocHeadings =
-  toc.enabled && !isApiOperation
+  toc.enabled && showToc
     ? headings.filter((h) => h.depth >= toc.minLevel && h.depth <= toc.maxLevel)
     : [];
-const gridClass = isApiOperation
-  ? "lg:grid-cols-[17.5rem_minmax(0,1fr)]"
-  : "lg:grid-cols-[17.5rem_minmax(0,1fr)] xl:grid-cols-[17.5rem_minmax(0,1fr)_17.5rem]";
-const articleClass = isApiOperation
-  ? "prose max-w-none"
-  : "prose mx-auto max-w-[42rem]";
+let gridClass =
+  "lg:grid-cols-[17.5rem_minmax(0,1fr)] xl:grid-cols-[17.5rem_minmax(0,1fr)_17.5rem]";
+if (isBare) {
+  gridClass = "";
+} else if (isApiOperation) {
+  gridClass = "lg:grid-cols-[17.5rem_minmax(0,1fr)]";
+}
+let articleClass = "prose mx-auto max-w-[42rem]";
+if (isBare) {
+  articleClass = "prose mx-auto max-w-[54rem]";
+} else if (isApiOperation) {
+  articleClass = "prose max-w-none";
+}
 const pageTitle = page.title ? `${page.title} - ${site.title}` : site.title;
 const description = page.description ?? site.description;
 
@@ -347,6 +366,8 @@ const bannerScript = banner?.dismissible
       class:list={["mx-auto grid grid-cols-1 items-start", gridClass]}
       data-blume-doc-grid
     >
+      {
+        showSidebar && (
       <aside
         aria-label="Primary"
         class="fixed top-[var(--blume-drawer-top,4rem)] start-0 z-[35] h-[calc(100dvh-var(--blume-drawer-top,4rem))] w-64 max-w-[80vw] -translate-x-[105%] overflow-y-auto border-border border-e bg-background px-5 pt-4 pb-6 transition-transform rtl:translate-x-[105%] [:where([data-blume-nav-open])_&]:translate-x-0! lg:sticky lg:top-16 lg:z-auto lg:h-[calc(100dvh-4rem)] lg:w-auto lg:max-w-none lg:translate-x-0! lg:border-e-0 lg:bg-transparent lg:px-4"
@@ -438,6 +459,8 @@ const bannerScript = banner?.dismissible
           }
         </nav>
       </aside>
+        )
+      }
       <main class="px-6 pt-6 pb-10 lg:px-8 xl:px-10" id="blume-content">
         <BreadcrumbsSlot crumbs={crumbs} wide={isApiOperation} />
         <TableOfContentsSlot
@@ -469,7 +492,7 @@ const bannerScript = banner?.dismissible
         }
       </main>
       {
-        !isApiOperation && (
+        showToc && (
           <aside
             aria-label={strings.toc.title}
             class="sticky top-16 hidden h-[calc(100dvh-4rem)] overflow-y-auto px-4 pt-6 pb-10 text-sm xl:block"

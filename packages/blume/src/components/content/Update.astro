@@ -6,6 +6,8 @@ interface RssMetadata {
 
 interface Props {
   description?: string;
+  /** Link the heading to a dedicated page; falls back to the in-page anchor. */
+  href?: string;
   id?: string;
   label?: string;
   rss?: RssMetadata;
@@ -13,7 +15,15 @@ interface Props {
   title?: string;
 }
 
-const { description, id: providedId, label, rss, tags, title } = Astro.props;
+const {
+  description,
+  href,
+  id: providedId,
+  label,
+  rss,
+  tags,
+  title,
+} = Astro.props;
 const slugify = (text: string): string =>
   text
     .toLowerCase()
@@ -37,7 +47,7 @@ const tagList = Array.isArray(tags) ? tags : tags ? [tags] : [];
   <header class="md:border-border md:border-e md:pe-4">
     <a
       class="font-semibold text-foreground text-sm no-underline hover:text-accent"
-      href={`#${id}`}
+      href={href ?? `#${id}`}
     >
       {updateLabel}
     </a>

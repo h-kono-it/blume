@@ -1278,6 +1278,20 @@ const slugify = (text) =>
   text.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") ||
   "update";
 
+// The major of a version's embedded semver (\`1.2.3\` -> 1, \`pkg@2.0.0\` -> 2), or
+// null when there is no full major.minor.patch to key on. Drives the changelog's
+// group-by-major pagination, so it tolerates the scoped tags monorepos publish.
+const majorVersion = (version) => {
+  const match = /(\\d+)\\.\\d+\\.\\d+/.exec(String(version ?? ""));
+  return match ? Number(match[1]) : null;
+};
+
+// Map each entry to its own generated page so the timeline heading can deep-link
+// to it. The collection entry id matches the route manifest's \`entryId\`.
+const routeByEntry = new Map(
+  data.routes.map((route) => [route.entryId, route.path])
+);
+
 const changelogEntries = [
   ...(await getCollection("docs")),${stagedSpread}
 ]
@@ -1299,14 +1313,29 @@ const items = await Promise.all(
     return {
       Content: (await render(entry)).Content,
       date: formatDate(entryDate(entry)),
+      href: routeByEntry.get(entry.id) ?? null,
       id: slugify(label),
       label,
+      major: majorVersion(entry.data.changelog?.version),
       tags: entry.data.changelog?.category
         ? [entry.data.changelog.category]
         : [],
     };
   })
 );
+
+// A changelog is semver-paginated only when every visible release parses as
+// semver and they span more than one major line. Older majors then collapse
+// into groups the reader reveals one at a time; otherwise the timeline is flat.
+const majors = items.every((item) => item.major !== null)
+  ? [...new Set(items.map((item) => item.major))].toSorted((a, b) => b - a)
+  : [];
+const paginate = majors.length > 1;
+const majorGroups = majors.map((major) => ({
+  items: items.filter((item) => item.major === major),
+  label: major + ".x",
+  major,
+}));
 
 const headings = items.map((item) => ({
   depth: 2,
@@ -1339,6 +1368,7 @@ const LayoutComponent = resolveSlot(layoutOverrides.Layout, RootLayout);
   }}
   headings={headings}
   toc={data.config.toc}
+  contentLayout="bare"
   themeMode={data.config.theme.mode}
   fontCssVars={data.fontCssVars}
   searchEnabled={data.config.search.enabled}
@@ -1357,16 +1387,50 @@ const LayoutComponent = resolveSlot(layoutOverrides.Layout, RootLayout);
   {
     items.length === 0 ? (
       <p>No changelog entries yet.</p>
+    ) : paginate ? (
+      <blume-changelog class="not-prose mt-8 block">
+        {majorGroups[0].items.map(({ Content, href, id, label, date, tags }) => (
+          <Update description={date} href={href} id={id} label={label} tags={tags}>
+            <Content />
+          </Update>
+        ))}
+        {majorGroups.slice(1).map((group) => (
+          <section
+            aria-label={group.label + " releases"}
+            data-changelog-label={group.label}
+            data-changelog-major={group.major}
+          >
+            {group.items.map(({ Content, href, id, label, date, tags }) => (
+              <Update description={date} href={href} id={id} label={label} tags={tags}>
+                <Content />
+              </Update>
+            ))}
+          </section>
+        ))}
+        <div class="mt-10 flex justify-center">
+          <button
+            class="inline-flex items-center gap-2 rounded-full border border-border bg-background px-4 py-2 font-medium text-muted-foreground text-sm transition-colors hover:bg-muted hover:text-foreground"
+            data-changelog-more
+            hidden
+            type="button"
+          >
+            Show older releases
+          </button>
+        </div>
+      </blume-changelog>
     ) : (
       <div class="not-prose mt-8">
-        {items.map(({ Content, id, label, date, tags }) => (
-          <Update description={date} id={id} label={label} tags={tags}>
+        {items.map(({ Content, href, id, label, date, tags }) => (
+          <Update description={date} href={href} id={id} label={label} tags={tags}>
             <Content />
           </Update>
         ))}
       </div>
     )
   }
+  <script>
+    import "blume/components/content/changelog-element.ts";
+  </script>
 </LayoutComponent>
 `;
 };

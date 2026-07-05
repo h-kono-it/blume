@@ -294,6 +294,35 @@ describe("changelogIndexTemplate", () => {
     );
     expect(out).toContain('<AskAI slot="ask"');
   });
+
+  it("renders through the sidebar-less, TOC-less bare layout", () => {
+    const out = changelogIndexTemplate({ ...exportOpts, staged: false });
+    expect(out).toContain('contentLayout="bare"');
+  });
+
+  it("links each timeline heading to its own generated page", () => {
+    const out = changelogIndexTemplate({ ...exportOpts, staged: false });
+    // Route lookup keyed by the collection entry id (matches the manifest).
+    expect(out).toContain(
+      "data.routes.map((route) => [route.entryId, route.path])"
+    );
+    expect(out).toContain("href: routeByEntry.get(entry.id) ?? null");
+    expect(out).toContain("href={href}");
+  });
+
+  it("paginates by major version when the releases are semver", () => {
+    const out = changelogIndexTemplate({ ...exportOpts, staged: false });
+    // Detects a full major.minor.patch and groups older majors behind a button.
+    expect(out).toContain("const majorVersion");
+    expect(out).toContain("const paginate = majors.length > 1");
+    expect(out).toContain("<blume-changelog");
+    expect(out).toContain("data-changelog-major={group.major}");
+    expect(out).toContain("data-changelog-more");
+    // The progressive-reveal element is loaded on the changelog page.
+    expect(out).toContain(
+      'import "blume/components/content/changelog-element.ts"'
+    );
+  });
 });
 
 describe("notFoundPageTemplate", () => {
