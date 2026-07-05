@@ -55,6 +55,23 @@ describe("parseEnv", () => {
       WITHEQ: "a=b",
     });
   });
+
+  it("strips unquoted inline comments, like dotenv and Vite", () => {
+    const parsed = parseEnv(
+      [
+        "TOKEN=ghp_abc123 # personal token",
+        "BARE=value#tail",
+        'KEPT="value # not a comment"',
+        "KEPT_SQ='value # not a comment'",
+      ].join("\n")
+    );
+    expect(parsed).toStrictEqual({
+      BARE: "value",
+      KEPT: "value # not a comment",
+      KEPT_SQ: "value # not a comment",
+      TOKEN: "ghp_abc123",
+    });
+  });
 });
 
 describe("loadEnvFiles", () => {

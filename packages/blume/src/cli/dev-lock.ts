@@ -84,15 +84,26 @@ export const readDevLock = (outDir: string): DevLockInfo | null => {
 export const isDevLocked = (outDir: string): boolean =>
   readDevLock(outDir) !== null;
 
+const lockPayload = (port?: number): string =>
+  JSON.stringify({
+    pid: process.pid,
+    ...(port === undefined ? {} : { port }),
+  });
+
 const writeLock = (outDir: string, port?: number): void => {
-  writeFileSync(
-    lockPath(outDir),
-    JSON.stringify({
-      pid: process.pid,
-      ...(port === undefined ? {} : { port }),
-    })
-  );
+  writeFileSync(lockPath(outDir), lockPayload(port));
 };
+
+/** Thrown when another live `blume dev` already holds the lock. */
+export class DevLockHeldError extends Error {
+  readonly lock: DevLockInfo;
+
+  constructor(lock: DevLockInfo) {
+    super(`A blume dev server (pid ${lock.pid}) already holds the lock.`);
+    this.name = "DevLockHeldError";
+    this.lock = lock;
+  }
+}
 
 const ownsLock = (outDir: string): boolean => {
   const path = lockPath(outDir);
@@ -108,12 +119,31 @@ const ownsLock = (outDir: string): boolean => {
 
 /**
  * Write the current process's dev lock into `outDir` and return a release
- * function. The release only removes the file if it's still ours, so a newer
- * dev server's lock is never clobbered.
+ * function. The claim is atomic (`wx`): two `blume dev` processes racing the
+ * same dir can't both pass a check-then-write — the loser gets a
+ * {@link DevLockHeldError} naming the live holder. A stale lock (dead pid) or
+ * this process's own leftover is cleared and re-claimed. The release only
+ * removes the file if it's still ours, so a newer dev server's lock is never
+ * clobbered.
  */
 export const acquireDevLock = (outDir: string, port?: number): (() => void) => {
   mkdirSync(outDir, { recursive: true });
-  writeLock(outDir, port);
+  for (;;) {
+    try {
+      writeFileSync(lockPath(outDir), lockPayload(port), { flag: "wx" });
+      break;
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "EEXIST") {
+        throw error;
+      }
+      const existing = readDevLock(outDir);
+      if (existing && existing.pid !== process.pid) {
+        throw new DevLockHeldError(existing);
+      }
+      // Stale or our own leftover: clear it and race for the claim again.
+      rmSync(lockPath(outDir), { force: true });
+    }
+  }
   let released = false;
   return () => {
     if (released) {

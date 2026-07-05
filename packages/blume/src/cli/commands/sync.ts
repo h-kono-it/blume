@@ -4,7 +4,11 @@ import { defineCommand } from "citty";
 import { join } from "pathe";
 
 import { loadConfig } from "../../core/config.ts";
-import { resolveProjectContext } from "../../core/project.ts";
+import {
+  resolveProjectContext,
+  resolveRuntimeDir,
+} from "../../core/project.ts";
+import { readDevLock } from "../dev-lock.ts";
 import { logger } from "../log.ts";
 import { prepareProject } from "../prepare.ts";
 
@@ -38,8 +42,16 @@ export const syncCommand = defineCommand({
 
     // Dev mode keeps drafts and skips the static-build gate; `refresh` forces
     // remote sources to re-fetch rather than serve their cached snapshot. A
-    // running dev server hot-reloads from the regenerated runtime.
+    // running dev server hot-reloads from the regenerated runtime — so when one
+    // is live, regenerate with the same site fallback (its URL) it used, else
+    // its astro.config loses `site` (dropping OG and canonicals) and Astro
+    // restarts cold.
+    const lock = readDevLock(resolveRuntimeDir(root));
+    const devServerUrl = lock?.port
+      ? `http://localhost:${lock.port}`
+      : undefined;
     await prepareProject({
+      devServerUrl,
       mode: "dev",
       preview: args.preview,
       refresh: true,

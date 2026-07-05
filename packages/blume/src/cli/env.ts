@@ -27,7 +27,11 @@ const unquote = (raw: string): string => {
   if (single !== undefined) {
     return single;
   }
-  return raw;
+  // dotenv/Vite treat an unquoted `#` as the start of an inline comment (a
+  // value containing `#` must be quoted) — keeping the comment would hand
+  // consumers a silently corrupted value.
+  const hash = raw.indexOf("#");
+  return (hash === -1 ? raw : raw.slice(0, hash)).trim();
 };
 
 /** Parse `.env` text into key/value pairs, skipping blanks and `#` comments. */

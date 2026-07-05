@@ -1,6 +1,10 @@
+import { readFileSync } from "node:fs";
+
 import { defineCommand } from "citty";
+import { join } from "pathe";
 
 import { BlumeError } from "../../core/diagnostics.ts";
+import { packageRoot } from "../../core/package-root.ts";
 import { scanProject } from "../../core/project-graph.ts";
 import { serverFeatures } from "../../core/server-features.ts";
 import type { Diagnostic } from "../../core/types.ts";
@@ -12,7 +16,34 @@ import {
   reportDiagnosticsJson,
 } from "../log.ts";
 
-const MIN_NODE_MAJOR = 20;
+const FALLBACK_MIN_NODE = "22.12.0";
+const LEADING_RANGE = /^[^\d]*/u;
+
+/** The minimum Node version, read from the package's own `engines` field so
+ * doctor can never drift from what the package actually declares. */
+const minSupportedNode = (): string => {
+  try {
+    const pkg = JSON.parse(
+      readFileSync(join(packageRoot(), "package.json"), "utf-8")
+    ) as { engines?: { node?: string } };
+    const range = pkg.engines?.node ?? "";
+    return range.replace(LEADING_RANGE, "") || FALLBACK_MIN_NODE;
+  } catch {
+    return FALLBACK_MIN_NODE;
+  }
+};
+
+const versionBelow = (current: string, minimum: string): boolean => {
+  const a = current.split(".").map((part) => Number.parseInt(part, 10));
+  const b = minimum.split(".").map((part) => Number.parseInt(part, 10));
+  for (let i = 0; i < 3; i += 1) {
+    const delta = (a[i] ?? 0) - (b[i] ?? 0);
+    if (delta !== 0) {
+      return delta < 0;
+    }
+  }
+  return false;
+};
 
 export const doctorCommand = defineCommand({
   args: {
@@ -29,14 +60,11 @@ export const doctorCommand = defineCommand({
     const root = process.cwd();
     const diagnostics: Diagnostic[] = [];
 
-    const nodeMajor = Number.parseInt(
-      process.versions.node.split(".")[0] ?? "0",
-      10
-    );
-    if (nodeMajor < MIN_NODE_MAJOR) {
+    const minNode = minSupportedNode();
+    if (versionBelow(process.versions.node, minNode)) {
       diagnostics.push({
         code: "BLUME_NODE_VERSION",
-        message: `Node ${process.versions.node} is below the supported minimum (${MIN_NODE_MAJOR}).`,
+        message: `Node ${process.versions.node} is below the supported minimum (${minNode}).`,
         severity: "warning",
       });
     }

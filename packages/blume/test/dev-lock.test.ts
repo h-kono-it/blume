@@ -8,6 +8,7 @@ import { join } from "pathe";
 import {
   acquireDevLock,
   describeDevLock,
+  DevLockHeldError,
   isDevLocked,
   readDevLock,
   refuseIfDevRunning,
@@ -52,6 +53,39 @@ describe("dev lock", () => {
     // PID 2147483647 (2^31-1) is never a live process.
     writeFileSync(join(dir, "dev.lock"), "2147483647");
     expect(isDevLocked(dir)).toBe(false);
+  });
+
+  it("refuses to claim over another live process's lock", async () => {
+    const dir = await outDir();
+    acquireDevLock(dir)();
+    // PID 1 (init/launchd) is always alive and never ours.
+    writeFileSync(
+      join(dir, "dev.lock"),
+      JSON.stringify({ pid: 1, port: 3001 })
+    );
+    let thrown: unknown;
+    try {
+      acquireDevLock(dir);
+    } catch (error) {
+      thrown = error;
+    }
+    expect(thrown).toBeInstanceOf(DevLockHeldError);
+    expect((thrown as DevLockHeldError).lock).toStrictEqual({
+      pid: 1,
+      port: 3001,
+    });
+    // The live holder's lock survives the refused attempt.
+    expect(readDevLock(dir)?.pid).toBe(1);
+  });
+
+  it("reclaims a stale lock atomically", async () => {
+    const dir = await outDir();
+    acquireDevLock(dir)();
+    // A dead process's leftover must not block a new server.
+    writeFileSync(join(dir, "dev.lock"), "2147483647");
+    const release = acquireDevLock(dir, 4321);
+    expect(readDevLock(dir)?.pid).toBe(process.pid);
+    release();
   });
 
   it("only removes its own lock on release", async () => {

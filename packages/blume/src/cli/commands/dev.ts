@@ -12,7 +12,7 @@ import { coalescedRunner } from "../coalesce.ts";
 import {
   acquireDevLock,
   describeDevLock,
-  readDevLock,
+  DevLockHeldError,
   updateDevLockPort,
 } from "../dev-lock.ts";
 import { logger } from "../log.ts";
@@ -52,22 +52,27 @@ export const devCommand = defineCommand({
     // (OG images, canonicals, sitemap) work locally without configuring a site.
     const explicitPort = parsePort(args.port);
     const port = explicitPort ?? 4321;
-    const devServerUrl = `http://localhost:${port}`;
+    let devServerUrl = `http://localhost:${port}`;
 
     // Claim the shared `.blume` dir BEFORE preparing: `prepareProject`
     // regenerates the runtime, so even a refused second dev server would
     // otherwise clobber the running one's generated tree (with this
-    // invocation's port baked in) on its way out. Dev never relocates the
-    // runtime dir, so the lock always lives at `<root>/.blume`.
+    // invocation's port baked in) on its way out. The claim is atomic, so two
+    // simultaneous starts can't both win. Dev never relocates the runtime dir,
+    // so the lock always lives at `<root>/.blume`.
     const outDir = resolveRuntimeDir(root);
-    const running = readDevLock(outDir);
-    if (running) {
-      logger.error(
-        `A \`blume dev\` server is already running${describeDevLock(running)} in this project. Reuse that server instead of starting a second one — two dev servers would corrupt the shared .blume dir. If it crashed, delete .blume/dev.lock.`
-      );
-      process.exit(1);
+    let releaseLock: () => void;
+    try {
+      releaseLock = acquireDevLock(outDir, port);
+    } catch (error) {
+      if (error instanceof DevLockHeldError) {
+        logger.error(
+          `A \`blume dev\` server is already running${describeDevLock(error.lock)} in this project. Reuse that server instead of starting a second one — two dev servers would corrupt the shared .blume dir. If it crashed, delete .blume/dev.lock.`
+        );
+        process.exit(1);
+      }
+      throw error;
     }
-    const releaseLock = acquireDevLock(outDir, port);
     process.on("exit", releaseLock);
 
     const project = await prepareProject({
@@ -91,9 +96,13 @@ export const devCommand = defineCommand({
 
     // Vite bumps to the next free port when the default is taken, so record
     // the port the server actually bound — the lock's URL is what a refused
-    // second invocation tells its caller to reuse.
-    if (server.address.port !== port) {
-      updateDevLockPort(outDir, server.address.port);
+    // second invocation tells its caller to reuse. The site fallback baked
+    // into the runtime also carries the port, so it must follow suit (below,
+    // once the regeneration closure exists).
+    const boundPort = server.address.port;
+    if (boundPort !== port) {
+      updateDevLockPort(outDir, boundPort);
+      devServerUrl = `http://localhost:${boundPort}`;
     }
 
     // Mirror any initial diagnostics into the browser overlay now the server
@@ -128,6 +137,13 @@ export const devCommand = defineCommand({
       }
       timer = setTimeout(runRegenerate, 80);
     };
+
+    // The runtime prepared above baked the *requested* port into the site
+    // fallback; if Vite bumped it, regenerate so OG images, canonicals, and
+    // other site-gated URLs point at the port actually serving.
+    if (boundPort !== port) {
+      void runRegenerate();
+    }
 
     // Content is watched per source (filesystem uses fs.watch; remote sources
     // are frozen for the session). The remaining project inputs — user pages,
