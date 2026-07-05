@@ -8,6 +8,7 @@ Blume is an open-source, markdown-first docs framework on Astro/Vite, shipped as
 - `bun run typecheck` — tsc across packages
 - `bun run test` — Vitest (`packages/blume/test`)
 - Run the CLI locally: `cd apps/docs && bun ../../packages/blume/bin/blume.mjs <cmd>`
+- A `blume dev` server is often already running — `apps/docs/.blume/dev.lock` records its `{pid, port}`. Reuse that URL; never kill it or start a second dev server. To verify a change, use `blume check --isolated` or `blume build --isolated` (targets `.blume-verify`, safe alongside dev).
 
 ## How it works
 

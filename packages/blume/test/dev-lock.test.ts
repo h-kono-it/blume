@@ -1,5 +1,5 @@
 import { afterAll, describe, expect, it, spyOn } from "bun:test";
-import { existsSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 
@@ -7,8 +7,11 @@ import { join } from "pathe";
 
 import {
   acquireDevLock,
+  describeDevLock,
   isDevLocked,
+  readDevLock,
   refuseIfDevRunning,
+  updateDevLockPort,
 } from "../src/cli/dev-lock.ts";
 import { logger } from "../src/cli/log.ts";
 
@@ -76,6 +79,82 @@ describe("dev lock", () => {
     // The second call early-returns without touching the filesystem.
     expect(() => release()).not.toThrow();
   });
+
+  it("records and reads back the dev server port", async () => {
+    const dir = await outDir();
+    const release = acquireDevLock(dir, 3001);
+    expect(readDevLock(dir)).toEqual({ pid: process.pid, port: 3001 });
+    release();
+  });
+
+  it("reads a lock acquired without a port as pid-only", async () => {
+    const dir = await outDir();
+    const release = acquireDevLock(dir);
+    expect(readDevLock(dir)).toEqual({ pid: process.pid });
+    release();
+  });
+
+  it("treats a legacy bare-pid lock from a live process as held", async () => {
+    const dir = await outDir();
+    // Create the dir, then plant the pre-port lock format: a bare pid.
+    acquireDevLock(dir)();
+    writeFileSync(join(dir, "dev.lock"), String(process.pid));
+    expect(readDevLock(dir)).toEqual({ pid: process.pid });
+  });
+
+  it("treats an unparseable lock file as unlocked", async () => {
+    const dir = await outDir();
+    acquireDevLock(dir)();
+    writeFileSync(join(dir, "dev.lock"), "not json");
+    expect(isDevLocked(dir)).toBe(false);
+  });
+
+  it("treats a JSON lock with an invalid pid as unlocked", async () => {
+    const dir = await outDir();
+    acquireDevLock(dir)();
+    writeFileSync(join(dir, "dev.lock"), JSON.stringify({ port: 3001 }));
+    expect(isDevLocked(dir)).toBe(false);
+  });
+
+  it("updates its own lock with the actually bound port", async () => {
+    const dir = await outDir();
+    const release = acquireDevLock(dir, 4321);
+    // Vite bumped the busy default port; the lock follows the real binding.
+    updateDevLockPort(dir, 4322);
+    expect(readDevLock(dir)).toEqual({ pid: process.pid, port: 4322 });
+    release();
+  });
+
+  it("does nothing when updating a port with no lock on disk", async () => {
+    const dir = await outDir();
+    // Create the dir without leaving a lock behind.
+    acquireDevLock(dir)();
+    updateDevLockPort(dir, 4322);
+    expect(existsSync(join(dir, "dev.lock"))).toBe(false);
+  });
+
+  it("never rewrites a lock owned by another process", async () => {
+    const dir = await outDir();
+    acquireDevLock(dir)();
+    writeFileSync(
+      join(dir, "dev.lock"),
+      JSON.stringify({ pid: 2_147_483_647, port: 3001 })
+    );
+    updateDevLockPort(dir, 4322);
+    expect(JSON.parse(readFileSync(join(dir, "dev.lock"), "utf-8"))).toEqual({
+      pid: 2_147_483_647,
+      port: 3001,
+    });
+  });
+});
+
+describe("describeDevLock", () => {
+  it("formats a URL when the port is known and nothing otherwise", () => {
+    expect(describeDevLock({ pid: 1, port: 3001 })).toBe(
+      " at http://localhost:3001"
+    );
+    expect(describeDevLock({ pid: 1 })).toBe("");
+  });
 });
 
 describe("refuseIfDevRunning", () => {
@@ -126,6 +205,27 @@ describe("refuseIfDevRunning", () => {
       expect(exit).not.toHaveBeenCalled();
     } finally {
       exit.mockRestore();
+    }
+  });
+
+  it("points the caller at the running server's URL", async () => {
+    const root = await rootDir();
+    acquireDevLock(join(root, ".blume"), 3001);
+    let message = "";
+    const errorSpy = spyOn(logger, "error").mockImplementation(((
+      text: string
+    ) => {
+      message = text;
+    }) as never);
+    const exit = spyOn(process, "exit").mockImplementation((() => {
+      throw new Error("exit");
+    }) as never);
+    try {
+      expect(() => refuseIfDevRunning(root, "building")).toThrow("exit");
+      expect(message).toContain("http://localhost:3001");
+    } finally {
+      exit.mockRestore();
+      errorSpy.mockRestore();
     }
   });
 

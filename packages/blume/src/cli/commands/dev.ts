@@ -6,9 +6,15 @@ import { defineCommand } from "citty";
 import { generateRuntime } from "../../astro/generate.ts";
 import { showBlumeErrorOverlay } from "../../astro/integration.ts";
 import { scanProject } from "../../core/project-graph.ts";
+import { resolveRuntimeDir } from "../../core/project.ts";
 import { parsePort } from "../args.ts";
 import { coalescedRunner } from "../coalesce.ts";
-import { acquireDevLock, isDevLocked } from "../dev-lock.ts";
+import {
+  acquireDevLock,
+  describeDevLock,
+  readDevLock,
+  updateDevLockPort,
+} from "../dev-lock.ts";
 import { logger } from "../log.ts";
 import { prepareProject } from "../prepare.ts";
 
@@ -47,6 +53,23 @@ export const devCommand = defineCommand({
     const explicitPort = parsePort(args.port);
     const port = explicitPort ?? 4321;
     const devServerUrl = `http://localhost:${port}`;
+
+    // Claim the shared `.blume` dir BEFORE preparing: `prepareProject`
+    // regenerates the runtime, so even a refused second dev server would
+    // otherwise clobber the running one's generated tree (with this
+    // invocation's port baked in) on its way out. Dev never relocates the
+    // runtime dir, so the lock always lives at `<root>/.blume`.
+    const outDir = resolveRuntimeDir(root);
+    const running = readDevLock(outDir);
+    if (running) {
+      logger.error(
+        `A \`blume dev\` server is already running${describeDevLock(running)} in this project. Reuse that server instead of starting a second one — two dev servers would corrupt the shared .blume dir. If it crashed, delete .blume/dev.lock.`
+      );
+      process.exit(1);
+    }
+    const releaseLock = acquireDevLock(outDir, port);
+    process.on("exit", releaseLock);
+
     const project = await prepareProject({
       devServerUrl,
       mode: "dev",
@@ -55,19 +78,6 @@ export const devCommand = defineCommand({
       root,
       strict: args.strict,
     });
-
-    // Claim the shared `.blume` dir so a concurrent build/eject/sync refuses
-    // rather than regenerating or deleting it out from under this server. A
-    // second dev server would fight over the same generated tree the same
-    // way, so it must refuse too instead of silently clobbering the lock.
-    if (isDevLocked(project.context.outDir)) {
-      logger.error(
-        "Another `blume dev` is already running in this project; two dev servers would corrupt the shared .blume dir. Stop the other one first (or delete .blume/dev.lock if it crashed)."
-      );
-      process.exit(1);
-    }
-    const releaseLock = acquireDevLock(project.context.outDir);
-    process.on("exit", releaseLock);
 
     const server = await dev({
       logLevel: args.debug ? "debug" : "info",
@@ -78,6 +88,13 @@ export const devCommand = defineCommand({
         port: explicitPort,
       },
     });
+
+    // Vite bumps to the next free port when the default is taken, so record
+    // the port the server actually bound — the lock's URL is what a refused
+    // second invocation tells its caller to reuse.
+    if (server.address.port !== port) {
+      updateDevLockPort(outDir, server.address.port);
+    }
 
     // Mirror any initial diagnostics into the browser overlay now the server
     // (and its HMR channel) is up.
