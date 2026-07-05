@@ -201,6 +201,28 @@ const hoistPages = (nodes: MutableNode[], recurse: boolean): void => {
   }
 };
 
+/**
+ * With tabs configured, the sidebar shown under a tab is that tab-section
+ * group's *children*, not the tree root — so hoisting only the root leaves a
+ * tab section's loose pages interleaved with its groups. Hoist the top level of
+ * every group that owns a tab (matched on its URL path), mirroring the root.
+ */
+const hoistTabSections = (
+  nodes: MutableNode[],
+  tabPaths: Set<string>,
+  recurse: boolean
+): void => {
+  for (const node of nodes) {
+    if (node.kind !== "group") {
+      continue;
+    }
+    if (node.routePath !== undefined && tabPaths.has(node.routePath)) {
+      hoistPages(node.children, recurse);
+    }
+    hoistTabSections(node.children, tabPaths, recurse);
+  }
+};
+
 const toNavNode = (node: MutableNode, display: SidebarDisplay): NavNode => {
   if (node.kind === "page") {
     return {
@@ -231,7 +253,8 @@ const buildFileSystemSidebar = (
   folderMeta: Map<string, FolderMeta>,
   sharedMeta: Map<string, FolderMeta>,
   metaPrefix: string,
-  display: SidebarDisplay
+  display: SidebarDisplay,
+  tabPaths: Set<string>
 ): NavNode[] => {
   const root = createGroup("", "", "", 0);
 
@@ -285,6 +308,7 @@ const buildFileSystemSidebar = (
   applyFolderMeta(root, folderMeta, sharedMeta, metaPrefix);
   sortNodes(root.children);
   hoistPages(root.children, display === "flat");
+  hoistTabSections(root.children, tabPaths, display === "flat");
   return root.children.map((child) => toNavNode(child, display));
 };
 
@@ -434,7 +458,8 @@ export const buildNavigation = (
       options.folderMeta,
       sharedFolderMeta,
       metaPrefix,
-      display
+      display,
+      new Set(tabs.map((tab) => tab.path).filter((path) => path !== "/"))
     ),
     tabs,
   };

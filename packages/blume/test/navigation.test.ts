@@ -174,6 +174,34 @@ describe("buildNavigation — filesystem sidebar", () => {
     expect(labels(guide.children)).toStrictEqual(["Advanced", "Usage"]);
   });
 
+  it("hoists loose pages above groups inside a tab-owned section", () => {
+    // A prefixed content source (`prefix: "docs"`) nests every page under a
+    // `/docs` group that a tab surfaces as the sidebar. Hoisting only the tree
+    // root would leave that section's loose pages interleaved with its groups.
+    const nav = buildNavigation(
+      [
+        page("docs/index.mdx", "/docs", "Overview"),
+        page("docs/adapters/s3.mdx", "/docs/adapters/s3", "S3"),
+        page("docs/faq.mdx", "/docs/faq", "FAQ"),
+        page("docs/usage.mdx", "/docs/usage", "Usage"),
+      ],
+      {
+        display: "group",
+        folderMeta: empty,
+        tabs: [{ label: "Docs", path: "/docs" }],
+      }
+    );
+    const section = asGroup(nav.sidebar[0]);
+    expect(section.path).toBe("/docs");
+    // Loose pages come first (index still leads), then the group.
+    expect(labels(section.children)).toStrictEqual([
+      "Overview",
+      "FAQ",
+      "Usage",
+      "Adapters",
+    ]);
+  });
+
   it("applies folder meta: title, collapsed, and explicit page order", () => {
     const folderMeta = new Map<string, FolderMeta>([
       [
