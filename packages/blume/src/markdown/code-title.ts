@@ -26,9 +26,16 @@ export interface CodeTitleTransformer {
 }
 
 // The body excludes only the delimiting quote, so `title="foo's file.ts"`
-// (an apostrophe inside double quotes) still matches.
-const TITLE_ATTR = /title=(?:"(?<dq>[^"]*)"|'(?<sq>[^']*)')/u;
+// (an apostrophe inside double quotes) still matches. The left boundary stops
+// `subtitle="..."` (or any `*title=` attr) from reading as a title.
+const TITLE_ATTR = /(?:^|\s)title=(?:"(?<dq>[^"]*)"|'(?<sq>[^']*)')/u;
 const LINE_NUMBERS = /(?:^|\s)lineNumbers(?=\s|$)/u;
+// Any quoted `key="..."` attr — blanked before keyword/bare-token scans so a
+// quoted value can't leak tokens (`title="enable lineNumbers later"`).
+const QUOTED_ATTR = /[\w-]+=(?:"[^"]*"|'[^']*')/gu;
+
+const withoutQuotedAttrs = (raw: string): string =>
+  raw.replace(QUOTED_ATTR, " ");
 
 const parseTitle = (raw: string | undefined): string | undefined => {
   if (!raw) {
@@ -42,7 +49,7 @@ const parseTitle = (raw: string | undefined): string | undefined => {
   // The first bare token is the title (```ts blume.config.ts), skipping Shiki
   // line ranges (`{1,3-5}`), `key=value` attrs, and the reserved `lineNumbers`
   // and `twoslash` keywords.
-  return raw
+  return withoutQuotedAttrs(raw)
     .trim()
     .split(/\s+/u)
     .find(
@@ -56,7 +63,7 @@ const parseTitle = (raw: string | undefined): string | undefined => {
 };
 
 const hasLineNumbers = (raw: string | undefined): boolean =>
-  Boolean(raw && LINE_NUMBERS.test(raw));
+  Boolean(raw && LINE_NUMBERS.test(withoutQuotedAttrs(raw)));
 
 /** Build the transformer. Runs after Shiki's built-in `data-language` hook. */
 export const codeTitleTransformer = (): CodeTitleTransformer => ({

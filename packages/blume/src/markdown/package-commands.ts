@@ -98,6 +98,19 @@ const parseIntent = (input: string): Intent => {
   if (!verb) {
     return { args: [], operation: "install" };
   }
+  // Yarn Classic spells global installs `yarn global <add|remove> …`; map it
+  // onto the flag-style intent so every manager renders its own global form
+  // instead of falling into the run-as-script branch.
+  if (first === "yarn" && verb === "global") {
+    const [globalVerb, ...globalArgs] = verbArgs;
+    const globalOp = globalVerb ? normalizeVerb(globalVerb) : null;
+    if (globalOp === "add" || globalOp === "remove") {
+      return {
+        args: [...normalizeFlags(globalArgs), "-g"],
+        operation: globalOp,
+      };
+    }
+  }
   const operation = normalizeVerb(verb);
   if (operation === null) {
     // Unknown subcommand (e.g. `npm test`); run it as a script.

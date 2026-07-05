@@ -113,6 +113,18 @@ describe(toPackageCommands, () => {
     });
   });
 
+  it("maps yarn's global form onto every manager's global install", () => {
+    expect(toPackageCommands("yarn global add typescript")).toStrictEqual({
+      bun: "bun add typescript -g",
+      npm: "npm install typescript -g",
+      pnpm: "pnpm add typescript -g",
+      yarn: "yarn global add typescript",
+    });
+    expect(toPackageCommands("yarn global remove typescript").yarn).toBe(
+      "yarn global remove typescript"
+    );
+  });
+
   it("maps npx to each manager's exec command", () => {
     expect(toPackageCommands("npx astro add react")).toStrictEqual({
       bun: "bunx astro add react",
@@ -207,6 +219,18 @@ describe(codeTitleTransformer, () => {
   it("ignores line ranges and leaves plain blocks bare", () => {
     expect(metaAttrs("{1,3-5}").dataTitle).toBeUndefined();
     expect(metaAttrs().dataLineNumbers).toBeUndefined();
+  });
+
+  it("does not read another attribute's *title= suffix as the title", () => {
+    // `subtitle="Setup"` used to match `title=` with no left boundary.
+    expect(metaAttrs('subtitle="Setup"').dataTitle).toBeUndefined();
+    expect(metaAttrs('subtitle="Setup" title="Real"').dataTitle).toBe("Real");
+  });
+
+  it("does not enable line numbers from a word inside a quoted value", () => {
+    const attrs = metaAttrs('title="enable lineNumbers later"');
+    expect(attrs.dataTitle).toBe("enable lineNumbers later");
+    expect(attrs.dataLineNumbers).toBeUndefined();
   });
 });
 
