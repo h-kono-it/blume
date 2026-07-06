@@ -8,6 +8,7 @@ import {
 } from "@shikijs/transformers";
 import { codeToHtml } from "shiki";
 
+import { baseLinksPlugin } from "./base-links.ts";
 import { codeTitleTransformer } from "./code-title.ts";
 import { directiveToCalloutPlugin } from "./directives.ts";
 import { headingAnchorPlugin } from "./heading-anchors.ts";
@@ -205,13 +206,31 @@ export interface BlumeMarkdownOptions {
    * On unless explicitly `false`.
    */
   headingAnchors?: boolean;
+  /**
+   * Site-wide route mount point (`""` or `/seg`). When set, root-relative
+   * internal page links in content are rewritten under it, so authors write
+   * links as if mounted at root.
+   */
+  basePath?: string;
 }
+
+/**
+ * MDAST plugins that apply to both `.md` and `.mdx`. Currently just the
+ * base-path link rewrite, added only when a `basePath` is configured.
+ */
+const blumeSharedMdastPlugins = (
+  options: BlumeMarkdownOptions
+): MdastPlugin[] =>
+  options.basePath
+    ? [baseLinksPlugin(options.basePath) as unknown as MdastPlugin]
+    : [];
 
 /** Sätteri processor for plain `.md`, with Blume's curated feature set. */
 export const blumeMarkdownProcessor = (options: BlumeMarkdownOptions = {}) =>
   satteri({
     features: { ...FEATURES },
     hastPlugins: blumeHastPlugins(options),
+    mdastPlugins: blumeSharedMdastPlugins(options),
   });
 
 export type BlumeMdxOptions = BlumeMarkdownOptions;
@@ -246,5 +265,6 @@ export const blumeMdxProcessor = (options: BlumeMdxOptions = {}) =>
       directiveToCalloutPlugin(),
       mermaidPlugin(),
       mathPlugin(),
+      ...blumeSharedMdastPlugins(options),
     ] as unknown as MdastPlugin[],
   });

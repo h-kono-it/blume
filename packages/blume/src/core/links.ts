@@ -2,6 +2,7 @@ import { existsSync } from "node:fs";
 
 import { basename, join } from "pathe";
 
+import { stripBasePath, withBasePath } from "./base-path.ts";
 import type {
   ContentGraph,
   Diagnostic,
@@ -46,6 +47,8 @@ interface ExternalRef extends LinkSite {
 /** Lookups derived once from the content graph. */
 interface LinkContext {
   anchors: Map<string, Set<string>>;
+  /** Site-wide route mount point (`""` or `/seg`); routes carry it, assets don't. */
+  basePath: string;
   publicDir: string | null;
   /** Normalized `redirect.from` paths — valid targets that resolve at runtime. */
   redirects: Set<string>;
@@ -150,10 +153,12 @@ const checkPathLink = (
   site: LinkSite,
   ctx: LinkContext
 ): LinkResult => {
-  // A real route always wins over the asset-extension heuristic, so a path
-  // whose last segment merely contains a dot (e.g. a page at `/releases/v1.0`)
-  // isn't misread as a missing asset.
-  const route = toRoute(resolved);
+  // Page routes carry the site-wide base; an absolute author path is written
+  // as if mounted at root, so base it for the route lookup (idempotent — a
+  // relative link already resolved against the based `page.route`). A real
+  // route always wins over the asset-extension heuristic, so a dotted route
+  // (e.g. `/releases/v1.0`) isn't misread as a missing asset.
+  const route = toRoute(withBasePath(ctx.basePath, resolved));
   if (ctx.routes.has(route)) {
     return fragment ? checkAnchor(route, fragment, site, ctx) : null;
   }
@@ -164,8 +169,11 @@ const checkPathLink = (
     return null;
   }
 
-  if (FILE_EXT.test(resolved) && !DOC_EXT.test(resolved)) {
-    if (assetIsPresent(resolved, ctx)) {
+  // Assets live in `public/` at the site root, unaffected by the base, so strip
+  // it back off before probing the filesystem.
+  const assetPath = stripBasePath(ctx.basePath, resolved);
+  if (FILE_EXT.test(assetPath) && !DOC_EXT.test(assetPath)) {
+    if (assetIsPresent(assetPath, ctx)) {
       return null;
     }
     // Nowhere to look: no `public/` directory.
@@ -175,9 +183,9 @@ const checkPathLink = (
     return {
       ...site,
       code: "BLUME_BROKEN_ASSET",
-      message: `Asset ${resolved} was not found in the public directory.`,
+      message: `Asset ${assetPath} was not found in the public directory.`,
       severity: "warning",
-      suggestion: `Add the file at public${resolved} or fix the link.`,
+      suggestion: `Add the file at public${assetPath} or fix the link.`,
     };
   }
 
@@ -355,17 +363,23 @@ const classifyLink = (
 export const validateLinks = async (
   graph: ContentGraph,
   options: {
+    /** Site-wide route mount point (`""` or `/seg`); routes and redirects carry it. */
+    basePath?: string;
     publicDir: string | null;
     checkExternal?: boolean;
     /** Configured redirects; their `from` paths count as valid link targets. */
     redirects?: { from: string }[];
   }
 ): Promise<Diagnostic[]> => {
+  const basePath = options.basePath ?? "";
   const ctx: LinkContext = {
     anchors: buildAnchorIndex(graph.pages),
+    basePath,
     publicDir: options.publicDir,
     redirects: new Set(
-      (options.redirects ?? []).map((redirect) => toRoute(redirect.from))
+      (options.redirects ?? []).map((redirect) =>
+        toRoute(withBasePath(basePath, redirect.from))
+      )
     ),
     routes: new Set(graph.routes.keys()),
   };

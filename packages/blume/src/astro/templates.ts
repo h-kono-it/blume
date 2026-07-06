@@ -7,6 +7,7 @@ import type { AskBackend } from "../ai/ask.ts";
 import type { ResolvedConfig } from "../core/schema.ts";
 import { BLUME_IGNORE_DIRS } from "../core/sources/watch.ts";
 import type { ProjectContext } from "../core/types.ts";
+import { applyBaseToRedirects } from "../deploy/redirects.ts";
 import { hasScalarReferences } from "../openapi/references.ts";
 import { searchProviderMeta } from "../search/providers.ts";
 import { buildFontEntries } from "../theme/fonts.ts";
@@ -267,11 +268,17 @@ export const astroConfigTemplate = (options: {
       })},`
     : "";
 
+  // Base the redirect paths the same way routes are based, so a redirect lands
+  // under `basePath` too. Astro layers its own `base` (deployment.base) on top.
+  const basedRedirects = applyBaseToRedirects(
+    config.redirects,
+    config.basePath
+  );
   const redirectsOption =
-    config.redirects.length > 0
+    basedRedirects.length > 0
       ? `\n  redirects: ${JSON.stringify(
           Object.fromEntries(
-            config.redirects.map((redirect) => [
+            basedRedirects.map((redirect) => [
               redirect.from,
               { destination: redirect.to, status: redirect.status },
             ])
@@ -318,6 +325,7 @@ export const astroConfigTemplate = (options: {
 
   const integrations = [
     `mdx({ processor: blumeMdxProcessor(${JSON.stringify({
+      basePath: config.basePath,
       headingAnchors: config.markdown.headingAnchors,
     })}) })`,
   ];
@@ -351,6 +359,7 @@ export default defineConfig({
   integrations: [${integrations.join(", ")}],
   markdown: {
     processor: blumeMarkdownProcessor(${JSON.stringify({
+      basePath: config.basePath,
       headingAnchors: config.markdown.headingAnchors,
     })}),
     shikiConfig: {

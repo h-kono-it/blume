@@ -106,6 +106,8 @@ export interface ContentSource {
 /** Context passed to `normalizeEntry`, describing the owning source. */
 export interface NormalizeContext {
   source: { name: string; prefix?: string; staged: boolean };
+  /** Site-wide route mount point (`""` or `/seg`), prepended to every route. */
+  basePath?: string;
   defaultType: string;
   i18n?: ResolvedI18nConfig;
 }

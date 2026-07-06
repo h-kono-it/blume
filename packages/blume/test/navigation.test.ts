@@ -435,3 +435,59 @@ describe("navigation.sidebar config schema", () => {
     expect(config.navigation.sidebar).toStrictEqual({ display: "group" });
   });
 });
+
+describe("buildNavigation — basePath", () => {
+  // Content routes arrive already based (from normalize); config paths are
+  // authored as if mounted at root and are based here.
+  const pages = [page("foo.md", "/docs/foo", "Foo")];
+
+  it("bases config tabs, featured, and selector paths, leaving externals", () => {
+    const nav = buildNavigation(pages, {
+      basePath: "/docs",
+      featured: [
+        { href: "/changelog", label: "Changelog" },
+        { href: "https://x.com", label: "External" },
+      ],
+      folderMeta: empty,
+      selectors: [
+        { items: [{ label: "v1", path: "/v1" }], kind: "version", label: "v2" },
+      ],
+      tabs: [
+        {
+          items: [{ label: "Guide", path: "/guide" }],
+          label: "Docs",
+          path: "/",
+        },
+        { label: "Blog", path: "https://blog.example.com" },
+      ],
+    });
+
+    expect(nav.featured.map((link) => link.href)).toStrictEqual([
+      "/docs/changelog",
+      "https://x.com",
+    ]);
+    expect(nav.selectors[0]?.items?.[0]?.path).toBe("/docs/v1");
+    expect(nav.tabs[0]?.path).toBe("/docs");
+    expect(nav.tabs[0]?.items?.[0]?.path).toBe("/docs/guide");
+    expect(nav.tabs[1]?.path).toBe("https://blog.example.com");
+  });
+
+  it("bases explicit-sidebar refs, hrefs, and unmatched fallbacks", () => {
+    const sidebar: SidebarItemConfig[] = [
+      // A base-less string ref still resolves to the based page route.
+      "foo",
+      { href: "/external-page", label: "Ext" },
+      { items: [], label: "Missing", root: "/nope" },
+    ];
+    const nav = buildNavigation(pages, {
+      basePath: "/docs",
+      folderMeta: empty,
+      sidebar,
+    });
+
+    expect(asPage(nav.sidebar[0]).route).toBe("/docs/foo");
+    expect(asPage(nav.sidebar[1]).route).toBe("/docs/external-page");
+    // An unmatched group `root` falls back to the based ref.
+    expect(asGroup(nav.sidebar[2]).route).toBe("/docs/nope");
+  });
+});

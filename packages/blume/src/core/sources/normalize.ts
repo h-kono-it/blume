@@ -3,6 +3,7 @@ import { existsSync, readFileSync } from "node:fs";
 import GithubSlugger from "github-slugger";
 import { extname } from "pathe";
 
+import { withBasePath } from "../base-path.ts";
 import { diagnosticsFromZod } from "../diagnostics.ts";
 import { localePlacement, localizeRoute } from "../i18n.ts";
 import { pageMetaSchema } from "../schema.ts";
@@ -359,10 +360,16 @@ export const normalizeEntry = (
 
   // One record per locale this entry maps to (one normally; every locale for a
   // shared `$` file). All share the same id, source ref, and translation key.
+  // `basePath` is applied outermost — after locale prefixing — so the route
+  // reads `{basePath}/{locale?}/{prefix?}/…`; `navPath` and `translationKey`
+  // stay base-less so the nav tree and translation matching are unaffected.
   const pages = locales.map((locale) => ({
     ...base,
     locale,
-    route: i18n ? localizeRoute(logicalRoute, locale, i18n) : logicalRoute,
+    route: withBasePath(
+      ctx.basePath ?? "",
+      i18n ? localizeRoute(logicalRoute, locale, i18n) : logicalRoute
+    ),
   }));
 
   return { diagnostics: [], pages };

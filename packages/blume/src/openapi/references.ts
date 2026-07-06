@@ -1,3 +1,4 @@
+import { withBasePath } from "../core/base-path.ts";
 import type { ResolvedConfig } from "../core/schema.ts";
 import type { NavTab } from "../core/types.ts";
 
@@ -139,7 +140,13 @@ export const resolveReferences = (
 export const referenceTabs = (config: ResolvedConfig): NavTab[] =>
   resolveReferences(config).map((ref) => ({
     label: ref.label,
-    path: ref.route,
+    // Blume-rendered operation pages flow through the content pipeline and are
+    // mounted under `basePath`, so their tab must be too. Scalar references are
+    // a single embedded page injected at the raw `route`, left root-anchored.
+    path:
+      ref.renderer === "blume"
+        ? withBasePath(config.basePath, ref.route)
+        : ref.route,
   }));
 
 /**

@@ -22,6 +22,7 @@ export const discoverContent = async (options: {
   include: string[];
   exclude: string[];
   defaultType: string;
+  basePath?: string;
   i18n?: ResolvedI18nConfig;
 }): Promise<{ pages: PageRecord[]; diagnostics: Diagnostic[] }> => {
   const source = filesystemSource({
@@ -38,6 +39,7 @@ export const discoverContent = async (options: {
 
   for (const entry of entries) {
     const normalized = normalizeEntry(entry, {
+      basePath: options.basePath ?? "",
       defaultType: options.defaultType,
       i18n: options.i18n,
       source: { name: source.name, prefix: source.prefix, staged: false },

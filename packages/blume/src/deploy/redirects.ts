@@ -1,3 +1,4 @@
+import { withBasePath } from "../core/base-path.ts";
 import type { ResolvedConfig } from "../core/schema.ts";
 
 /**
@@ -9,6 +10,23 @@ import type { ResolvedConfig } from "../core/schema.ts";
  */
 
 type Redirect = ResolvedConfig["redirects"][number];
+
+/**
+ * Prepend the site-wide `basePath` to each redirect's internal `from`/`to`
+ * (both are authored as if mounted at root); external `to` URLs pass through.
+ * Idempotent, so re-basing an already-based redirect is safe.
+ */
+export const applyBaseToRedirects = (
+  redirects: Redirect[],
+  basePath: string
+): Redirect[] =>
+  basePath
+    ? redirects.map((redirect) => ({
+        ...redirect,
+        from: withBasePath(basePath, redirect.from),
+        to: withBasePath(basePath, redirect.to),
+      }))
+    : redirects;
 
 /** `_redirects` text (Netlify + Cloudflare Pages): `from to status` per line. */
 export const buildNetlifyRedirects = (redirects: Redirect[]): string =>

@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { FONT_SLUGS, isFontSlug } from "../theme/fonts.ts";
+import { normalizeBasePath } from "./base-path.ts";
 import { uiLocaleOverridesSchema } from "./i18n-ui.ts";
 import type { ContentSource } from "./sources/types.ts";
 
@@ -961,6 +962,16 @@ export const blumeConfigSchema = z.strictObject({
   analytics: analyticsConfigSchema.optional(),
   asyncapi: asyncapiConfigSchema.default({}),
   banner: bannerConfigSchema.optional(),
+  /**
+   * Site-wide mount point prepended to every generated route (e.g. `/docs`),
+   * while staying invisible to the sidebar/nav tree. Distinct from a per-source
+   * `prefix` (which creates a group) and from `deployment.base` (Astro's
+   * host-subdirectory base); the two compose. Normalized to `""` or `/seg`.
+   */
+  basePath: z
+    .string()
+    .optional()
+    .transform((value) => normalizeBasePath(value)),
   content: contentConfigSchema.default({}),
   deployment: deploymentConfigSchema.default({}),
   description: z.string().optional(),

@@ -47,6 +47,7 @@ export const validateCommand = defineCommand({
       const publicDir = join(root, "public");
       diagnostics.push(
         ...(await validateLinks(project.graph, {
+          basePath: project.config.basePath,
           checkExternal: Boolean(args.external),
           publicDir: existsSync(publicDir) ? publicDir : null,
           redirects: project.config.redirects,

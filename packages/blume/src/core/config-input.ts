@@ -871,6 +871,16 @@ export interface BlumeConfig {
   asyncapi?: AsyncApiConfig;
   /** Site-wide announcement banner shown above the header. */
   banner?: BannerConfig;
+  /**
+   * Site-wide mount point prepended to every generated route (e.g. `/docs`) —
+   * pages, links, redirects, sitemap, OG images, `llms.txt`, and the search
+   * index — while staying invisible to the sidebar/nav tree (no wrapper group).
+   * Distinct from a per-source `prefix` (which namespaces one source *and*
+   * creates a group) and from `deployment.base` (Astro's host-subdirectory
+   * base, for serving the whole site — root included — from a subpath). The two
+   * compose: with both set, a page lands at `{deployment.base}/{basePath}/page`.
+   */
+  basePath?: string;
   /** Where content lives and how it's discovered. */
   content?: ContentConfig;
   /** Where and how the site deploys (site URL, adapter, output mode). */

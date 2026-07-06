@@ -1,3 +1,4 @@
+import { withBasePath } from "./base-path.ts";
 import { localizeRoute, resolveFallbackLocale } from "./i18n.ts";
 import type { ResolvedConfig } from "./schema.ts";
 import type {
@@ -35,7 +36,8 @@ export const contentIndexable = (
 const buildFallbackRoutes = (
   graph: ContentGraph,
   i18n: NonNullable<ResolvedConfig["i18n"]>,
-  alternatesByKey: Map<string, RouteAlternate[]>
+  alternatesByKey: Map<string, RouteAlternate[]>,
+  basePath: string
 ): RouteManifestEntry[] => {
   const fallback = resolveFallbackLocale(i18n);
   if (!fallback) {
@@ -73,7 +75,7 @@ const buildFallbackRoutes = (
         indexable: false,
         lastModified: source.lastModified,
         locale: code,
-        path: localizeRoute(key, code, i18n),
+        path: withBasePath(basePath, localizeRoute(key, code, i18n)),
         source: source.source,
         sourcePath: source.sourcePath,
         title: source.title,
@@ -123,7 +125,9 @@ export const buildManifest = (options: {
   }));
 
   if (i18n) {
-    routes.push(...buildFallbackRoutes(graph, i18n, alternatesByKey));
+    routes.push(
+      ...buildFallbackRoutes(graph, i18n, alternatesByKey, config.basePath)
+    );
   }
 
   routes.sort((a, b) => a.path.localeCompare(b.path));

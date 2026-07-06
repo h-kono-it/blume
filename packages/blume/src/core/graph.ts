@@ -1,3 +1,4 @@
+import { withBasePath } from "./base-path.ts";
 import { localizeRoute, resolveFallbackLocale } from "./i18n.ts";
 import { validateNavIcons, validateNavStructure } from "./nav-diagnostics.ts";
 import { buildNavigation } from "./navigation.ts";
@@ -14,6 +15,8 @@ import type {
 } from "./types.ts";
 
 interface BuildContentGraphOptions {
+  /** Site-wide route mount point (`""` or `/seg`); invisible to the nav tree. */
+  basePath?: string;
   folderMeta: Map<string, FolderMeta>;
   sharedFolderMeta?: Map<string, FolderMeta>;
   navigation: ResolvedConfig["navigation"];
@@ -55,7 +58,8 @@ const localePagesFor = (
   real: PageRecord[],
   fallback: FallbackLocale,
   fallbackByKey: Map<string, PageRecord>,
-  i18n: ResolvedI18nConfig
+  i18n: ResolvedI18nConfig,
+  basePath: string
 ): PageRecord[] => {
   if (!(fallback && code !== fallback)) {
     return real;
@@ -67,7 +71,7 @@ const localePagesFor = (
       filled.push({
         ...source,
         locale: code,
-        route: localizeRoute(key, code, i18n),
+        route: withBasePath(basePath, localizeRoute(key, code, i18n)),
       });
     }
   }
@@ -92,8 +96,16 @@ const buildLocaleNavigation = (
       : tab.path,
   }));
   const real = pages.filter((page) => page.locale === code);
-  const localePages = localePagesFor(code, real, fallback, fallbackByKey, i18n);
+  const localePages = localePagesFor(
+    code,
+    real,
+    fallback,
+    fallbackByKey,
+    i18n,
+    options.basePath ?? ""
+  );
   return buildNavigation(localePages, {
+    basePath: options.basePath ?? "",
     display: options.navigation.sidebar.display,
     featured: options.navigation.featured,
     folderMeta: options.folderMeta,
@@ -165,6 +177,7 @@ export const buildContentGraph = (
     ? buildI18nNavigation(pages, options, i18n)
     : {
         navigation: buildNavigation(pages, {
+          basePath: options.basePath ?? "",
           display: options.navigation.sidebar.display,
           featured: options.navigation.featured,
           folderMeta: options.folderMeta,

@@ -1,5 +1,6 @@
 import { extname } from "pathe";
 
+import { stripBasePath, withBasePath } from "./base-path.ts";
 import type {
   FolderMeta,
   SidebarDisplay,
@@ -326,13 +327,16 @@ const normalizeRef = (ref: string): string => {
 
 const routeForRef = (
   ref: string | undefined,
-  byRoute: Map<string, PageRecord>
+  byRoute: Map<string, PageRecord>,
+  basePath: string
 ): string | undefined => {
   if (!ref) {
     return undefined;
   }
   const normalized = normalizeRef(ref);
-  return byRoute.get(normalized)?.route ?? normalized;
+  // A matched page carries an already-based `route`; an unmatched ref is an
+  // author-written root-relative path that still needs the base applied.
+  return byRoute.get(normalized)?.route ?? withBasePath(basePath, normalized);
 };
 
 /**
@@ -342,7 +346,8 @@ const routeForRef = (
  */
 const configItemToNode = (
   item: SidebarItemConfig,
-  byRoute: Map<string, PageRecord>
+  byRoute: Map<string, PageRecord>,
+  basePath: string
 ): NavNode | null => {
   if (typeof item === "string") {
     const page = byRoute.get(normalizeRef(item));
@@ -370,7 +375,7 @@ const configItemToNode = (
       kind: "page",
       label: item.label,
       pageId: page?.id ?? "",
-      route: page?.route ?? normalizeRef(item.root),
+      route: page?.route ?? withBasePath(basePath, normalizeRef(item.root)),
     };
   }
 
@@ -381,7 +386,7 @@ const configItemToNode = (
       kind: "page",
       label: item.label,
       pageId: "",
-      route: item.href,
+      route: withBasePath(basePath, item.href),
     };
   }
 
@@ -392,25 +397,26 @@ const configItemToNode = (
 const buildConfigSidebar = (
   items: SidebarItemConfig[],
   byRoute: Map<string, PageRecord>,
-  display: SidebarDisplay
+  display: SidebarDisplay,
+  basePath: string
 ): NavNode[] => {
   const nodes: NavNode[] = [];
   for (const item of items) {
     if (typeof item !== "string" && item.items) {
       nodes.push({
         badge: item.badge,
-        children: buildConfigSidebar(item.items, byRoute, display),
+        children: buildConfigSidebar(item.items, byRoute, display, basePath),
         collapsed: item.collapsed,
         directory: item.directory,
         display: item.display ?? display,
         icon: item.icon,
         kind: "group",
         label: item.label,
-        route: routeForRef(item.root, byRoute),
+        route: routeForRef(item.root, byRoute, basePath),
       });
       continue;
     }
-    const node = configItemToNode(item, byRoute);
+    const node = configItemToNode(item, byRoute, basePath);
     if (node) {
       nodes.push(node);
     }
@@ -422,6 +428,8 @@ const buildConfigSidebar = (
 export const buildNavigation = (
   pages: PageRecord[],
   options: {
+    /** Site-wide route mount point (`""` or `/seg`); applied to config paths. */
+    basePath?: string;
     folderMeta: Map<string, FolderMeta>;
     /** Global display mode for every sidebar group (default `flat`). */
     display?: SidebarDisplay;
@@ -441,24 +449,64 @@ export const buildNavigation = (
     sharedFolderMeta?: Map<string, FolderMeta>;
   }
 ): Navigation => {
-  const featured = options.featured ?? [];
-  const selectors = options.selectors ?? [];
-  const tabs = options.tabs ?? [];
+  const basePath = options.basePath ?? "";
   const display = options.display ?? "flat";
   const metaPrefix = options.metaPrefix ?? "";
   const sharedFolderMeta = options.sharedFolderMeta ?? new Map();
+
+  // Config-provided nav paths are authored as if mounted at root, so the base
+  // is applied here (idempotently, and only to internal paths — external URLs
+  // pass through). Content-derived sidebar routes are already based via
+  // `page.route`. The based tab paths also feed tab-scoping below, so they must
+  // agree with the based content routes. With no base, this is a pure pass-
+  // through — the arrays keep their exact authored shape.
+  const rebasePath = <T extends { path: string }>(item: T): T => ({
+    ...item,
+    path: withBasePath(basePath, item.path),
+  });
+  const featured = basePath
+    ? (options.featured ?? []).map((link) => ({
+        ...link,
+        href: withBasePath(basePath, link.href),
+      }))
+    : (options.featured ?? []);
+  const selectors = basePath
+    ? (options.selectors ?? []).map((selector) => ({
+        ...selector,
+        items: selector.items.map(rebasePath),
+      }))
+    : (options.selectors ?? []);
+  const tabs = basePath
+    ? (options.tabs ?? []).map((tab) => ({
+        ...tab,
+        items: tab.items?.map(rebasePath),
+        path: withBasePath(basePath, tab.path),
+      }))
+    : (options.tabs ?? []);
   const byRoute = new Map(
     pages.map((page) => [
       options.refByLogical ? page.translationKey : page.route,
       page,
     ])
   );
+  // Explicit-sidebar refs (`"foo/index"`) are authored as if mounted at root,
+  // but `page.route` carries the base — alias each page under its base-less
+  // route so a bare ref still resolves. (The i18n `refByLogical` map is already
+  // keyed by the base-less `translationKey`, so it needs no alias.)
+  if (basePath && !options.refByLogical) {
+    for (const page of pages) {
+      const bare = stripBasePath(basePath, page.route);
+      if (!byRoute.has(bare)) {
+        byRoute.set(bare, page);
+      }
+    }
+  }
 
   if (options.sidebar) {
     return {
       featured,
       selectors,
-      sidebar: buildConfigSidebar(options.sidebar, byRoute, display),
+      sidebar: buildConfigSidebar(options.sidebar, byRoute, display, basePath),
       tabs,
     };
   }

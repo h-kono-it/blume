@@ -189,6 +189,7 @@ export const scanProject = async (
     contentDiagnostics.push(...diagnostics);
     for (const entry of entries) {
       const normalized = normalizeEntry(entry, {
+        basePath: config.basePath,
         defaultType: config.content.defaultType,
         i18n: config.i18n,
         source: {
@@ -229,6 +230,7 @@ export const scanProject = async (
   }
 
   const graph = buildContentGraph(pages, {
+    basePath: config.basePath,
     folderMeta: folderMeta.meta,
     i18n: config.i18n,
     navigation: config.navigation,

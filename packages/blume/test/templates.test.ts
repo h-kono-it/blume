@@ -494,6 +494,31 @@ describe("astroConfigTemplate", () => {
     expect(out).toContain("svelte()");
   });
 
+  it("threads basePath into the markdown processors and bases redirects", () => {
+    const basedConfig = blumeConfigSchema.parse({
+      basePath: "/manual",
+      redirects: [{ from: "/old", to: "/new" }],
+    });
+    const out = astroConfigTemplate({
+      config: basedConfig,
+      contentRoutes: [],
+      context: context(),
+      dataPath: DATA_PATH,
+      examplesPath: EXAMPLES_PATH,
+      needsReact: false,
+      openapiPath: OPENAPI_PATH,
+      pages: [],
+      searchClientPath: SEARCH_CLIENT_PATH,
+      themePath: THEME_PATH,
+    });
+    // Both processors learn the base so content links are rewritten under it.
+    expect(out).toContain('blumeMdxProcessor({"basePath":"/manual"');
+    expect(out).toContain('blumeMarkdownProcessor({"basePath":"/manual"');
+    // Redirect endpoints land under the base too.
+    expect(out).toContain('"/manual/old"');
+    expect(out).toContain('"/manual/new"');
+  });
+
   it("carries the React Compiler babel plugin when a compiler path is given", () => {
     const compilerPath =
       "/abs/node_modules/babel-plugin-react-compiler/dist/index.js";

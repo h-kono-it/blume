@@ -16,6 +16,7 @@ import {
   surfaceAdapterOutput,
 } from "../../deploy/adapter-output.ts";
 import {
+  applyBaseToRedirects,
   buildNetlifyRedirects,
   buildRedirectManifest,
   buildVercelConfig,
@@ -68,7 +69,7 @@ const emitRedirectFiles = async (
   config: ResolvedConfig,
   distDir: string
 ): Promise<void> => {
-  const { redirects } = config;
+  const redirects = applyBaseToRedirects(config.redirects, config.basePath);
   if (redirects.length === 0 || config.deployment.output !== "static") {
     return;
   }
