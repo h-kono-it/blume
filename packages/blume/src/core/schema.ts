@@ -867,6 +867,17 @@ const markdownConfigSchema = z.strictObject({
   imageZoom: z.boolean().default(true),
 });
 
+/** React island behavior (`react`). */
+const reactConfigSchema = z.strictObject({
+  /**
+   * Auto-memoize React components/hooks with the React Compiler
+   * (`babel-plugin-react-compiler`). On by default whenever React is enabled
+   * (a project `.tsx`/`.jsx`, a React island/example/override, or Ask AI); set
+   * to `false` to skip the compiler's babel pass.
+   */
+  compiler: z.boolean().default(true),
+});
+
 /**
  * A single spec rendered by the API reference. `spec` is a local path or an
  * `http(s)` URL (OpenAPI for the Blume renderer; OpenAPI or AsyncAPI for Scalar).
@@ -977,6 +988,7 @@ export const blumeConfigSchema = z.strictObject({
   mcp: mcpConfigSchema.default({}),
   navigation: navigationConfigSchema.default({}),
   openapi: openapiConfigSchema.default({}),
+  react: reactConfigSchema.default({}),
   redirects: z.array(redirectSchema).default([]),
   search: searchConfigSchema.default({}),
   seo: seoConfigSchema.default({}),

@@ -90,10 +90,10 @@ export const useSearch = (): UseSearch => {
   const [loading, setLoading] = useState(false);
   const searchFn = useRef<SearchFn | null>(null);
 
-  // React Compiler is not enabled (Astro's react() ships no compiler plugin),
-  // so this useCallback still does real work: it keeps a stable identity for
-  // consumers that use `search` as an effect/memo dependency.
-  // oxlint-disable-next-line react-doctor/react-compiler-no-manual-memoization -- React Compiler is not enabled here
+  // Retained for the compiler-off opt-out path (`react: { compiler: false }`):
+  // this useCallback keeps a stable `search` identity for consumers that use it
+  // as an effect/memo dependency. With the compiler on it's redundant but inert.
+  // oxlint-disable-next-line react-doctor/react-compiler-no-manual-memoization -- see above
   const search = useCallback<UseSearch["search"]>(async (query, options) => {
     if (!searchFn.current) {
       const { createSearch } = await import("blume:search-client");
@@ -140,9 +140,10 @@ export const useAskAI = (): UseAskAI => {
   const [messages, setMessages] = useState<AskMessage[]>([]);
   const [loading, setLoading] = useState(false);
 
-  // React Compiler is not enabled here, so this useCallback preserves a stable
-  // `ask` identity for consumers that depend on it.
-  // oxlint-disable-next-line react-doctor/react-compiler-no-manual-memoization -- React Compiler is not enabled here
+  // Retained for the compiler-off opt-out path (`react: { compiler: false }`):
+  // preserves a stable `ask` identity for consumers that depend on it. With the
+  // compiler on it's redundant but inert.
+  // oxlint-disable-next-line react-doctor/react-compiler-no-manual-memoization -- see above
   const ask = useCallback<UseAskAI["ask"]>(
     async (question) => {
       const trimmed = question.trim();
@@ -201,8 +202,9 @@ export const useAskAI = (): UseAskAI => {
     [loading, messages]
   );
 
-  // React Compiler is not enabled here; keep the stable `reset` identity.
-  // oxlint-disable-next-line react-doctor/react-compiler-no-manual-memoization -- React Compiler is not enabled here
+  // Retained for the compiler-off opt-out path (`react: { compiler: false }`):
+  // keeps a stable `reset` identity. With the compiler on it's redundant but inert.
+  // oxlint-disable-next-line react-doctor/react-compiler-no-manual-memoization -- see above
   const reset = useCallback(() => setMessages([]), []);
 
   return { ask, loading, messages, reset };

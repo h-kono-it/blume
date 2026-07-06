@@ -94,6 +94,47 @@ const canResolveFrom = (fromDir: string, spec: string): boolean => {
 };
 
 /**
+ * Absolute path to `babel-plugin-react-compiler`, resolved from Blume's own
+ * package root (Blume ships it). Returns null when React or the compiler is off.
+ *
+ * The path must be absolute: @vitejs/plugin-react resolves babel plugins from
+ * the *project* root, not `.blume/`, so a bare specifier fails in a user project
+ * that never installed the plugin directly. Resolving from `packageRoot()` binds
+ * to Blume's shipped copy regardless of the user's package manager or hoisting.
+ */
+const resolveReactCompiler = (
+  config: ResolvedConfig,
+  needsReact: boolean
+): string | null => {
+  if (!(needsReact && config.react.compiler)) {
+    return null;
+  }
+  try {
+    return createRequire(
+      pathToFileURL(join(packageRoot(), "_.js")).href
+    ).resolve("babel-plugin-react-compiler");
+  } catch {
+    return null;
+  }
+};
+
+/**
+ * Warning (as a spreadable list) for the case where the React Compiler was
+ * requested but its plugin couldn't be resolved — so the build silently drops
+ * to uncompiled output rather than failing.
+ */
+const reactCompilerWarnings = (
+  config: ResolvedConfig,
+  needsReact: boolean,
+  compilerPath: string | null
+): string[] =>
+  needsReact && config.react.compiler && !compilerPath
+    ? [
+        "React Compiler is enabled but `babel-plugin-react-compiler` could not be resolved; falling back to an uncompiled build. Reinstall Blume, or set `react: { compiler: false }` to silence this.",
+      ]
+    : [];
+
+/**
  * Realpath of the `astro` package node resolves from a directory, or null when
  * none resolves. Comparing this for `.blume/` against Blume's own deps tells
  * whether the runtime would bind to the *same* astro Blume uses or a different
@@ -1010,6 +1051,12 @@ export const generateRuntime = async (
   const needsVue = frameworks.has("vue");
   const needsSvelte = frameworks.has("svelte");
 
+  // Absolute path to the React Compiler babel plugin (null when off). Resolved
+  // here, Node-side, so the generated config points babel straight at Blume's
+  // shipped copy — see resolveReactCompiler. Any unresolved-but-requested
+  // warning is folded into `warnings` below (declared later).
+  const reactCompilerPath = resolveReactCompiler(config, needsReact);
+
   // Custom pages that should get a generated OG card (the home most of all).
   // Computed before the MCP `.well-known` routes are appended below — those are
   // private and filtered out anyway, but the intent is the user's pages.
@@ -1051,6 +1098,7 @@ export const generateRuntime = async (
           needsVue,
           openapiPath,
           pages,
+          reactCompilerPath,
           searchClientPath,
           themePath,
         })
@@ -1235,6 +1283,7 @@ export const generateRuntime = async (
   // mounted on its configured route and regenerated each run.
   const warnings: string[] = [
     ...(depsLinkWarning ? [depsLinkWarning] : []),
+    ...reactCompilerWarnings(config, needsReact, reactCompilerPath),
     ...mcp.warnings,
     ...islandDiscovery.warnings,
     ...exampleDiscovery.warnings,

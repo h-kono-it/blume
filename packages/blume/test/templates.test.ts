@@ -394,6 +394,12 @@ describe("runtimeDependencies", () => {
       runtimeDependencies({ config: server, needsReact: false })
     ).toContain("@astrojs/vercel");
   });
+
+  it("never declares the React Compiler plugin as a runtime dep (it's resolved by absolute path)", () => {
+    expect(runtimeDependencies({ config, needsReact: true })).not.toContain(
+      "babel-plugin-react-compiler"
+    );
+  });
 });
 
 describe("astroConfigTemplate", () => {
@@ -482,9 +488,49 @@ describe("astroConfigTemplate", () => {
     expect(out).toContain('import react from "@astrojs/react"');
     expect(out).toContain('import vue from "@astrojs/vue"');
     expect(out).toContain('import svelte from "@astrojs/svelte"');
+    // No reactCompilerPath passed, so react() is bare (compiler off).
     expect(out).toContain("react()");
     expect(out).toContain("vue()");
     expect(out).toContain("svelte()");
+  });
+
+  it("carries the React Compiler babel plugin when a compiler path is given", () => {
+    const compilerPath =
+      "/abs/node_modules/babel-plugin-react-compiler/dist/index.js";
+    const out = astroConfigTemplate({
+      config,
+      contentRoutes: [],
+      context: context(),
+      dataPath: DATA_PATH,
+      examplesPath: EXAMPLES_PATH,
+      needsReact: true,
+      openapiPath: OPENAPI_PATH,
+      pages: [],
+      reactCompilerPath: compilerPath,
+      searchClientPath: SEARCH_CLIENT_PATH,
+      themePath: THEME_PATH,
+    });
+    expect(out).toContain(
+      `react({ babel: { plugins: [[${JSON.stringify(compilerPath)}, { target: "19" }]] } })`
+    );
+  });
+
+  it("emits a bare react() when no compiler path is given", () => {
+    const out = astroConfigTemplate({
+      config,
+      contentRoutes: [],
+      context: context(),
+      dataPath: DATA_PATH,
+      examplesPath: EXAMPLES_PATH,
+      needsReact: true,
+      openapiPath: OPENAPI_PATH,
+      pages: [],
+      searchClientPath: SEARCH_CLIENT_PATH,
+      themePath: THEME_PATH,
+    });
+    expect(out).toContain('import react from "@astrojs/react"');
+    expect(out).toContain("react()");
+    expect(out).not.toContain("babel-plugin-react-compiler");
   });
 
   it("omits adapter options for adapters that need none", () => {

@@ -77,6 +77,14 @@ export default function Chart() {
 
 **React works out of the box** — Blume turns it on automatically the moment your project contains a `.tsx`/`.jsx` island.
 
+The [React Compiler](https://react.dev/learn/react-compiler) is on by default whenever React is enabled, so your islands are auto-memoized — no hand-written `useMemo`/`useCallback` needed. It ships with Blume; there's nothing to install. Opt out in `blume.config.ts`:
+
+```ts blume.config.ts
+export default defineConfig({
+  react: { compiler: false },
+});
+```
+
 **Vue and Svelte** are supported too; install the matching Astro integration and Blume wires up the renderer when it sees a `.vue` or `.svelte` island:
 
 ```bash

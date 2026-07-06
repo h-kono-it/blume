@@ -754,6 +754,16 @@ export interface MarkdownConfig {
   imageZoom?: boolean;
 }
 
+/** React island behavior. */
+export interface ReactConfig {
+  /**
+   * Auto-memoize React components/hooks with the React Compiler
+   * (`babel-plugin-react-compiler`). On by default whenever React is enabled;
+   * set to `false` to skip the compiler's babel pass. Defaults to `true`.
+   */
+  compiler?: boolean;
+}
+
 // ---------------------------------------------------------------------------
 // OpenAPI / AsyncAPI
 // ---------------------------------------------------------------------------
@@ -893,6 +903,8 @@ export interface BlumeConfig {
   navigation?: NavigationConfig;
   /** Native OpenAPI reference. */
   openapi?: OpenApiConfig;
+  /** React island behavior (compiler auto-memoization). */
+  react?: ReactConfig;
   /** URL redirect rules. */
   redirects?: RedirectConfig[];
   /** Search backend and credentials. */

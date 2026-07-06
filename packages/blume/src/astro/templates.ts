@@ -184,6 +184,19 @@ const renderUserAliases = (
 const astroOutDir = (context: ProjectContext): string =>
   context.distDir ?? `${context.root}/dist`;
 
+/**
+ * The `react()` integration call. When `compilerPath` is set (the resolved
+ * absolute path to `babel-plugin-react-compiler`), react() carries the compiler
+ * as the first babel plugin — an absolute path, because @vitejs/plugin-react
+ * resolves babel plugins from the *project* root, not `.blume/`, so a bare
+ * specifier wouldn't resolve in a user project. `target: "19"` matches Blume's
+ * React pin. `null`/`undefined` (compiler off or unresolvable) emits bare react().
+ */
+const reactIntegration = (compilerPath: string | null | undefined): string =>
+  compilerPath
+    ? `react({ babel: { plugins: [[${JSON.stringify(compilerPath)}, { target: "19" }]] } })`
+    : "react()";
+
 export const astroConfigTemplate = (options: {
   context: ProjectContext;
   config: ResolvedConfig;
@@ -197,6 +210,12 @@ export const astroConfigTemplate = (options: {
   themePath: string;
   searchClientPath: string;
   openapiPath: string;
+  /**
+   * Absolute path to `babel-plugin-react-compiler` when the React Compiler is
+   * enabled (resolved from Blume's package root by the caller); null/absent
+   * disables the compiler and emits a bare `react()`.
+   */
+  reactCompilerPath?: string | null;
   /** Project tsconfig path aliases (`find` -> absolute dir), e.g. `@` -> src. */
   aliases?: Record<string, string>;
 }): string => {
@@ -303,7 +322,7 @@ export const astroConfigTemplate = (options: {
     })}) })`,
   ];
   if (needsReact) {
-    integrations.push("react()");
+    integrations.push(reactIntegration(options.reactCompilerPath));
   }
   if (needsVue) {
     integrations.push("vue()");

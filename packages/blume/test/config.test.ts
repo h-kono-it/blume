@@ -55,6 +55,14 @@ describe("loadConfig", () => {
     expect(result.config.feedback).toBe(false);
   });
 
+  it("enables the React Compiler by default and lets it be opted out", async () => {
+    const on = await loadConfig(await makeDir());
+    expect(on.config.react.compiler).toBe(true);
+    const dir = await makeDir("export default { react: { compiler: false } };");
+    const off = await loadConfig(dir);
+    expect(off.config.react.compiler).toBe(false);
+  });
+
   it("loads and validates a config module", async () => {
     const dir = await makeDir('export default { title: "My Docs" };');
     const result = await loadConfig(dir);
