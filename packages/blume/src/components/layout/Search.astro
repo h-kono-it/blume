@@ -19,7 +19,10 @@ interface Props {
 }
 
 const { askEnabled = false, navigation, strings, locale } = Astro.props;
-const s = strings ?? EN_UI.search;
+// Merge over the English baseline per key (rather than `strings ?? …`) so a
+// partial — or empty `{}` — strings object still resolves every label to a
+// default, matching the pattern PageActions uses for its own dictionary.
+const s = { ...EN_UI.search, ...strings };
 
 // Pages shown in the empty state, before the user has typed anything.
 const popular = navigation ? flattenPages(navigation.sidebar).slice(0, 6) : [];

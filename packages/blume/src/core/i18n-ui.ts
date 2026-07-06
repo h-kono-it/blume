@@ -96,8 +96,23 @@ export const uiStringsSchema = uiStringsObject.default({});
 /** A fully-resolved dictionary; every key present. */
 export type UIStrings = z.infer<typeof uiStringsObject>;
 
-/** The English baseline, derived from the schema defaults. */
-export const EN_UI: UIStrings = uiStringsObject.parse({});
+/**
+ * The English baseline, derived from the schema defaults.
+ *
+ * Each group is passed explicitly as `{}` rather than parsing a bare `{}`: a
+ * group's `.default({})` only re-applies its inner field defaults when the group
+ * is *present but empty*. Zod 4 changed `.default()` to return the literal
+ * default value without re-parsing it through the inner type, so a bare
+ * `parse({})` leaves every group undefined and collapses each to `{}` there.
+ * Because these components resolve Zod from the consuming project — which may be
+ * on v4 while the CLI bundles v3 — the runtime baseline would silently render
+ * blank (empty search labels, aria-labels, skip link). Naming every group keeps
+ * the baseline fully populated on both Zod 3 and 4.
+ */
+const EN_UI_INPUT: Record<string, unknown> = Object.fromEntries(
+  Object.keys(uiStringsObject.shape).map((group) => [group, {}])
+);
+export const EN_UI: UIStrings = uiStringsObject.parse(EN_UI_INPUT);
 
 /**
  * A partial override: `{ group: { key: "translation" } }`. Validated loosely

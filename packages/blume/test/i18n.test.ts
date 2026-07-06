@@ -452,6 +452,31 @@ describe("UI dictionaries", () => {
     expect(dict.page.previous).toBe("Previous");
   });
 
+  it("fully populates every field of the English baseline", () => {
+    // Regression: EN_UI is derived by naming each group explicitly so that the
+    // inner field `.default()`s apply. Zod 4's `.default({})` no longer recurses
+    // into the inner type, so a bare `uiStringsObject.parse({})` would collapse
+    // each group to `{}` — and since layout components resolve Zod from the
+    // consuming project, a ui-less PageLayout would then render blank chrome
+    // (empty search labels/aria-labels, empty skip link).
+    const groups = Object.entries(
+      EN_UI as unknown as Record<string, Record<string, string>>
+    );
+    expect(groups.length).toBeGreaterThan(0);
+    for (const [group, values] of groups) {
+      expect(
+        Object.keys(values).length,
+        `group "${group}" is empty`
+      ).toBeGreaterThan(0);
+      for (const [key, value] of Object.entries(values)) {
+        expect(value, `${group}.${key} is blank`).toBeTruthy();
+      }
+    }
+    expect(EN_UI.search.button).toBe("Search");
+    expect(EN_UI.search.placeholder).toBe("Search documentation…");
+    expect(EN_UI.page.skipToContent).toBe("Skip to content");
+  });
+
   it("applies a shipped pack for a translated locale", () => {
     const dict = resolveUIStrings("fr", { defaultLocale: "en" });
     expect(dict.search.button).toBe("Rechercher");

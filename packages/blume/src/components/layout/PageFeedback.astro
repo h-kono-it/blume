@@ -9,7 +9,10 @@ interface Props {
 }
 
 const { strings } = Astro.props;
-const f = strings ?? EN_UI.feedback;
+// Merge over the English baseline per key (rather than `strings ?? …`) so a
+// partial — or empty `{}` — strings object still resolves every label to a
+// default, matching the pattern PageActions and Search use.
+const f = { ...EN_UI.feedback, ...strings };
 
 const buttonClass =
   "inline-flex items-center gap-2 rounded-full border border-border px-4 py-2 text-foreground text-sm transition-colors hover:border-foreground";
