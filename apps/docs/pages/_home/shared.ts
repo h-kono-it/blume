@@ -17,6 +17,7 @@ export const glyph = (name: string): string => resolveIcon(name)?.body ?? "";
 export const icons = {
   ai: glyph("sparkles"),
   api: glyph("braces"),
+  changelog: glyph("history"),
   chat: glyph("message-square"),
   check: glyph("check"),
   cloud: glyph("cloud-check"),

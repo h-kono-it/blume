@@ -3,8 +3,10 @@
 // section. The same component renders in the sticky desktop graphic (crossfaded
 // per feature) and inline on mobile, so each `kind` lives in exactly one place.
 // It mirrors the hero product preview: app header + a three-pane docs layout
-// (sidebar · content · on-this-page). Only the content morphs. It depicts the
-// fictional "Comet" brand (see `sampleBrand` in _home/shared.ts).
+// (sidebar · content · on-this-page). Only the content morphs — except the
+// `changelog` kind, which goes single-pane like the generated /changelog
+// timeline it mirrors. Every kind depicts the fictional "Comet" brand (see
+// `sampleBrand` in _home/shared.ts).
 import { glyph, sampleBrand } from "./_home/shared.ts";
 
 interface Props {
@@ -77,6 +79,67 @@ const apiResponse = `{
   "to": "ada@example.com",
   "status": "delivered"
 }`;
+
+// Timeline entries for the `changelog` kind, mirroring the generated
+// /changelog page's `Update` layout: a rail with the release link, date, and
+// category pill beside changesets-style notes (hash-prefixed, inline code).
+// Each note splits around `code` so the chip renders as a real <code> span.
+const changelogEntries = [
+  {
+    date: "July 8, 2026",
+    heading: "Minor Changes",
+    label: "comet@2.1.0",
+    notes: [
+      {
+        code: "segments",
+        hash: "a1f92c3",
+        post: " — broadcast a message to a saved audience straight from the API.",
+        pre: "Add ",
+      },
+      {
+        code: "/analytics/export",
+        hash: "7c04b1e",
+        post: " endpoint.",
+        pre: "Export delivery analytics from the new ",
+      },
+    ],
+    tag: "Release",
+  },
+  {
+    date: "June 26, 2026",
+    heading: "Patch Changes",
+    label: "comet@2.0.4",
+    notes: [
+      {
+        code: "retry.backoff",
+        hash: "9b3d5a7",
+        post: " for webhook retries instead of a fixed interval.",
+        pre: "Use exponential ",
+      },
+      {
+        code: "templates.render",
+        hash: "04e8c2f",
+        post: " dropping default variables.",
+        pre: "Fix ",
+      },
+    ],
+    tag: "Release",
+  },
+  {
+    date: "June 12, 2026",
+    heading: "Major Changes",
+    label: "comet@2.0.0",
+    notes: [
+      {
+        code: "v2",
+        hash: "f31c88a",
+        post: " API is generally available.",
+        pre: "The ",
+      },
+    ],
+    tag: "Release",
+  },
+];
 ---
 
 <div class="relative flex h-full flex-col">
@@ -94,9 +157,15 @@ const apiResponse = `{
         {sampleBrand.name}
       </span>
       <nav class="hidden items-center gap-3 text-[11px] text-muted-foreground sm:flex">
-        <span class={kind === "api" ? "" : "text-foreground"}>Docs</span>
+        <span
+          class={kind === "api" || kind === "changelog" ? "" : "text-foreground"}
+        >
+          Docs
+        </span>
         <span class={kind === "api" ? "text-foreground" : ""}>API</span>
-        <span>Changelog</span>
+        <span class={kind === "changelog" ? "text-foreground" : ""}>
+          Changelog
+        </span>
       </nav>
     </div>
     <span
@@ -119,54 +188,64 @@ const apiResponse = `{
     </span>
   </div>
 
-  {/* Three-pane docs body */}
+  {/* Three-pane docs body — except the changelog, whose generated page is a
+      focused full-width timeline, so it renders as a single pane. */}
   <div
-    class="grid min-h-[332px] flex-1 grid-cols-1 sm:grid-cols-[148px_1fr] lg:grid-cols-[148px_1fr_140px]"
+    class={`min-h-[332px] flex-1 ${kind === "changelog" ? "" : "grid grid-cols-1 sm:grid-cols-[148px_1fr] lg:grid-cols-[148px_1fr_140px]"}`}
   >
     {/* Sidebar */}
-    <aside class="hidden border-border border-r p-4 text-[11px] sm:block">
+    {
+      kind !== "changelog" && (
+        <aside class="hidden border-border border-r p-4 text-[11px] sm:block">
+          {kind === "api"
+            ? apiGroups.map((group) => (
+                <div class="mb-4 last:mb-0">
+                  <p class="font-medium text-foreground">{group.label}</p>
+                  <ul class="mt-2 space-y-0.5">
+                    {group.items.map((ep) => (
+                      <li
+                        class={`flex items-center gap-2 rounded px-1.5 py-1 ${ep.method === "GET" && ep.path === "/messages/{id}" ? "bg-muted text-foreground" : "text-muted-foreground"}`}
+                      >
+                        <span class="flex-1 truncate">{ep.summary}</span>
+                        <span
+                          class={`shrink-0 font-mono font-semibold text-[9px] ${methodColor[ep.method]}`}
+                        >
+                          {methodLabel[ep.method] ?? ep.method}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))
+            : navGroups.map((group) => (
+                <div class="mb-4 last:mb-0">
+                  <p class="font-medium text-foreground">{group.label}</p>
+                  <ul class="mt-2 space-y-1.5 text-muted-foreground">
+                    {group.items.map((item) => (
+                      <li class={item === view.active ? "text-accent" : ""}>
+                        {item}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+        </aside>
+      )
+    }
+
+    {/* Content (morphs per feature). The changelog owns its whole header: the
+        generated page is a bare landing with just an <h1>, no breadcrumb. */}
+    <div class="p-5">
       {
-        kind === "api" ? (
-          apiGroups.map((group) => (
-            <div class="mb-4 last:mb-0">
-              <p class="font-medium text-foreground">{group.label}</p>
-              <ul class="mt-2 space-y-0.5">
-                {group.items.map((ep) => (
-                  <li
-                    class={`flex items-center gap-2 rounded px-1.5 py-1 ${ep.method === "GET" && ep.path === "/messages/{id}" ? "bg-muted text-foreground" : "text-muted-foreground"}`}
-                  >
-                    <span class="flex-1 truncate">{ep.summary}</span>
-                    <span
-                      class={`shrink-0 font-mono font-semibold text-[9px] ${methodColor[ep.method]}`}
-                    >
-                      {methodLabel[ep.method] ?? ep.method}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))
-        ) : (
-          navGroups.map((group) => (
-            <div class="mb-4 last:mb-0">
-              <p class="font-medium text-foreground">{group.label}</p>
-              <ul class="mt-2 space-y-1.5 text-muted-foreground">
-                {group.items.map((item) => (
-                  <li class={item === view.active ? "text-accent" : ""}>{item}</li>
-                ))}
-              </ul>
-            </div>
-          ))
+        kind !== "changelog" && (
+          <Fragment>
+            <p class="text-[11px] text-muted-foreground">{view.crumb}</p>
+            <h4 class="mt-1 font-semibold text-foreground text-xl tracking-tight">
+              {view.heading}
+            </h4>
+          </Fragment>
         )
       }
-    </aside>
-
-    {/* Content (morphs per feature) */}
-    <div class="p-5">
-      <p class="text-[11px] text-muted-foreground">{view.crumb}</p>
-      <h4 class="mt-1 font-semibold text-foreground text-xl tracking-tight">
-        {view.heading}
-      </h4>
 
       {
         (kind === "page" || kind === "search") && (
@@ -423,19 +502,64 @@ const apiResponse = `{
         )
       }
 
+      {
+        kind === "changelog" && (
+          <div>
+            <h4 class="font-semibold text-2xl text-foreground tracking-tight">
+              Changelog
+            </h4>
+            <div class="mt-6 space-y-6">
+              {changelogEntries.map((entry) => (
+                <div class="grid grid-cols-[96px_1fr] gap-4">
+                  <div class="border-border border-e pe-3">
+                    <p class="font-semibold text-[11px] text-foreground underline decoration-border underline-offset-2">
+                      {entry.label}
+                    </p>
+                    <p class="mt-1 text-[10px] text-muted-foreground">
+                      {entry.date}
+                    </p>
+                    <span class="mt-2 inline-block rounded-full bg-muted px-2 py-0.5 font-medium text-[9px] text-muted-foreground">
+                      {entry.tag}
+                    </span>
+                  </div>
+                  <div>
+                    <p class="font-semibold text-foreground text-sm">
+                      {entry.heading}
+                    </p>
+                    <div class="mt-1.5 space-y-1.5">
+                      {entry.notes.map((note) => (
+                        <p class="text-[11px] text-muted-foreground leading-relaxed">
+                          {note.hash}: {note.pre}
+                          <code class="rounded bg-muted px-1 font-mono text-[10px]">
+                            {note.code}
+                          </code>
+                          {note.post}
+                        </p>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )
+      }
+
     </div>
 
     {/* On this page */}
-    <aside class="hidden border-border border-l p-4 text-[11px] lg:block">
-      <p class="font-medium text-foreground">On this page</p>
-      <ul class="mt-2 space-y-1.5 text-muted-foreground">
-        {
-          view.toc.map((item, index) => (
-            <li class={index === 0 ? "text-foreground" : ""}>{item}</li>
-          ))
-        }
-      </ul>
-    </aside>
+    {
+      kind !== "changelog" && (
+        <aside class="hidden border-border border-l p-4 text-[11px] lg:block">
+          <p class="font-medium text-foreground">On this page</p>
+          <ul class="mt-2 space-y-1.5 text-muted-foreground">
+            {view.toc.map((item, index) => (
+              <li class={index === 0 ? "text-foreground" : ""}>{item}</li>
+            ))}
+          </ul>
+        </aside>
+      )
+    }
 
     {/* Search: a ⌘K command palette modal over the dimmed page. The backdrop is
         positioned to the window root, so it covers the whole window — nav
