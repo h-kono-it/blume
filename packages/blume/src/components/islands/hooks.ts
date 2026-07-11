@@ -89,23 +89,36 @@ export const useSearch = (): UseSearch => {
   const [results, setResults] = useState<SearchResult | null>(null);
   const [loading, setLoading] = useState(false);
   const searchFn = useRef<SearchFn | null>(null);
+  const generation = useRef(0);
 
   // Retained for the compiler-off opt-out path (`react: { compiler: false }`):
   // this useCallback keeps a stable `search` identity for consumers that use it
   // as an effect/memo dependency. With the compiler on it's redundant but inert.
   // oxlint-disable-next-line react-doctor/react-compiler-no-manual-memoization -- see above
   const search = useCallback<UseSearch["search"]>(async (query, options) => {
-    if (!searchFn.current) {
-      const { createSearch } = await import("blume:search-client");
-      searchFn.current = await createSearch();
-    }
+    // Stale-response guard, mirroring the built-in dialog's renderGeneration:
+    // provider responses can land out of order, so only the latest call may
+    // commit results or clear `loading` — otherwise the last response to land
+    // wins over the last query typed ("a" clobbering "ab").
+    generation.current += 1;
+    const { current } = generation;
+    // Before the lazy client import: the first search's heaviest phase is
+    // creating the provider client (index download), and it must show loading.
     setLoading(true);
     try {
+      if (!searchFn.current) {
+        const { createSearch } = await import("blume:search-client");
+        searchFn.current = await createSearch();
+      }
       const result = await searchFn.current(query, options);
-      setResults(result);
+      if (current === generation.current) {
+        setResults(result);
+      }
       return result;
     } finally {
-      setLoading(false);
+      if (current === generation.current) {
+        setLoading(false);
+      }
     }
   }, []);
 

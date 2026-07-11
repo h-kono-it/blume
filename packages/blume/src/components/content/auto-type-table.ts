@@ -144,7 +144,13 @@ export const extractTypeTable = async (
       default: defaultValue || undefined,
       description: description || undefined,
       name: symbol.getName(),
-      required: !signature?.questionToken,
+      // Optionality lives on the checker's symbol, not the backing
+      // declaration: mapped/utility types synthesize members whose
+      // declaration has no question token (`Partial<Base>` would read as
+      // all-required), and `Required<Base>` strips optionality while the
+      // declaration keeps its `?` — the token is wrong in both directions.
+      // oxlint-disable-next-line no-bitwise -- SymbolFlags is a bitfield
+      required: (symbol.flags & ts.SymbolFlags.Optional) === 0,
       type: typeText,
     };
   });

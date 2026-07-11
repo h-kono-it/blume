@@ -30,7 +30,7 @@ import {
   operationObject,
 } from "../src/openapi/model.ts";
 import type { ApiDocument, ApiSpecData } from "../src/openapi/model.ts";
-import { parseSpec } from "../src/openapi/parse.ts";
+import { InvalidSpecError, parseSpec } from "../src/openapi/parse.ts";
 import {
   blumeReferences,
   hasScalarReferences,
@@ -189,7 +189,14 @@ describe("references", () => {
         ],
       },
     });
-    expect(blumeReferences(config)).toHaveLength(1);
+    const refs = blumeReferences(config);
+    expect(refs).toHaveLength(1);
+    expect(refs[0]?.spec).toBe("a.json");
+    // The dropped source is recorded on the kept reference so the load can
+    // warn — losing a whole spec's pages must not be silent.
+    expect(refs[0]?.collisions).toStrictEqual([
+      "Two API reference sources resolve to /api; keeping the first.",
+    ]);
   });
 
   it("disambiguates slugs when distinct routes slugify identically", () => {
@@ -344,6 +351,24 @@ describe("parse.parseSpec", () => {
 
   it("throws on a missing spec", async () => {
     await expect(parseSpec("nope.json", "/does/not/exist")).rejects.toThrow();
+  });
+
+  it("rejects a readable file that isn't an OpenAPI document", async () => {
+    // Empty file, YAML scalar, and YAML list all normalize to a null
+    // specification; without the guard they crash later with a raw TypeError.
+    const dir = await mkdtemp(join(tmpdir(), "blume-openapi-"));
+    await writeFile(join(dir, "empty.yaml"), "");
+    await writeFile(join(dir, "scalar.yaml"), "just some prose\n");
+    await writeFile(join(dir, "list.yaml"), "- a\n- b\n");
+    for (const file of ["empty.yaml", "scalar.yaml", "list.yaml"]) {
+      // oxlint-disable-next-line no-await-in-loop -- sequential assertions
+      await expect(parseSpec(file, dir)).rejects.toThrow(InvalidSpecError);
+      // oxlint-disable-next-line no-await-in-loop -- sequential assertions
+      await expect(parseSpec(file, dir)).rejects.toThrow(
+        /is not a valid OpenAPI document/u
+      );
+    }
+    await rm(dir, { force: true, recursive: true });
   });
 
   it("fetches and parses a remote spec, and throws on a bad response", async () => {
@@ -816,6 +841,84 @@ describe("source.openApiSource", () => {
     await rm(dir, { force: true, recursive: true });
   });
 
+  it("warns when a parsed spec yields zero operations (empty reference)", async () => {
+    // A document with no `paths` (a config file that parses as YAML, say)
+    // builds successfully — but the reference tab would be silently empty.
+    const dir = await tempSpec({
+      info: { title: "Empty", version: "1" },
+      openapi: "3.1.0",
+      paths: {},
+    });
+    const reference = {
+      basePath: "",
+      display: { codeSamples: [], expandSchemas: false },
+      kind: "openapi" as const,
+      label: "API",
+      renderer: "blume" as const,
+      route: "/api",
+      slug: "api",
+      spec: "spec.json",
+    };
+    const { diagnostics, entries } = await openApiSource(
+      [reference],
+      ctx(dir)
+    ).load();
+    // The overview page still renders; only the operations are missing.
+    expect(entries.map((entry) => entry.ref)).toStrictEqual(["api/index.mdx"]);
+    expect(diagnostics[0]?.code).toBe("BLUME_OPENAPI_EMPTY");
+    expect(diagnostics[0]?.severity).toBe("warning");
+    expect(diagnostics[0]?.message).toContain('"spec.json"');
+    expect(diagnostics[0]?.message).toContain("/api");
+    await rm(dir, { force: true, recursive: true });
+  });
+
+  it("suggests fixing the document (not reachability) for an invalid spec file", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "blume-openapi-src-"));
+    await writeFile(join(dir, "README.md"), "# Not a spec\n");
+    const reference = {
+      basePath: "",
+      display: { codeSamples: [], expandSchemas: false },
+      kind: "openapi" as const,
+      label: "API",
+      renderer: "blume" as const,
+      route: "/api",
+      slug: "api",
+      spec: "README.md",
+    };
+    const { diagnostics } = await openApiSource([reference], ctx(dir)).load();
+    expect(diagnostics[0]?.code).toBe("BLUME_OPENAPI_UNAVAILABLE");
+    expect(diagnostics[0]?.message).toContain(
+      "is not a valid OpenAPI document"
+    );
+    expect(diagnostics[0]?.suggestion).toContain("Point the spec at");
+    expect(diagnostics[0]?.suggestion).not.toContain("reachable");
+    await rm(dir, { force: true, recursive: true });
+  });
+
+  it("surfaces recorded route collisions as warning diagnostics", async () => {
+    const dir = await tempSpec(SPEC_3_1);
+    const reference = {
+      basePath: "",
+      collisions: [
+        "Two API reference sources resolve to /api; keeping the first.",
+      ],
+      display: { codeSamples: [], expandSchemas: false },
+      kind: "openapi" as const,
+      label: "API",
+      renderer: "blume" as const,
+      route: "/api",
+      slug: "api",
+      spec: "spec.json",
+    };
+    const { diagnostics } = await openApiSource([reference], ctx(dir)).load();
+    expect(diagnostics[0]?.code).toBe("BLUME_OPENAPI_ROUTE_COLLISION");
+    expect(diagnostics[0]?.severity).toBe("warning");
+    expect(diagnostics[0]?.message).toBe(
+      "Two API reference sources resolve to /api; keeping the first."
+    );
+    await rm(dir, { force: true, recursive: true });
+  });
+
   const missingReference = {
     basePath: "",
     display: { codeSamples: [], expandSchemas: false },
@@ -872,7 +975,7 @@ describe("source.openApiSource", () => {
         Response.json({
           info: { title: "Remote", version: "1" },
           openapi: "3.0.0",
-          paths: {},
+          paths: { "/ping": { get: { responses: { "200": {} } } } },
         }),
       ]).fetch;
       const primed = await openApiSource([reference], sctx).load();

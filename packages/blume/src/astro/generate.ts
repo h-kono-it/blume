@@ -466,16 +466,24 @@ export const detectNeedsReact = async (root: string): Promise<boolean> => {
   return matches.length > 0;
 };
 
+/** Block math (`$$…$$`) or an explicitly authored `<Math …>` component. */
+const containsMath = (content: string): boolean =>
+  content.includes("$$") || content.includes("<Math");
+
 /**
- * Detect whether the project authors block math (`$$…$$`) in any `.mdx`. Drives
- * whether the generated runtime imports the `<Math>` component and KaTeX's
- * stylesheet, so a math-free site ships no KaTeX CSS. Math parsing itself is
- * always on but block-only, so a literal `$$` in source is a necessary
- * condition — no false negatives. A stray `$$` (e.g. inside a code fence) merely
- * over-includes the idempotent import, which is harmless.
+ * Detect whether the project can render math: block math (`$$…$$`) or an
+ * explicit `<Math>` tag in any local `.md`/`.mdx`, or in staged (non-filesystem)
+ * source bodies. Drives whether the generated runtime imports the `<Math>`
+ * component and KaTeX's stylesheet, so a math-free site ships no KaTeX CSS.
+ * Math parsing itself is always on but block-only, so one of those literals is
+ * a necessary condition — no false negatives. A stray `$$` (e.g. inside a code
+ * fence) merely over-includes the idempotent import, which is harmless.
  */
-export const detectUsesMath = async (root: string): Promise<boolean> => {
-  const files = await glob(["**/*.mdx"], {
+export const detectUsesMath = async (
+  root: string,
+  staged: Iterable<string> = []
+): Promise<boolean> => {
+  const files = await glob(["**/*.{md,mdx}"], {
     cwd: root,
     ignore: ["**/node_modules/**", "**/.blume/**", "**/dist/**"],
     onlyFiles: true,
@@ -483,7 +491,7 @@ export const detectUsesMath = async (root: string): Promise<boolean> => {
   const contents = await Promise.all(
     files.map((file) => readOptional(join(root, file)))
   );
-  return contents.some((content) => content.includes("$$"));
+  return [...contents, ...staged].some(containsMath);
 };
 
 const writeIfChanged = async (
@@ -1077,6 +1085,10 @@ export const generateRuntime = async (
   const askEnabled = config.ai.ask?.enabled ?? false;
   const exportPdf = config.export.pdf;
   const exportEpub = config.export.epub;
+  // Staged (non-filesystem) sources materialize into `.blume/content`; keyed by
+  // entryId so i18n duplicates of one entry write a single file. Collected here
+  // so math detection also sees staged bodies (they never live under root).
+  const staged = collectStaged(project);
   // Statically analyze `components.ts` overrides (never executed): drives the
   // `islands` group, hydration on layout/mdx overrides, string-path resolution,
   // and the "framework component with no client mode" diagnostic. Independent of
@@ -1093,7 +1105,7 @@ export const generateRuntime = async (
   ] = await Promise.all([
     context.pagesRoot ? discoverPages(context.pagesRoot) : Promise.resolve([]),
     detectNeedsReact(context.root),
-    detectUsesMath(context.root),
+    detectUsesMath(context.root, staged.values()),
     readOptional(context.themeFile),
     readOptional(examplesCssFile(context.root, config)),
     discoverIslands(context.root),
@@ -1136,9 +1148,6 @@ export const generateRuntime = async (
   const mcp = planMcp(project, srcDir, pages);
   pages.push(...mcp.discoveryPages);
 
-  // Staged (non-filesystem) sources materialize into `.blume/content`; keyed by
-  // entryId so i18n duplicates of one entry write a single file.
-  const staged = collectStaged(project);
   const hasStaged = staged.size > 0;
   // Only emit a project-scanning `docs` collection when a filesystem source
   // actually feeds it. An all-staged project (openapi/notion/…) has only staged

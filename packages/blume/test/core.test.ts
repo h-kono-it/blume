@@ -645,6 +645,8 @@ describe("sitemap — custom pages and generated routes", () => {
       writeFile(join(pagesRoot, "about.astro"), "<h1>about</h1>"),
       writeFile(join(pagesRoot, "blog", "[slug].astro"), "<h1>post</h1>"),
       writeFile(join(pagesRoot, "_partial.astro"), "<h1>private</h1>"),
+      writeFile(join(pagesRoot, "404.astro"), "<h1>not found</h1>"),
+      writeFile(join(pagesRoot, "500.astro"), "<h1>error</h1>"),
     ]);
   });
 
@@ -660,6 +662,16 @@ describe("sitemap — custom pages and generated routes", () => {
     expect(xml).toContain("<loc>https://example.com/about</loc>");
     expect(xml).not.toContain("slug");
     expect(xml).not.toContain("_partial");
+  });
+
+  it("omits user-authored 404/500 error pages", () => {
+    const pages = [makePage({ id: "nf", route: "/404", title: "Not Found" })];
+    const xml = buildSitemap(makeProject(pages, {}, { pagesRoot })) ?? "";
+    // Neither the custom `.astro` error pages nor a `404.md` content override
+    // is a crawlable destination.
+    expect(xml).not.toContain("/404");
+    expect(xml).not.toContain("/500");
+    expect(xml).toContain("<loc>https://example.com/about</loc>");
   });
 
   it("emits a single entry when a custom page and a content route collide", () => {
@@ -812,6 +824,28 @@ describe("agent-readability.json", () => {
       markdown: { pattern: "/{route}.md" },
     });
     expect(artifacts.sitemap).toBeUndefined();
+  });
+
+  it("layers deployment.base onto root-relative URLs without a site", () => {
+    const manifest = buildAgentReadability(
+      makeProject([], {
+        ai: { ask: { enabled: true }, llmsTxt: true },
+        deployment: { base: "/docs" },
+        mcp: { enabled: true },
+      })
+    );
+    // Without a site the artifacts are still served under the base subpath, so
+    // bare root-relative paths (`/llms.txt`) would 404 (the mcp.json convention).
+    expect(manifest?.artifacts).toMatchObject({
+      askApi: "/docs/api/ask",
+      llmsFullTxt: "/docs/llms-full.txt",
+      llmsTxt: "/docs/llms.txt",
+      markdown: { pattern: "/docs/{route}.md" },
+      mcp: {
+        discovery: "/docs/.well-known/mcp.json",
+        url: "/docs/mcp",
+      },
+    });
   });
 });
 

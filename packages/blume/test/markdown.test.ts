@@ -682,12 +682,16 @@ describe("inlineCodeHighlightPlugin", () => {
     expect(result).toBeUndefined();
   });
 
-  it("leaves inline code with an unknown language untouched", async () => {
+  it("strips the marker and falls back to plain code for an unknown language", async () => {
+    // A typo'd language must not leak the literal `{:lang}` marker into the
+    // rendered page: the marker is stripped and the code stays unhighlighted.
     const result = await visit(
-      { type: "element" },
+      { tagName: "code", type: "element" },
       inlineCtx(undefined, "x{:notalang}")
     );
-    expect(result).toBeUndefined();
+    expect(result?.tagName).toBe("code");
+    expect(result?.children).toStrictEqual([{ type: "text", value: "x" }]);
+    expect(result?.properties).toBeUndefined();
   });
 });
 

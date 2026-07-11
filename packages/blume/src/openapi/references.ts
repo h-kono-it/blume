@@ -44,6 +44,11 @@ export interface ReferenceSource {
   theme?: string;
   /** Display options carried through to the Blume renderer. */
   display: ReferenceDisplay;
+  /**
+   * Warnings recorded while deduping — another source's route collided with
+   * this one and was dropped. Surfaced as diagnostics when the source loads.
+   */
+  collisions?: string[];
 }
 
 const NON_SLUG = /[^a-z0-9]+/gu;
@@ -168,19 +173,24 @@ export const referenceTabs = (config: ResolvedConfig): NavTab[] =>
 /**
  * Accept one resolved reference into the deduped Blume-rendered set, or return
  * null to skip it. Mutates `seen`/`usedSlugs` so repeated routes/slugs collapse.
+ * A dropped route collision is recorded on the kept reference (mirroring the
+ * Scalar path's warning) — losing a whole spec's pages must not be silent.
  */
 const blumeReferenceOf = (
   ref: ReferenceSource,
-  seen: Set<string>,
+  seen: Map<string, ReferenceSource>,
   usedSlugs: Set<string>
 ): ReferenceSource | null => {
   if (ref.kind !== "openapi" || ref.renderer !== "blume") {
     return null;
   }
-  if (seen.has(ref.route)) {
+  const kept = seen.get(ref.route);
+  if (kept) {
+    (kept.collisions ??= []).push(
+      `Two API reference sources resolve to ${ref.route}; keeping the first.`
+    );
     return null;
   }
-  seen.add(ref.route);
   // Distinct routes can slugify identically (`/api/v1` and `/api-v1` both
   // yield `api-v1`). The slug keys the `blume:openapi` data module, so a
   // collision would let one spec silently overwrite the other while the
@@ -192,12 +202,16 @@ const blumeReferenceOf = (
     n += 1;
   }
   usedSlugs.add(slug);
-  return slug === ref.slug ? ref : { ...ref, slug };
+  const accepted = slug === ref.slug ? ref : { ...ref, slug };
+  // Keep the accepted object (not the original) so a later collision's warning
+  // lands on the reference the caller actually receives.
+  seen.set(ref.route, accepted);
+  return accepted;
 };
 
 /** Blume-rendered OpenAPI references, deduped by route (first wins). */
 export const blumeReferences = (config: ResolvedConfig): ReferenceSource[] => {
-  const seen = new Set<string>();
+  const seen = new Map<string, ReferenceSource>();
   const usedSlugs = new Set<string>();
   const result: ReferenceSource[] = [];
   for (const ref of resolveReferences(config)) {

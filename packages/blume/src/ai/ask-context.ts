@@ -124,8 +124,9 @@ const lastUserMessage = (messages: AskMessage[]): string => {
  * where "How does Ask AI work?" retrieves the right page but only sees its
  * opening paragraph. This centers the window on the densest cluster of query
  * terms so the injected text is the part that actually answers the question.
+ * Exported for testing; {@link createAskContext} is the runtime entry point.
  */
-const relevantExcerpt = (
+export const relevantExcerpt = (
   content: string,
   query: string,
   max: number
@@ -177,7 +178,11 @@ const relevantExcerpt = (
       best = start;
     }
   }
-  return withEllipsis(Math.max(0, best - EXCERPT_LEAD));
+  // Cap the lead-in at half the window: under a tight remaining budget `max`
+  // can be smaller than EXCERPT_LEAD, and an uncapped `best - EXCERPT_LEAD`
+  // start would end the slice before the very match it centered on.
+  const lead = Math.min(EXCERPT_LEAD, Math.floor(max / 2));
+  return withEllipsis(Math.max(0, best - lead));
 };
 
 /**

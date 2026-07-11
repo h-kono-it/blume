@@ -4,6 +4,18 @@
 
 ### Minor Changes
 
+- 7799732: Remove the migration tooling and the Mintlify-compatibility surface. This is a breaking change for projects upgrading from 0.5.x/0.6.x.
+
+  **Migration tooling is gone for now.** `blume migrate <tool>`, the automatic `docs.json` bridge mode, and the `mintlify` content source are removed; a migration path will return in a future release.
+
+  **Icons are Lucide-only.** The FontAwesome and Tabler icon sets, the `icons.library` config, the `iconType` frontmatter/prop, and the `fa6-*`/`tabler` name prefixes are removed. Use bare Lucide names everywhere an icon is accepted.
+
+  **Removed config fields** (validate-but-never-rendered Mintlify-compat): `banner.color`, `banner.type`, top-level `favicon` (favicons are detected by filename — drop `icon`/`favicon.{svg,png,ico}` in the project root or `public/`), `navigation.chromeVariants`, `icons`, `seo.metatags`, `search.prompt`, `variables`, `theme.backgroundDecoration`, and `content.assets` (move root asset dirs into `public/` — Astro serves it at the site root).
+
+  **Removed frontmatter keys** (unknown keys are build errors): `sidebarTitle` (use `sidebar.label`), `tag` (use `sidebar.badge`), `mode`, `public`, `rss`, `hideApiMarker`, `hideFooterPagination`, `groups`, `keywords`, and `iconType`.
+
+  **Removed components:** `<Warning>` (use the `:::warning` directive) and the `<ParamField>`/`<ResponseField>`/`<RequestField>`/`<ApiField>` field family (use `<TypeTable>`, or the OpenAPI reference for spec'd APIs).
+
 - 331c6cb: Isolate `<Component />` previews from the docs CSS and let projects style them with their own design tokens. Previews used to render inline in the page, where the theme's prose styles (margins, typography, link/heading rules pierce `not-prose` by design) bled into the example — so a shadcn button previewed with docs styling on top. Each example now renders in its own generated route (`{basePath}/blume-examples/<path>`) embedded as an iframe: the frame boundary keeps every docs style out, and the frame loads a dedicated Tailwind entry with just preflight, utilities scanned from the example files and their imports, and Blume's design tokens (so `bg-background`-style classes still follow the site palette). The frame mirrors the site's light/dark toggle live, setting both `data-theme` and a `.dark` class so either dark-mode convention works. To bring your own tokens — e.g. shadcn variables or `@theme` mappings — point the new `examples.css` config at a stylesheet; it's injected into every frame after Blume's defaults. The existing string form stays as shorthand for `examples.source`: `examples: { source: "examples", css: "examples/theme.css" }`.
 - 24f63c2: Enable the React Compiler automatically whenever React is used. Islands and other React components are now auto-memoized by `babel-plugin-react-compiler` (which ships with Blume — nothing to install), so hand-written `useMemo`/`useCallback` is no longer needed. Opt out with `react: { compiler: false }` in `blume.config.ts`.
 

@@ -17,12 +17,15 @@ type Adapter = NonNullable<ResolvedConfig["deployment"]["adapter"]>;
  *
  * `vercel` writes a Build Output API v3 tree at `.vercel/output`; only that
  * subtree is moved, so a `vercel pull`-ed `.vercel/project.json` sitting at the
- * project root survives the relocation. `netlify` owns its whole `.netlify`
- * dir. `node` and `cloudflare` emit into `dist/` (already at the project root),
- * so they are absent here and need no relocation.
+ * project root survives the relocation. `netlify` writes a Frameworks API tree
+ * at `.netlify/v1` (its `.netlify/build` sibling is only the intermediate SSR
+ * bundle, already traced into `v1/functions`); only `v1` is moved, so the
+ * `.netlify/state.json` written by `netlify link` survives too. `node` and
+ * `cloudflare` emit into `dist/` (already at the project root), so they are
+ * absent here and need no relocation.
  */
 export const ADAPTER_OUTPUT_PATHS: Partial<Record<Adapter, string>> = {
-  netlify: ".netlify",
+  netlify: ".netlify/v1",
   vercel: ".vercel/output",
 };
 
@@ -76,7 +79,7 @@ export const surfaceAdapterOutput = async (
   await cp(from, to, { recursive: true });
   await rm(from, { force: true, recursive: true });
   // The `.gitignore` entry is the surfaced top-level dir (`.vercel`/`.netlify`),
-  // never the moved sub-path — Vercel's own `.vercel/project.json` lives there
-  // too and must also be ignored.
+  // never the moved sub-path — the platform's own state (`.vercel/project.json`,
+  // `.netlify/state.json`) lives there too and must also be ignored.
   return { from, ignore: `${rel.split("/")[0]}/`, moved: true, to };
 };

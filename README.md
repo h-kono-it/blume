@@ -2,7 +2,7 @@
 
 [![npm version](https://img.shields.io/npm/v/blume.svg)](https://www.npmjs.com/package/blume) [![npm downloads](https://img.shields.io/npm/dm/blume.svg)](https://www.npmjs.com/package/blume) [![license](https://img.shields.io/npm/l/blume.svg)](./LICENSE) [![node](https://img.shields.io/node/v/blume.svg)](https://nodejs.org)
 
-**Documentation for everything you build.** Fast, AI-ready, and zero-config. Drop Markdown into a folder and ship a production-grade docs site, no app boilerplate to write or maintain. Free and open source, forever.
+**Documentation for everything you build.** Fast, AI-ready, and zero-config. Free and open source, forever.
 
 Drop Markdown or MDX into a folder, run `blume dev`, and get a production-grade docs site — navigation, search, theming, Open Graph images, and a rich component library — with no app boilerplate to write or maintain. Blume generates and drives a hidden Astro project for you; run `blume eject` to a standalone Astro app whenever you want full control.
 
@@ -100,7 +100,7 @@ bun run typecheck
 bun run test
 ```
 
-See [CONTRIBUTING.md](./.github/CONTRIBUTING.md) for architecture and conventions.
+See [CONTRIBUTING.md](https://github.com/haydenbleasel/blume/blob/main/.github/CONTRIBUTING.md) for architecture and conventions.
 
 ## License
 

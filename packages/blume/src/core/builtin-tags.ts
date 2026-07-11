@@ -26,6 +26,8 @@ export const BUILTIN_MDX_TAGS = new Set<string>([
   "Frame",
   "GithubInfo",
   "Icon",
+  // Conditionally imported by the catch-all, but `detectUsesMath` matches any
+  // authored `<Math`, so it is always wired wherever it can appear.
   "Math",
   "Operation",
   "Panel",

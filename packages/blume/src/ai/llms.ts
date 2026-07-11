@@ -5,14 +5,13 @@ import { readEntryText } from "../core/sources/read.ts";
 import type { PageRecord } from "../core/types.ts";
 import { applyAgentVisibility } from "./visibility.ts";
 
-// Routes carry `basePath`; a `deployment.base` subdirectory is layered on top so
-// the emitted URL matches where the page is served. Encoded like the sitemap:
-// a route with spaces or non-ASCII must still yield a valid Markdown link.
+// Routes carry `basePath`; a `deployment.base` subdirectory is layered on top —
+// with or without a `site` (the mcp.json convention) — so the emitted URL
+// matches where the page is served. Encoded like the sitemap: a route with
+// spaces or non-ASCII must still yield a valid Markdown link.
 const pageUrl = (route: string, site?: string, base = ""): string => {
-  if (!site) {
-    return encodeURI(route);
-  }
-  return encodeURI(`${site.replace(/\/$/u, "")}${withBasePath(base, route)}`);
+  const path = withBasePath(base, route);
+  return encodeURI(site ? `${site.replace(/\/$/u, "")}${path}` : path);
 };
 
 // Drafts, hidden, and `noindex` pages are excluded, matching the sitemap.

@@ -46,12 +46,18 @@ mock.module("react", () => ({
   },
 }));
 
+/** The result shape the mocked provider returns for `query`. */
+const hitFor = (query: string) => ({
+  hits: [{ excerpt: "", title: query, url: "/hit" }],
+  sections: [],
+});
+
 // Both call sites in `useSearch` await their results, so plain returns work.
+// The implementation is swappable so the race tests can control when (and in
+// which order) each query's response lands.
+let searchImpl: (query: string) => unknown = hitFor;
 mock.module("blume:search-client", () => ({
-  createSearch: () => (query: string) => ({
-    hits: [{ excerpt: "", title: query, url: "/hit" }],
-    sections: [],
-  }),
+  createSearch: () => (query: string) => searchImpl(query),
 }));
 
 /** Run one "render": reset the cell cursor, call the hook, flush effects. */
@@ -169,6 +175,66 @@ describe("useSearch", () => {
       hits: [{ excerpt: "", title: "blume", url: "/hit" }],
       sections: [],
     });
+  });
+
+  it("reports loading during the initial client creation", async () => {
+    const { search } = freshRender(useSearch);
+    const pending = search("astro");
+    // `loading` flips on synchronously, before the lazy client import — the
+    // first search's index download must not show as idle.
+    expect(render(useSearch).loading).toBe(true);
+    await pending;
+    expect(render(useSearch).loading).toBe(false);
+  });
+
+  it("ignores a stale response that lands after a newer query's", async () => {
+    const a = Promise.withResolvers<unknown>();
+    const ab = Promise.withResolvers<unknown>();
+    searchImpl = (query) => (query === "a" ? a.promise : ab.promise);
+    try {
+      const { search } = freshRender(useSearch);
+      const first = search("a");
+      const second = search("ab");
+
+      // The newer query answers first and wins.
+      ab.resolve(hitFor("ab"));
+      await second;
+      expect(render(useSearch).results).toStrictEqual(hitFor("ab"));
+      expect(render(useSearch).loading).toBe(false);
+
+      // The stale response lands afterwards: it must not clobber the newer
+      // results or re-touch `loading` (it still resolves its own caller).
+      a.resolve(hitFor("a"));
+      await expect(first).resolves.toStrictEqual(hitFor("a"));
+      expect(render(useSearch).results).toStrictEqual(hitFor("ab"));
+      expect(render(useSearch).loading).toBe(false);
+    } finally {
+      searchImpl = hitFor;
+    }
+  });
+
+  it("keeps loading while a newer query is still in flight", async () => {
+    const a = Promise.withResolvers<unknown>();
+    const ab = Promise.withResolvers<unknown>();
+    searchImpl = (query) => (query === "a" ? a.promise : ab.promise);
+    try {
+      const { search } = freshRender(useSearch);
+      const first = search("a");
+      const second = search("ab");
+
+      // The stale query settles first: its `finally` must not clear the
+      // loading state the in-flight newer query still owns.
+      a.resolve(hitFor("a"));
+      await first;
+      expect(render(useSearch).loading).toBe(true);
+
+      ab.resolve(hitFor("ab"));
+      await second;
+      expect(render(useSearch).loading).toBe(false);
+      expect(render(useSearch).results).toStrictEqual(hitFor("ab"));
+    } finally {
+      searchImpl = hitFor;
+    }
   });
 });
 

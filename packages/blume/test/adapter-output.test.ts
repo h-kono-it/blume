@@ -92,12 +92,19 @@ describe("surfaceAdapterOutput", () => {
     expect(existsSync(join(root, ".vercel", "project.json"))).toBe(true);
   });
 
-  it("moves the whole .netlify dir and ignores it", async () => {
+  it("moves only .netlify/v1, preserving netlify link state", async () => {
     const root = await mkdtemp(join(tmpdir(), "blume-surface-"));
     await mkdir(join(root, ".blume", ".netlify", "v1"), { recursive: true });
     await writeFile(
       join(root, ".blume", ".netlify", "v1", "config.json"),
       "{}",
+      "utf-8"
+    );
+    // A `netlify link`-ed state.json must survive the move.
+    await mkdir(join(root, ".netlify"), { recursive: true });
+    await writeFile(
+      join(root, ".netlify", "state.json"),
+      '{"siteId":"abc"}',
       "utf-8"
     );
 
@@ -107,13 +114,17 @@ describe("surfaceAdapterOutput", () => {
     );
 
     expect(result).toEqual({
-      from: join(root, ".blume", ".netlify"),
+      from: join(root, ".blume", ".netlify", "v1"),
       ignore: ".netlify/",
       moved: true,
-      to: join(root, ".netlify"),
+      to: join(root, ".netlify", "v1"),
     });
     expect(existsSync(join(root, ".netlify", "v1", "config.json"))).toBe(true);
-    expect(existsSync(join(root, ".blume", ".netlify"))).toBe(false);
+    expect(existsSync(join(root, ".blume", ".netlify", "v1"))).toBe(false);
+    // The linked state.json is untouched — only `.netlify/v1` moved.
+    expect(await readFile(join(root, ".netlify", "state.json"), "utf-8")).toBe(
+      '{"siteId":"abc"}'
+    );
   });
 
   it("replaces a stale destination bundle", async () => {

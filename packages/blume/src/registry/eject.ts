@@ -43,6 +43,7 @@ import {
   searchEndpointTemplate,
   staticJsonEndpointTemplate,
 } from "../astro/templates.ts";
+import { packageRoot } from "../core/package-root.ts";
 import { scanProject } from "../core/project-graph.ts";
 import type { BlumeProject } from "../core/project-graph.ts";
 import type { ProjectContext } from "../core/types.ts";
@@ -60,6 +61,39 @@ import { buildThemeCss } from "../theme/palette.ts";
 import { twoslashCss } from "../theme/twoslash.ts";
 
 const toPosix = (path: string): string => path.split("\\").join("/");
+
+/** The portable `@source` guess: blume in the project's own node_modules. */
+const LOCAL_BLUME_SOURCE = "../../node_modules/blume/src/**/*.{astro,ts,tsx}";
+
+/**
+ * The `@source` glob pointing Tailwind at Blume's own source, relative to the
+ * ejected `src/generated/app.css`. The project-local `node_modules/blume` is
+ * preferred (portable, and under pnpm the symlink survives version bumps), but
+ * hoisted installs (npm/yarn workspaces lift blume into the workspace root's
+ * node_modules) would make that guess match nothing and silently drop utility
+ * classes — so fall back to the package's real installed location, and when
+ * even that fails, warn instead of failing silently.
+ *
+ * Exported for testing.
+ */
+export const blumeSourceGlob = (
+  root: string,
+  genDir: string,
+  resolveBlumeRoot: () => string = packageRoot
+): string => {
+  if (existsSync(join(root, "node_modules", "blume"))) {
+    return LOCAL_BLUME_SOURCE;
+  }
+  try {
+    const src = join(resolveBlumeRoot(), "src");
+    return `${toPosix(relative(genDir, src))}/**/*.{astro,ts,tsx}`;
+  } catch {
+    console.warn(
+      'blume: could not locate the installed blume package; src/generated/app.css keeps its default `@source "../../node_modules/blume/..."` glob. If blume is hoisted elsewhere, point that glob at its install location or Blume\'s utility classes will be missing.'
+    );
+    return LOCAL_BLUME_SOURCE;
+  }
+};
 
 /** The `blume:openapi` payload for the ejected app (`{}` when none). */
 const ejectOpenApiData = (project: BlumeProject): unknown => {
@@ -390,9 +424,11 @@ export const eject = async (root: string): Promise<string[]> => {
     {
       content: tailwindEntryTemplate({
         configTokens: buildThemeCss(config.theme),
-        // Relative paths from src/generated/app.css keep the ejected app portable.
+        // Relative paths from src/generated/app.css keep the ejected app
+        // portable; the blume glob resolves the real install location when
+        // the package is hoisted out of the project's own node_modules.
         sources: [
-          "../../node_modules/blume/src/**/*.{astro,ts,tsx}",
+          blumeSourceGlob(root, genDir),
           "../../**/*.{astro,mdx,ts,tsx}",
         ],
         twoslashCss: twoslashCss(),

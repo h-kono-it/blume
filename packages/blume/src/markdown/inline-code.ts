@@ -104,8 +104,13 @@ export const inlineCodeHighlightPlugin = (
           type: "element",
         };
       } catch {
-        // Unknown language or load failure: leave the code unhighlighted
-        // (falling through returns undefined, so the node is left as-is).
+        // Unknown language or load failure: still strip the marker — the
+        // literal `{:lang}` must not ship in the page — and fall back to
+        // plain, unhighlighted inline code.
+        return {
+          ...node,
+          children: [{ type: "text", value: parsed.code }],
+        };
       }
     },
   },

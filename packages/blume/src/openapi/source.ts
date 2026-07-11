@@ -10,7 +10,7 @@ import type {
 import type { Diagnostic } from "../core/types.ts";
 import { extractOperations } from "./model.ts";
 import type { ApiOperationRef, ApiSpecData, OpenApiData } from "./model.ts";
-import { parseSpec } from "./parse.ts";
+import { InvalidSpecError, parseSpec } from "./parse.ts";
 import type { ReferenceSource } from "./references.ts";
 import { operationMdx, overviewMdx } from "./render-mdx.ts";
 import type { RenderedPage } from "./render-mdx.ts";
@@ -134,6 +134,20 @@ export const openApiSource = (
             message: `In OpenAPI spec "${reference.spec}": ${message}`,
             severity: "warning" as const,
           })),
+          // A document with no operations (say, a config file that happens to
+          // parse as YAML) would otherwise build a nav tab onto an empty
+          // reference with no hint why.
+          ...(operations.length === 0
+            ? [
+                {
+                  code: "BLUME_OPENAPI_EMPTY",
+                  message: `OpenAPI spec "${reference.spec}" for ${reference.route} declares no operations; its API reference is empty.`,
+                  severity: "warning" as const,
+                  suggestion:
+                    "Check the spec points at an OpenAPI document with operations under `paths`.",
+                },
+              ]
+            : []),
         ],
         entries: specEntries(spec, operations),
         slug: reference.slug,
@@ -147,8 +161,12 @@ export const openApiSource = (
         // so fail loudly in build (blocks under --strict) while staying a warning
         // in dev so offline work still runs.
         severity: ctx.mode === "build" ? "error" : "warning",
+        // A readable-but-invalid file is a content problem, not a network one;
+        // only point at reachability for actual fetch/read failures.
         suggestion:
-          "Check the spec URL/path is reachable from the build environment; behind a proxy, set HTTP(S)_PROXY.",
+          error instanceof InvalidSpecError
+            ? "Point the spec at an OpenAPI document (a YAML or JSON file with an object at the top level)."
+            : "Check the spec URL/path is reachable from the build environment; behind a proxy, set HTTP(S)_PROXY.",
       };
     }
   };
@@ -156,7 +174,16 @@ export const openApiSource = (
   const load = async (): Promise<SourceLoadResult> => {
     const results = await Promise.all(references.map(loadReference));
     const entries: SourceEntry[] = [];
-    const diagnostics: Diagnostic[] = [];
+    // Route collisions recorded while deduping (see `blumeReferences`): a
+    // dropped source loses a whole spec's pages, so warn even when the kept
+    // spec loads cleanly.
+    const diagnostics: Diagnostic[] = references.flatMap((reference) =>
+      (reference.collisions ?? []).map((message) => ({
+        code: "BLUME_OPENAPI_ROUTE_COLLISION",
+        message,
+        severity: "warning" as const,
+      }))
+    );
     const data: OpenApiData = {};
     for (const result of results) {
       if ("severity" in result) {

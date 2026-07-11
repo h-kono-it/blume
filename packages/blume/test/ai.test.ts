@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 
 import { join } from "pathe";
 
-import { createAskContext } from "../src/ai/ask-context.ts";
+import { createAskContext, relevantExcerpt } from "../src/ai/ask-context.ts";
 import type { AskData } from "../src/ai/ask-context.ts";
 import { buildAskData } from "../src/ai/ask-data.ts";
 import { askBackendRuntimeDep, resolveAskBackend } from "../src/ai/ask.ts";
@@ -180,9 +180,9 @@ describe("buildLlmsFiles — visibility and encoding", () => {
   });
 });
 
-const sitelessProject = (): BlumeProject =>
+const sitelessProject = (config: Record<string, unknown> = {}): BlumeProject =>
   ({
-    config: blumeConfigSchema.parse({ title: "Docs" }),
+    config: blumeConfigSchema.parse({ title: "Docs", ...config }),
     graph: {
       pages: [makePage("a.md", "/a", "Alpha", { description: "First" })],
     },
@@ -195,6 +195,16 @@ describe("buildLlmsFiles — without a deployment site", () => {
     expect(index).toContain("- [Alpha](/a): First");
     expect(full).toContain("Source: /a");
     expect(index).not.toContain("https://");
+  });
+
+  it("layers deployment.base onto root-relative links", async () => {
+    // Pages are still served under the base subpath without a site, so a bare
+    // `/a` link would 404 (the sitemap/mcp.json convention).
+    const { full, index } = await buildLlmsFiles(
+      sitelessProject({ deployment: { base: "/docs" } })
+    );
+    expect(index).toContain("- [Alpha](/docs/a): First");
+    expect(full).toContain("Source: /docs/a");
   });
 });
 
@@ -552,6 +562,26 @@ describe("createAskContext", () => {
   });
 });
 
+describe("relevantExcerpt", () => {
+  it("keeps the match in view when the window is narrower than the lead-in", () => {
+    // A remaining context budget under EXCERPT_LEAD (160) shrinks the window
+    // below the lead-in; the uncapped `best - 160` start used to end the slice
+    // before the match, injecting an irrelevant lead-in snippet.
+    const content = `${"alpha ".repeat(120)}targetword closes the section. ${"tail ".repeat(60)}`;
+    const excerpt = relevantExcerpt(content, "targetword", 100);
+    expect(excerpt).toContain("targetword");
+    // At most the window plus the two ellipsis characters.
+    expect(excerpt.length).toBeLessThanOrEqual(102);
+  });
+
+  it("keeps the full lead-in when the window affords it", () => {
+    const content = `${"alpha ".repeat(120)}targetword closes the section. ${"tail ".repeat(60)}`;
+    const excerpt = relevantExcerpt(content, "targetword", 600);
+    // The 160-char lead-in of heading/sentence context survives intact.
+    expect(excerpt).toContain(`${"alpha ".repeat(26)}targetword`);
+  });
+});
+
 describe("resolveAskBackend", () => {
   it("defaults to the gateway backend when ask is unset", () => {
     expect(resolveAskBackend()).toStrictEqual({
@@ -672,6 +702,44 @@ describe("askEndpointTemplate", () => {
     expect(out).toContain('typeof m.content === "string"');
     expect(out).toContain("status: 400");
     expect(out).toContain("status: 500");
+  });
+
+  it("rejects a missing gateway credential up front and logs stream errors", () => {
+    const out = askEndpointTemplate(resolveAskBackend(), true);
+    // streamText defers provider/auth errors to stream consumption, so the
+    // handler's try/catch never sees a missing key: the guard must run before
+    // streamText or the client gets a 200 whose stream aborts mid-flight.
+    expect(out).toContain(
+      "if (!(process.env.AI_GATEWAY_API_KEY || process.env.VERCEL_OIDC_TOKEN))"
+    );
+    expect(out).toContain("Ask AI is not configured: set AI_GATEWAY_API_KEY");
+    expect(out.indexOf("Ask AI is not configured")).toBeLessThan(
+      out.indexOf("streamText({")
+    );
+    // Mid-stream provider errors are only observable via onError.
+    expect(out).toContain("onError({ error })");
+    expect(out).toContain('console.error("Ask AI provider error:", error);');
+  });
+
+  it("guards the provider key env var for non-gateway backends", () => {
+    const openrouter = askEndpointTemplate(
+      resolveAskBackend(askConfig({ provider: "openrouter" })),
+      true
+    );
+    expect(openrouter).toContain('if (!process.env["OPENROUTER_API_KEY"])');
+    expect(openrouter).toContain(
+      "Ask AI is not configured: set OPENROUTER_API_KEY."
+    );
+    expect(openrouter).not.toContain("AI_GATEWAY_API_KEY");
+
+    // The ungrounded branch builds its streamText call separately; it must
+    // carry the same onError logging.
+    const inkeep = askEndpointTemplate(
+      resolveAskBackend(askConfig({ provider: "inkeep" })),
+      false
+    );
+    expect(inkeep).toContain('if (!process.env["INKEEP_API_KEY"])');
+    expect(inkeep).toContain("onError({ error })");
   });
 
   it("leaves the Inkeep endpoint ungrounded (it runs its own retrieval)", () => {

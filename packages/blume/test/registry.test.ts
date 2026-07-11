@@ -3,9 +3,10 @@ import { existsSync, readFileSync } from "node:fs";
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 
-import { dirname, join } from "pathe";
+import { dirname, join, relative } from "pathe";
 
-import { eject } from "../src/registry/eject.ts";
+import { packageRoot } from "../src/core/package-root.ts";
+import { blumeSourceGlob, eject } from "../src/registry/eject.ts";
 import { findItem, packageSrc, registry } from "../src/registry/registry.ts";
 import { rewriteImports } from "../src/registry/rewrite-imports.ts";
 
@@ -127,6 +128,14 @@ describe("eject", () => {
     );
     expect(searchEndpoint).toContain("store-1");
 
+    // With no project-local node_modules/blume (a hoisted install), the
+    // app.css `@source` glob points at the package's real location instead of
+    // silently matching nothing.
+    const appCss = readFileSync(join(root, "src/generated/app.css"), "utf-8");
+    expect(appCss).toContain(
+      `@source "${relative(join(root, "src/generated"), join(packageRoot(), "src"))}/**/*.{astro,ts,tsx}";`
+    );
+
     // Every returned path was actually written.
     expect(files.length).toBeGreaterThan(0);
     expect(files.every((file) => existsSync(file))).toBe(true);
@@ -209,6 +218,48 @@ describe("eject", () => {
     expect(existsSync(join(root, "src/pages/404.astro"))).toBe(false);
     const astroConfig = readFileSync(join(root, "astro.config.mjs"), "utf-8");
     expect(astroConfig).toContain("pages/404.astro");
+  });
+});
+
+describe("blumeSourceGlob", () => {
+  const makeRoot = async (): Promise<string> => {
+    const root = await mkdtemp(join(tmpdir(), "blume-source-"));
+    ejectDirs.push(root);
+    return root;
+  };
+
+  it("keeps the portable glob when blume is in the project's node_modules", async () => {
+    const root = await makeRoot();
+    await mkdir(join(root, "node_modules", "blume"), { recursive: true });
+    expect(blumeSourceGlob(root, join(root, "src", "generated"))).toBe(
+      "../../node_modules/blume/src/**/*.{astro,ts,tsx}"
+    );
+  });
+
+  it("points at the real install location for a hoisted package", async () => {
+    const root = await makeRoot();
+    const glob = blumeSourceGlob(root, join(root, "src", "generated"), () =>
+      join(root, "..", "hoisted", "node_modules", "blume")
+    );
+    expect(glob).toBe(
+      "../../../hoisted/node_modules/blume/src/**/*.{astro,ts,tsx}"
+    );
+  });
+
+  it("warns and keeps the default glob when resolution fails", async () => {
+    const root = await makeRoot();
+    const warnings: string[] = [];
+    const originalWarn = console.warn;
+    console.warn = (...args: unknown[]) => warnings.push(args.join(" "));
+    try {
+      const glob = blumeSourceGlob(root, join(root, "src", "generated"), () => {
+        throw new Error("no package root");
+      });
+      expect(glob).toBe("../../node_modules/blume/src/**/*.{astro,ts,tsx}");
+      expect(warnings[0]).toContain("could not locate the installed blume");
+    } finally {
+      console.warn = originalWarn;
+    }
   });
 });
 

@@ -18,7 +18,7 @@ The core idea: **the framework _is_ the template.** There's no starter to clone 
 
 ## Quickstart
 
-Blume needs **Node.js 22 or newer**. From an empty or existing project:
+Blume needs **Node.js 22.12 or newer**. From an empty or existing project:
 
 ```bash
 npm i blume      # install the package
@@ -52,7 +52,7 @@ Navigation, search, and page metadata are inferred from your files as you add th
 
 - **Components** — callouts, cards, steps, tabs, accordions, badges, file trees, and parameter tables, usable in MDX with no imports.
 - **Local search** — Orama in dev and production; Pagefind is one flag away for large sites. No hosted index.
-- **AI** — `llms.txt`, raw Markdown URLs, Copy as Markdown, Open in chat, an Ask AI assistant, and a hosted MCP server.
+- **AI** — `llms.txt`, raw Markdown URLs, Copy as Markdown, Open in chat, an Ask AI assistant, and an MCP server endpoint served by the docs site itself.
 - **Navigation** — inferred from files, refined with `meta.ts` or config.
 - **SEO** — metadata, Open Graph images, RSS feeds, and JSON-LD.
 - **Customization** — component overrides, React islands, custom pages, theme tokens, and a source-component registry via `blume add`.

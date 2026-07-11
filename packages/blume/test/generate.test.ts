@@ -17,6 +17,7 @@ import {
   buildRuntimeData,
   collectStaged,
   detectNeedsReact,
+  detectUsesMath,
   ensureDepsLink,
   generateRuntime,
   pruneOrphans,
@@ -96,7 +97,7 @@ const writeProject = async (files: Record<string, string>): Promise<string> => {
   return root;
 };
 
-const STAGED_CONFIG = `export default {
+const stagedConfig = (body: string): string => `export default {
   content: {
     sources: [
       { root: "docs", type: "filesystem" },
@@ -107,9 +108,9 @@ const STAGED_CONFIG = `export default {
               diagnostics: [],
               entries: [
                 {
-                  body: { format: "mdx", text: "# Guide\\n" },
+                  body: { format: "mdx", text: ${JSON.stringify(body)} },
                   data: { title: "Guide" },
-                  raw: "---\\ntitle: Guide\\n---\\n# Guide\\n",
+                  raw: ${JSON.stringify(`---\ntitle: Guide\n---\n${body}`)},
                   ref: "guide.mdx",
                 },
               ],
@@ -124,10 +125,10 @@ const STAGED_CONFIG = `export default {
 };
 `;
 
-const scanStaged = async () =>
+const scanStaged = async (body = "# Guide\n") =>
   await scanProject(
     await writeProject({
-      "blume.config.ts": STAGED_CONFIG,
+      "blume.config.ts": stagedConfig(body),
       "docs/index.md": "# Home\n",
     })
   );
@@ -144,6 +145,35 @@ describe("detectNeedsReact", () => {
       "islands/Counter.tsx": "export default () => null;\n",
     });
     expect(await detectNeedsReact(root)).toBe(true);
+  });
+});
+
+describe("detectUsesMath", () => {
+  it("is false for a project with no math anywhere", async () => {
+    const root = await writeProject({ "docs/index.md": "# Home\n" });
+    expect(await detectUsesMath(root)).toBe(false);
+  });
+
+  it("sees block math in a plain .md file", async () => {
+    const root = await writeProject({
+      "docs/index.md": "# Home\n\n$$\na^2 + b^2 = c^2\n$$\n",
+    });
+    expect(await detectUsesMath(root)).toBe(true);
+  });
+
+  it("sees an explicit <Math> tag with no $$ anywhere", async () => {
+    const root = await writeProject({
+      "docs/index.mdx": '# Home\n\n<Math code="a^2" />\n',
+    });
+    expect(await detectUsesMath(root)).toBe(true);
+  });
+
+  it("sees math in staged source bodies the filesystem never holds", async () => {
+    const root = await writeProject({ "docs/index.md": "# Home\n" });
+    expect(await detectUsesMath(root, ["# Guide\n\n$$\nE = mc^2\n$$\n"])).toBe(
+      true
+    );
+    expect(await detectUsesMath(root, ["# Guide\n"])).toBe(false);
   });
 });
 
@@ -705,6 +735,25 @@ describe("generateRuntime", () => {
       "utf-8"
     );
     expect(contentConfig).toContain("const staged = defineCollection(");
+    // Nothing in this project authors math, so the catch-all skips <Math>.
+    const catchAll = await readFile(
+      join(out, "src/pages/[...slug].astro"),
+      "utf-8"
+    );
+    expect(catchAll).not.toContain("Math.astro");
+  });
+
+  it("wires <Math> when only a staged source authors block math", async () => {
+    // The staged body never exists under the project root, so the filesystem
+    // scan alone would miss it and the generated page map would omit <Math>.
+    const project = await scanStaged("# Guide\n\n$$\nE = mc^2\n$$\n");
+    const out = project.context.outDir;
+    await generateRuntime(project);
+    const catchAll = await readFile(
+      join(out, "src/pages/[...slug].astro"),
+      "utf-8"
+    );
+    expect(catchAll).toContain("Math.astro");
   });
 
   it("plans components.ts overrides and surfaces nav + component diagnostics", async () => {

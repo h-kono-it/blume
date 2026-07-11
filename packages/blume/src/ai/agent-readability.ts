@@ -32,7 +32,8 @@ const usagePolicy = (
  * agent-facing surface — llms.txt, the raw-Markdown mirrors, the MCP server,
  * Ask AI, sitemap, and feeds — so agents can discover and cite the docs without
  * scraping HTML. URLs are absolute when a `site` is configured and root-relative
- * otherwise. Returns null when the manifest is disabled.
+ * (still under `deployment.base`) otherwise. Returns null when the manifest is
+ * disabled.
  */
 export const buildAgentReadability = (
   project: BlumeProject
@@ -43,13 +44,13 @@ export const buildAgentReadability = (
   }
 
   const site = config.deployment.site ?? null;
-  // Every artifact is served under `deployment.base`; concatenate rather than
-  // `new URL()` so the subpath is preserved.
+  // Every artifact is served under `deployment.base` — with or without a
+  // `site`; concatenate rather than `new URL()` so the subpath is preserved.
   const deployBase = normalizeBasePath(config.deployment.base);
-  const abs = (path: string): string =>
-    site
-      ? `${site.replace(/\/+$/u, "")}${withBasePath(deployBase, path)}`
-      : path;
+  const abs = (path: string): string => {
+    const based = withBasePath(deployBase, path);
+    return site ? `${site.replace(/\/+$/u, "")}${based}` : based;
+  };
 
   const artifacts: Record<string, unknown> = {
     markdown: {

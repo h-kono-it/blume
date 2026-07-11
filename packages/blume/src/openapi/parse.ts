@@ -47,6 +47,19 @@ export interface ParsedSpec {
   warnings: string[];
 }
 
+/**
+ * The spec was read successfully but its contents aren't an OpenAPI document
+ * (an empty file, or YAML that parses to a scalar or list — say, a README
+ * pointed at by mistake). Kept distinct from read/fetch failures so callers
+ * can suggest fixing the file instead of checking reachability.
+ */
+export class InvalidSpecError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "InvalidSpecError";
+  }
+}
+
 /** Where and whether to cache a remote spec's text between runs. */
 export interface SpecFetchOptions {
   /** Dir for a last-good on-disk copy of a remote spec (offline fallback). */
@@ -235,5 +248,13 @@ export const parseSpec = async (
   const { text, warnings } = await readSpecText(spec, root, options);
   const normalized = normalize(text);
   const { specification } = upgrade(normalized);
+  // `normalize` yields undefined for anything that isn't a YAML/JSON mapping
+  // (empty file, scalar, list) and `upgrade(undefined)` yields a null
+  // specification — reject it here so the renderer never sees a non-document.
+  if (specification === null || typeof specification !== "object") {
+    throw new InvalidSpecError(
+      `${spec} is not a valid OpenAPI document (expected a YAML or JSON object).`
+    );
+  }
   return { document: specification as ApiDocument, warnings };
 };

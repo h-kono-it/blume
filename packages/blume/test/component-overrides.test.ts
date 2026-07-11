@@ -444,4 +444,26 @@ describe("planComponentSlots", () => {
     const plan = planComponentSlots(FILE, mdxAnalysis({ client: "load" }));
     expect(plan.wrappers[0]?.content).toContain("client:load");
   });
+
+  it("keeps wrapper filenames distinct for keys that sanitize alike", () => {
+    // "Foo.Bar" and "Foo_Bar" used to collapse to the same wrapper file, so
+    // generateRuntime raced two writes at one path and one key silently
+    // rendered the other's component.
+    const analysis = analyze(`
+      export default {
+        mdx: {
+          "Foo.Bar": { component: "./One.tsx", client: "load" },
+          "Foo_Bar": { component: "./Two.tsx", client: "load" },
+        },
+      };
+    `);
+    const plan = planComponentSlots(FILE, analysis);
+    const names = plan.wrappers.map((wrapper) => wrapper.name);
+    expect(new Set(names).size).toBe(2);
+    // "." is hex-escaped to _2e_ and "_" to _5f_, so the names stay injective.
+    expect(names).toContain("mdx-Foo_2e_Bar");
+    expect(names).toContain("mdx-Foo_5f_Bar");
+    expect(plan.module).toContain("./component-slots/mdx-Foo_2e_Bar.astro");
+    expect(plan.module).toContain("./component-slots/mdx-Foo_5f_Bar.astro");
+  });
 });

@@ -619,6 +619,31 @@ export const askEndpointTemplate = (
     content: m.content,
     role: m.role,
   }));`;
+  // `streamText` returns synchronously and defers provider/auth/network errors
+  // to stream consumption, so the handler's try/catch never sees them: without
+  // these the client gets a 200 whose stream aborts mid-flight and nothing is
+  // logged server-side. A missing credential is rejected up front as a real
+  // 500; everything else is at least logged via `onError`.
+  const keyCheck =
+    backend.kind === "gateway"
+      ? `  // The AI Gateway authenticates with an API key or Vercel's OIDC token.
+  if (!(process.env.AI_GATEWAY_API_KEY || process.env.VERCEL_OIDC_TOKEN)) {
+    return new Response(
+      "Ask AI is not configured: set AI_GATEWAY_API_KEY (or deploy on Vercel with OIDC).",
+      { status: 500 }
+    );
+  }`
+      : `  if (!process.env[${JSON.stringify(backend.apiKeyEnv)}]) {
+    return new Response(
+      ${JSON.stringify(`Ask AI is not configured: set ${backend.apiKeyEnv}.`)},
+      { status: 500 }
+    );
+  }`;
+  // Provider errors surface mid-stream, after the 200 is committed; this is
+  // the only place they can be observed server-side.
+  const onError = `      onError({ error }) {
+        console.error("Ask AI provider error:", error);
+      },`;
   const stream = grounded
     ? `    const system =
       (await ground(messages, body.page)) ??
@@ -627,15 +652,18 @@ export const askEndpointTemplate = (
       model: ${modelExpr},
       system,
       messages,
+${onError}
     });`
     : `    const result = streamText({
       model: ${modelExpr},
       system:
         "You are a helpful documentation assistant. Answer using the project's documentation.",
       messages,
+${onError}
     });`;
   const handler = `export const POST: APIRoute = async ({ request }) => {
 ${validate}
+${keyCheck}
   try {
 ${stream}
     return result.toTextStreamResponse();

@@ -45,6 +45,35 @@ describe(extractTypeTable, () => {
     expect(rows.find((row) => row.name === "verbose")?.required).toBe(false);
   });
 
+  it("marks every property of a Partial<...> mapped type as optional", async () => {
+    // Mapped-type members carry optionality on the checker's symbol, not on a
+    // question token of the backing declaration.
+    const rows = await extractTypeTable({
+      name: "Props",
+      source: `
+        interface Base { id: string; label?: string }
+        export type Props = Partial<Base>;
+      `,
+    });
+
+    expect(rows.map((row) => row.name).toSorted()).toEqual(["id", "label"]);
+    expect(rows.every((row) => !row.required)).toBe(true);
+  });
+
+  it("marks every property of a Required<...> mapped type as required", async () => {
+    // The inverse direction: the backing declaration keeps its `?`, but the
+    // mapped type strips the optionality.
+    const rows = await extractTypeTable({
+      name: "Props",
+      source: `
+        interface Base { id?: string; label?: string }
+        export type Props = Required<Base>;
+      `,
+    });
+
+    expect(rows.every((row) => row.required)).toBe(true);
+  });
+
   it("throws when the named type is missing", async () => {
     await expect(
       extractTypeTable({

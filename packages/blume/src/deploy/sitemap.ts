@@ -7,6 +7,15 @@ import { normalizeBasePath, withBasePath } from "../core/base-path.ts";
 import type { BlumeProject } from "../core/project-graph.ts";
 import { escapeXml } from "./xml.ts";
 
+/**
+ * Astro's reserved error routes. A user-authored override (`pages/404.astro`,
+ * `pages/500.astro`, or a `404.md` content page — see `writeNotFoundPage` in
+ * `astro/generate.ts`) is neither dynamic nor private, so it would otherwise
+ * be emitted — but error pages aren't crawlable destinations and must stay out
+ * of the sitemap.
+ */
+const ERROR_ROUTES = new Set(["/404", "/500"]);
+
 /** A `<lastmod>` element (W3C date) when the page has a valid modified date. */
 const lastmodTag = (value: string | undefined): string => {
   if (!value) {
@@ -49,7 +58,12 @@ export const buildSitemap = (project: BlumeProject): string | null => {
     urls.push(`  <url><loc>${loc}</loc>${lastmodTag(lastModified)}</url>`);
   };
   for (const page of project.graph.pages) {
-    if (page.meta.draft || page.meta.sidebar.hidden || page.meta.seo.noindex) {
+    if (
+      page.meta.draft ||
+      page.meta.sidebar.hidden ||
+      page.meta.seo.noindex ||
+      ERROR_ROUTES.has(page.route)
+    ) {
       continue;
     }
     pushUrl(withBasePath(deployBase, page.route), page.lastModified);
@@ -60,7 +74,9 @@ export const buildSitemap = (project: BlumeProject): string | null => {
   const userPages = project.context.pagesRoot
     ? discoverPagesSync(project.context.pagesRoot)
     : [];
-  const extraRoutes = customStaticRoutes(userPages);
+  const extraRoutes = customStaticRoutes(userPages).filter(
+    (route) => !ERROR_ROUTES.has(route)
+  );
   if (hasGeneratedChangelog(project, userPages)) {
     extraRoutes.push("/changelog");
   }

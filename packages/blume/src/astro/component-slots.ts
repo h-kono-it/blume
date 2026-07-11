@@ -91,8 +91,18 @@ ${clause}
 `;
 };
 
+/**
+ * A filesystem-safe, injective token for an override key. Distinct keys must
+ * never share a wrapper file ("Foo.Bar" vs "Foo_Bar" used to collide, racing
+ * the same temp file and silently rendering the wrong component), so every
+ * non-alphanumeric character is hex-escaped rather than collapsed — the same
+ * hardening as `exampleSlug` in templates.ts.
+ */
 const sanitize = (value: string): string =>
-  value.replaceAll(/[^A-Za-z0-9]/gu, "_");
+  value.replaceAll(
+    /[^A-Za-z0-9]/gu,
+    (char) => `_${(char.codePointAt(0) ?? 0).toString(16)}_`
+  );
 
 export const planComponentSlots = (
   componentsFile: string | null,

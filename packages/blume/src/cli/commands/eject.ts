@@ -4,6 +4,7 @@ import { relative } from "pathe";
 import { eject } from "../../registry/eject.ts";
 import { refuseIfDevRunning } from "../dev-lock.ts";
 import { updatePackageScripts } from "../eject-scripts.ts";
+import { commandsFor, detectPackageManager } from "../init/scaffold.ts";
 import { logger } from "../log.ts";
 
 export const ejectCommand = defineCommand({
@@ -33,8 +34,14 @@ export const ejectCommand = defineCommand({
     for (const file of files) {
       process.stdout.write(`  ${relative(root, file)}\n`);
     }
+    // Print run commands matching the user's package manager, detected the
+    // same way as `blume init`'s next-steps hint.
+    const pm = detectPackageManager(process.env.npm_config_user_agent);
+    const { dev } = commandsFor(pm);
+    // `commandsFor` has no build entry; mirror its npm-needs-`run` rule.
+    const build = pm === "npm" ? "npm run build" : `${pm} build`;
     logger.box(
-      "Your project is now a standalone Astro app.\n\n  bun run dev\n  bun run build\n\nThe blume package remains importable."
+      `Your project is now a standalone Astro app.\n\n  ${dev}\n  ${build}\n\nThe blume package remains importable.`
     );
   },
 });

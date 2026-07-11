@@ -55,9 +55,9 @@ blume <command> [options]
 `blume dev` serves a live Astro server rooted at the generated `.blume/` runtime and regenerates it on every change. `blume build` and `blume check` regenerate the _same_ `.blume/`, so running either while the dev server is live would corrupt it — both refuse with an error and exit non-zero:
 
 ```
-A `blume dev` server is running against .blume; building would corrupt it.
-Stop the dev server, or re-run with --isolated to build/verify against
-.blume-verify without touching it.
+A `blume dev` server is running at http://localhost:3000; building would
+corrupt its .blume runtime. Reuse that server, stop it first, or re-run with
+--isolated to build/verify against .blume-verify without touching it.
 ```
 
 The `--isolated` flag is the escape hatch. It relocates the entire generated runtime (and, for `build`, its output `dist/`) to a sibling `.blume-verify/` directory, so the verification never writes anything the dev server — or your real `dist/` — depends on:
