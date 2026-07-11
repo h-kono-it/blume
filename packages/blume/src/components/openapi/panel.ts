@@ -1,5 +1,5 @@
 /**
- * Client behaviour for the OpenAPI request/response panels. `<blume-panel-tabs>`
+ * Client behavior for the OpenAPI request/response panels. `<blume-panel-tabs>`
  * switches the visible `[data-panel="key"]` region when a `[data-panel-tab="key"]`
  * button is clicked, and an optional `[data-panel-copy]` button copies the active
  * panel's text. Vanilla custom element — no framework, in keeping with the core

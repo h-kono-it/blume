@@ -3,7 +3,7 @@ import type { BlumeProject } from "../../core/project-graph.ts";
 import type { Navigation } from "../../core/types.ts";
 import { buildSearchDocuments } from "../../search/documents.ts";
 import type { OramaDoc } from "../../search/orama-index.ts";
-import { buildRawMarkdown } from "../markdown.ts";
+import { agentMarkdown, buildRawMarkdown } from "../markdown.ts";
 
 /** A page entry surfaced by the `list_pages` MCP tool. */
 export interface McpRoute {
@@ -41,7 +41,7 @@ export interface McpData {
 /** Build the MCP data snapshot from a resolved project. */
 export const buildMcpData = async (project: BlumeProject): Promise<McpData> => {
   const { config, graph, manifest } = project;
-  const [documents, pages] = await Promise.all([
+  const [documents, rawMarkdown] = await Promise.all([
     // The MCP server is independent of on-page search, so index docs even when
     // the search provider is `none`. Documents are agent-facing, so
     // `<Visibility>` resolves like `get_page`/llms-full.txt (web-only content
@@ -52,6 +52,14 @@ export const buildMcpData = async (project: BlumeProject): Promise<McpData> => {
     }),
     buildRawMarkdown(project),
   ]);
+
+  // `get_page` serves the agent variant: components downleveled to Markdown.
+  const pages = Object.fromEntries(
+    Object.entries(rawMarkdown).map(([route, entry]) => [
+      route,
+      agentMarkdown(entry),
+    ])
+  );
 
   const descriptionById = new Map(
     graph.pages.map((page) => [page.id, page.description])

@@ -1,5 +1,5 @@
 /**
- * Client behaviour for the `<blume-toc>` custom element wrapping each "On this
+ * Client behavior for the `<blume-toc>` custom element wrapping each "On this
  * page" list. As the reader scrolls, it marks the link for the section currently
  * in view with `aria-current="location"` — styled via Tailwind `aria-[current]`
  * variants in RootLayout — giving the table of contents a live scrollspy.

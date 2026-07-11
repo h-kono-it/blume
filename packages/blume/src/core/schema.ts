@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import type { ComponentMarkdown } from "../ai/component-markdown.ts";
 import { normalizeRoute } from "../openapi/references.ts";
 import { FONT_SLUGS, isFontSlug } from "../theme/fonts.ts";
 import { normalizeBasePath } from "./base-path.ts";
@@ -577,6 +578,18 @@ const aiConfigSchema = z.strictObject({
     })
     .optional(),
   llmsTxt: z.boolean().default(true),
+  // Serializers for the agent-facing Markdown downlevel (the `.md` mirror,
+  // llms-full.txt, MCP get_page), keyed by JSX name. Functions live here —
+  // not in components.tsx — because the config file is executed at build
+  // time while the components file is only statically analyzed. A same-name
+  // entry replaces the built-in serializer.
+  markdownComponents: z
+    .record(
+      z.custom<ComponentMarkdown>((value) => typeof value === "function", {
+        message: "Expected a serializer function.",
+      })
+    )
+    .default({}),
 });
 
 /**

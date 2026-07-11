@@ -112,7 +112,7 @@ export const devCommand = defineCommand({
 
     // A factory so `runRegenerate` can recreate the server on a structural
     // (route-set) change: only a cold container re-globs Astro's content store,
-    // which its in-place config restart doesn't. `open` is honoured on first
+    // which its in-place config restart doesn't. `open` is honored on first
     // boot only — a restart must not reopen the browser.
     const createServer = (listenPort: number | undefined, open: boolean) =>
       dev({

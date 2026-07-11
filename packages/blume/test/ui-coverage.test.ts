@@ -185,7 +185,7 @@ describe("getPagination", () => {
     { label: "C", route: "/c" },
   ];
 
-  it("returns null neighbours when the route is absent", () => {
+  it("returns null neighbors when the route is absent", () => {
     expect(getPagination([], "/x")).toStrictEqual({ next: null, prev: null });
   });
 
@@ -287,7 +287,7 @@ describe("search text helpers", () => {
     expect(matchSnippet("short", "zzz", 100)).toBe("short");
   });
 
-  it("centres the window on the first match", () => {
+  it("centers the window on the first match", () => {
     const snippet = matchSnippet("the quick brown fox jumps", "brown", 12);
     expect(snippet).toContain("brown");
     expect(snippet.startsWith("…")).toBe(true);

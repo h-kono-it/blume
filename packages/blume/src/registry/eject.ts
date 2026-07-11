@@ -450,11 +450,11 @@ export const eject = async (
       path: join(genDir, "raw-markdown.json"),
     },
     {
-      content: rawMarkdownEndpointTemplate(),
+      content: rawMarkdownEndpointTemplate("md"),
       path: join(srcDir, "pages", "[...slug].md.ts"),
     },
     {
-      content: rawMarkdownEndpointTemplate(),
+      content: rawMarkdownEndpointTemplate("mdx"),
       path: join(srcDir, "pages", "[...slug].mdx.ts"),
     },
   ];

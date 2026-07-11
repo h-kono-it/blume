@@ -1,7 +1,7 @@
 /**
  * HTTP content negotiation for the raw-Markdown variants. The `<route>.md`
  * endpoints already serve a page's source verbatim; these helpers let the dev
- * server honour `Accept: text/markdown` by transparently rewriting a page
+ * server honor `Accept: text/markdown` by transparently rewriting a page
  * request to its `.md` variant.
  */
 

@@ -259,7 +259,7 @@ describe("buildSearchDocuments with includeWhenDisabled", () => {
     expect(docs.map((doc) => doc.route)).toStrictEqual(["/a"]);
   });
 
-  it("still honours per-page search.exclude when the flag is set", async () => {
+  it("still honors per-page search.exclude when the flag is set", async () => {
     const docs = await buildSearchDocuments(
       projectNoSearch({ search: { exclude: true } }),
       { includeWhenDisabled: true }

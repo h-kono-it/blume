@@ -22,7 +22,7 @@ describe("prefersMarkdown", () => {
     ).toBe(false);
   });
 
-  it("honours q-values when both types are listed", () => {
+  it("honors q-values when both types are listed", () => {
     expect(prefersMarkdown("text/markdown, text/html;q=0.9")).toBe(true);
     expect(prefersMarkdown("text/html, text/markdown;q=0.9")).toBe(false);
     expect(prefersMarkdown("text/markdown;q=0.5, text/html;q=0.5")).toBe(true);

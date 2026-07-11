@@ -3,6 +3,7 @@ import matter from "../core/frontmatter.ts";
 import type { BlumeProject } from "../core/project-graph.ts";
 import { readEntryText } from "../core/sources/read.ts";
 import type { PageRecord } from "../core/types.ts";
+import { downlevelComponents } from "./component-markdown.ts";
 import { applyAgentVisibility } from "./visibility.ts";
 
 // Routes carry `basePath`; a `deployment.base` subdirectory is layered on top —
@@ -54,9 +55,13 @@ const buildFull = async (project: BlumeProject): Promise<string> => {
   const sections = await Promise.all(
     pages.map(async (page) => {
       const raw = await readEntryText(project, page);
-      // Resolve `<Visibility>` audiences: web-only content is omitted from the
-      // agent-facing output, agents-only content is unwrapped into it.
-      const body = applyAgentVisibility(matter(raw).content).trim();
+      // Resolve `<Visibility>` audiences (web-only content omitted from the
+      // agent-facing output, agents-only unwrapped), then downlevel supported
+      // components to plain Markdown.
+      const body = downlevelComponents(
+        applyAgentVisibility(matter(raw).content),
+        config.ai.markdownComponents
+      ).trim();
       const url = pageUrl(
         page.route,
         config.deployment.site,

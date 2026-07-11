@@ -142,7 +142,7 @@ describe("MCP tools", () => {
     expect(hits[0]?.url).toBe("https://docs.example.com/guides/install");
   });
 
-  it("search_docs honours the limit", async () => {
+  it("search_docs honors the limit", async () => {
     const { text } = await callTool("search_docs", {
       limit: 1,
       query: "blume",
@@ -428,7 +428,7 @@ describe("buildMcpData", () => {
       "blume.config.ts":
         'export default { deployment: { base: "sub/", site: "https://docs.example.com" }, mcp: { enabled: true, instructions: "Be concise.", name: "Custom MCP" }, title: "Project Title" };',
       "docs/guides/install.md":
-        "---\ntitle: Installation\ndescription: How to install\n---\n# Installation\n\nInstall it now.\n",
+        '---\ntitle: Installation\ndescription: How to install\n---\n# Installation\n\nInstall it now.\n\n<Callout type="tip">Use bun.</Callout>\n',
       "docs/index.md":
         "---\ntitle: Home\ndescription: The home page\n---\n# Home\n\nWelcome to the docs.\n",
       "docs/secret.md":
@@ -484,9 +484,12 @@ describe("buildMcpData", () => {
       false
     );
 
-    // `pages` maps every route (hidden included) to its raw source Markdown.
+    // `pages` maps every route (hidden included) to its raw source Markdown,
+    // with components downleveled for agents.
     expect(data.pages["/guides/install"]).toContain("# Installation");
     expect(data.pages["/guides/install"]).toContain("title: Installation");
+    expect(data.pages["/guides/install"]).toContain("> **Tip**\n>\n> Use bun.");
+    expect(data.pages["/guides/install"]).not.toContain("<Callout");
     expect(data.pages["/secret"]).toContain("Hidden content.");
 
     // Documents are agent-facing: `<Visibility>` resolves like `get_page`

@@ -1,5 +1,5 @@
 /**
- * Client behaviour for the `<blume-changelog>` custom element wrapping the
+ * Client behavior for the `<blume-changelog>` custom element wrapping the
  * generated changelog timeline when its releases are semver-versioned. The
  * newest major line stays visible; every older major is collapsed into a group
  * revealed one major at a time by the "Show N.x releases" button at the bottom.

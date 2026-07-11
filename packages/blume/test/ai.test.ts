@@ -83,6 +83,8 @@ beforeAll(async () => {
     "a.md": "---\ntitle: Alpha\n---\n# Alpha\n\nBody A.\n",
     "b.md": "---\ntitle: Beta\n---\n# Beta\n\nBody B.\n",
     "c.md": "---\ntitle: Gamma\n---\n# Gamma\n\nDraft body.\n",
+    "t.md":
+      '---\ntitle: Table\n---\n# Table\n\n<Callout type="warning">Mind the gap.</Callout>\n',
     "v.md": [
       "---",
       "title: Vis",
@@ -211,13 +213,58 @@ describe("buildLlmsFiles — without a deployment site", () => {
 describe("buildRawMarkdown", () => {
   it("maps every route to its raw (frontmatter-included) source", async () => {
     const raw = await buildRawMarkdown(project());
-    expect(raw["/a"]).toBe(sources.get("a.md") ?? "");
-    expect(raw["/b"]).toBe(sources.get("b.md") ?? "");
-    expect(raw["/a"]).toContain("title: Alpha");
+    expect(raw["/a"]?.mdx).toBe(sources.get("a.md") ?? "");
+    expect(raw["/b"]?.mdx).toBe(sources.get("b.md") ?? "");
+    expect(raw["/a"]?.mdx).toContain("title: Alpha");
+    // Component-free pages don't store a second (identical) md variant.
+    expect(raw["/a"]?.md).toBeUndefined();
   });
 });
 
-describe("agent-facing markdown honours <Visibility>", () => {
+describe("component downleveling in agent surfaces", () => {
+  const tableProject = (): BlumeProject =>
+    makeProject([makePage("t.md", "/t", "Table")]);
+
+  it("stores a downleveled md variant beside the verbatim source", async () => {
+    const raw = await buildRawMarkdown(tableProject());
+    expect(raw["/t"]?.mdx).toContain('<Callout type="warning">');
+    expect(raw["/t"]?.md).toContain("> **Warning**\n>\n> Mind the gap.");
+    expect(raw["/t"]?.md).not.toContain("<Callout");
+  });
+
+  it("downlevels components in llms-full.txt", async () => {
+    const { full } = await buildLlmsFiles(tableProject());
+    expect(full).toContain("> **Warning**\n>\n> Mind the gap.");
+    expect(full).not.toContain("<Callout");
+  });
+
+  it("honors ai.markdownComponents serializers from the config", async () => {
+    const customized = tableProject();
+    customized.config = blumeConfigSchema.parse({
+      ai: {
+        markdownComponents: {
+          Callout: ({ children }: { children: string }) => `NOTE: ${children}`,
+        },
+      },
+    }) as BlumeProject["config"];
+    const raw = await buildRawMarkdown(customized);
+    expect(raw["/t"]?.md).toContain("NOTE: Mind the gap.");
+    const { full } = await buildLlmsFiles(customized);
+    expect(full).toContain("NOTE: Mind the gap.");
+  });
+
+  it("validates markdownComponents entries are functions", () => {
+    expect(
+      blumeConfigSchema.safeParse({
+        ai: { markdownComponents: { Chart: "not a function" } },
+      }).success
+    ).toBe(false);
+    const parsed = blumeConfigSchema.parse({});
+    expect(parsed.ai.markdownComponents).toStrictEqual({});
+  });
+});
+
+describe("agent-facing markdown honors <Visibility>", () => {
   const visProject = (): BlumeProject =>
     makeProject([makePage("v.md", "/v", "Vis")]);
 
@@ -232,11 +279,12 @@ describe("agent-facing markdown honours <Visibility>", () => {
 
   it("filters the raw .md mirrors while keeping frontmatter", async () => {
     const raw = await buildRawMarkdown(visProject());
-    expect(raw["/v"]).toContain("title: Vis");
-    expect(raw["/v"]).not.toContain("Web-only body.");
-    expect(raw["/v"]).toContain("Agent-only body.");
-    expect(raw["/v"]).not.toContain('<Visibility for="agents">');
-    expect(raw["/v"]).toContain(
+    const source = raw["/v"]?.mdx ?? "";
+    expect(source).toContain("title: Vis");
+    expect(source).not.toContain("Web-only body.");
+    expect(source).toContain("Agent-only body.");
+    expect(source).not.toContain('<Visibility for="agents">');
+    expect(source).toContain(
       '<Visibility for="web">Sample markup.</Visibility>'
     );
   });

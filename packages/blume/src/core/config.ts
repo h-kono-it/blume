@@ -73,8 +73,9 @@ import type { Diagnostic } from "./types.ts";
  * - `search` — search backend `provider` (`orama` by default; `pagefind`,
  *   `algolia`, `typesense`, `orama-cloud`, `mixedbread`, or `none`) plus its
  *   credential block.
- * - `ai` — `ask` (the Ask AI chat endpoint and its provider/model) and `llmsTxt`
- *   (emit `llms.txt`).
+ * - `ai` — `ask` (the Ask AI chat endpoint and its provider/model), `llmsTxt`
+ *   (emit `llms.txt`), and `markdownComponents` (Markdown serializers for
+ *   custom components in agent-facing output).
  * - `mcp` — expose the docs as an MCP server for connecting agents.
  *
  * **SEO, feeds & analytics**

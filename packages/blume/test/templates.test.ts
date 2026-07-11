@@ -1032,8 +1032,14 @@ describe("static endpoint templates", () => {
     expect(out).toContain("client.stores.search");
   });
 
-  it("serves raw markdown verbatim", () => {
-    expect(rawMarkdownEndpointTemplate()).toContain("text/markdown");
+  it("serves the raw markdown variants per endpoint kind", () => {
+    const md = rawMarkdownEndpointTemplate("md");
+    expect(md).toContain("text/markdown");
+    // The .md endpoint prefers the downleveled variant, falling back to source.
+    expect(md).toContain("entry.md ?? entry.mdx");
+    const mdx = rawMarkdownEndpointTemplate("mdx");
+    expect(mdx).toContain("entry.mdx");
+    expect(mdx).not.toContain("entry.md ??");
   });
 
   it("renders the OG image endpoint", () => {

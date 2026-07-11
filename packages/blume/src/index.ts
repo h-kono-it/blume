@@ -1,3 +1,8 @@
+export type {
+  ComponentMarkdown,
+  ComponentMarkdownChild,
+  ComponentMarkdownContext,
+} from "./ai/component-markdown.ts";
 export { defineConfig } from "./core/config.ts";
 export type {
   BlumeBanner,

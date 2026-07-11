@@ -347,7 +347,7 @@ describe("nextSteps", () => {
     );
   });
 
-  it("adds a cd hint for non-cwd targets and honours the package manager", () => {
+  it("adds a cd hint for non-cwd targets and honors the package manager", () => {
     const steps = nextSteps(
       answersWith({ directory: "my-docs", packageManager: "pnpm" }),
       true

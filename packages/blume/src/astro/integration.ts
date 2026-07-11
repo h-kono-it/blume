@@ -108,7 +108,7 @@ const negotiateMarkdown =
  * Blume's Astro integration. Mounts user-authored pages from `pages/` into the
  * generated runtime via `injectRoute`, keeping each file in its original
  * location so relative imports and `getStaticPaths` keep working, and teaches
- * the dev server to honour `Accept: text/markdown`.
+ * the dev server to honor `Accept: text/markdown`.
  */
 export const blumeIntegration = (
   options: BlumeIntegrationOptions

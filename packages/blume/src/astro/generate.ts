@@ -1391,11 +1391,11 @@ export const generateRuntime = async (
     ),
     write(
       join(srcDir, "pages", "[...slug].md.ts"),
-      rawMarkdownEndpointTemplate()
+      rawMarkdownEndpointTemplate("md")
     ),
     write(
       join(srcDir, "pages", "[...slug].mdx.ts"),
-      rawMarkdownEndpointTemplate()
+      rawMarkdownEndpointTemplate("mdx")
     ),
   ]);
 

@@ -1,5 +1,6 @@
 import type { z } from "zod";
 
+import type { ComponentMarkdown } from "../ai/component-markdown.ts";
 import type { FontSlug } from "../theme/fonts.ts";
 import type {
   blumeConfigSchema,
@@ -518,6 +519,25 @@ export interface AiConfig {
   ask?: AskConfig;
   /** Emit `llms.txt` (an index of the docs for LLMs). Defaults to `true`. */
   llmsTxt?: boolean;
+  /**
+   * Markdown serializers for custom components in agent-facing output (the
+   * `.md` mirror, `llms-full.txt`, MCP `get_page`), keyed by JSX name. Each
+   * receives the component's statically-evaluated `props` and downleveled
+   * `children` and returns replacement Markdown — or `null` to leave the JSX
+   * verbatim. A same-name entry replaces a built-in serializer.
+   *
+   * These live in `blume.config.ts` (which is executed at build time), not in
+   * `components.tsx` (which is only statically analyzed, never run).
+   *
+   * ```ts
+   * ai: {
+   *   markdownComponents: {
+   *     Chart: ({ props }) => `![${props.title}](/charts/${props.slug}.png)`,
+   *   },
+   * }
+   * ```
+   */
+  markdownComponents?: Record<string, ComponentMarkdown>;
 }
 
 // ---------------------------------------------------------------------------

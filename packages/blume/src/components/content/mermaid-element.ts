@@ -1,5 +1,5 @@
 /**
- * Client behaviour for the `<blume-mermaid>` custom element emitted by the
+ * Client behavior for the `<blume-mermaid>` custom element emitted by the
  * Mermaid markdown plugin. Mermaid is lazy-loaded — it needs a DOM and is large,
  * so the dependency only downloads on pages that actually contain a diagram —
  * and each diagram re-renders when the color theme flips so it tracks light/dark.
