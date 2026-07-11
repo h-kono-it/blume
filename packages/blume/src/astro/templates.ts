@@ -188,17 +188,30 @@ const astroOutDir = (context: ProjectContext): string =>
   context.distDir ?? `${context.root}/dist`;
 
 /**
+ * Excludes Vite's pre-bundled dep cache from @vitejs/plugin-react. Astro's
+ * react() replaces the plugin's default `/node_modules/` exclude with just
+ * `/\.astro$/`, so without this Babel re-parses every optimized dep chunk
+ * served from `.vite/deps` — a 500KB+ vendor bundle per chunk, re-done on each
+ * re-optimization. A blanket `/node_modules/` exclude would instead switch the
+ * React Compiler off for Blume's own components in published installs (they
+ * resolve under `node_modules/blume/src`, and exclude beats include in the
+ * plugin's filter), so only the pre-bundle cache is excluded.
+ */
+const REACT_EXCLUDE = String.raw`exclude: [/\/node_modules\/\.vite\//]`;
+
+/**
  * The `react()` integration call. When `compilerPath` is set (the resolved
  * absolute path to `babel-plugin-react-compiler`), react() carries the compiler
  * as the first babel plugin — an absolute path, because @vitejs/plugin-react
  * resolves babel plugins from the *project* root, not `.blume/`, so a bare
  * specifier wouldn't resolve in a user project. `target: "19"` matches Blume's
- * React pin. `null`/`undefined` (compiler off or unresolvable) emits bare react().
+ * React pin. `null`/`undefined` (compiler off or unresolvable) omits the babel
+ * block. Both variants carry the pre-bundle exclude above.
  */
 const reactIntegration = (compilerPath: string | null | undefined): string =>
   compilerPath
-    ? `react({ babel: { plugins: [[${JSON.stringify(compilerPath)}, { target: "19" }]] } })`
-    : "react()";
+    ? `react({ babel: { plugins: [[${JSON.stringify(compilerPath)}, { target: "19" }]] }, ${REACT_EXCLUDE} })`
+    : `react({ ${REACT_EXCLUDE} })`;
 
 export const astroConfigTemplate = (options: {
   context: ProjectContext;

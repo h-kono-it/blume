@@ -637,8 +637,11 @@ describe("astroConfigTemplate", () => {
     expect(out).toContain('import react from "@astrojs/react"');
     expect(out).toContain('import vue from "@astrojs/vue"');
     expect(out).toContain('import svelte from "@astrojs/svelte"');
-    // No reactCompilerPath passed, so react() is bare (compiler off).
-    expect(out).toContain("react()");
+    // No reactCompilerPath passed, so react() carries no babel block
+    // (compiler off) — only the pre-bundle exclude.
+    expect(out).toContain(
+      String.raw`react({ exclude: [/\/node_modules\/\.vite\//] })`
+    );
     expect(out).toContain("vue()");
     expect(out).toContain("svelte()");
   });
@@ -690,11 +693,11 @@ describe("astroConfigTemplate", () => {
       themePath: THEME_PATH,
     });
     expect(out).toContain(
-      `react({ babel: { plugins: [[${JSON.stringify(compilerPath)}, { target: "19" }]] } })`
+      `react({ babel: { plugins: [[${JSON.stringify(compilerPath)}, { target: "19" }]] }, ${String.raw`exclude: [/\/node_modules\/\.vite\//]`} })`
     );
   });
 
-  it("emits a bare react() when no compiler path is given", () => {
+  it("omits the compiler babel plugin when no compiler path is given", () => {
     const out = astroConfigTemplate({
       config,
       contentRoutes: [],
@@ -709,7 +712,9 @@ describe("astroConfigTemplate", () => {
       themePath: THEME_PATH,
     });
     expect(out).toContain('import react from "@astrojs/react"');
-    expect(out).toContain("react()");
+    expect(out).toContain(
+      String.raw`react({ exclude: [/\/node_modules\/\.vite\//] })`
+    );
     expect(out).not.toContain("babel-plugin-react-compiler");
   });
 
