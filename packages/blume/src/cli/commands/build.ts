@@ -232,6 +232,42 @@ export const isolatedStaticDir = (
 };
 
 /**
+ * Generate `llms.txt`/`llms-full.txt` into the dist dir. A user's own file in
+ * `public/` (copied into dist by Astro before this runs, like the sitemap and
+ * robots.txt) wins over the generated one — each file is checked and replaced
+ * independently, so a custom `llms.txt` still gets a generated `llms-full.txt`.
+ */
+const publishLlmsFiles = async (
+  project: BlumeProject,
+  distDir: string
+): Promise<void> => {
+  const indexPath = join(distDir, "llms.txt");
+  const fullPath = join(distDir, "llms-full.txt");
+  const writeIndex = !existsSync(indexPath);
+  const writeFull = !existsSync(fullPath);
+  if (!(writeIndex || writeFull)) {
+    return;
+  }
+  const { index, full } = await buildLlmsFiles(project);
+  const writes: Promise<void>[] = [];
+  if (writeIndex) {
+    writes.push(writeFile(indexPath, index, "utf-8"));
+  }
+  if (writeFull) {
+    writes.push(writeFile(fullPath, full, "utf-8"));
+  }
+  await Promise.all(writes);
+  logger.success(
+    `Generated ${[
+      writeIndex ? "llms.txt" : null,
+      writeFull ? "llms-full.txt" : null,
+    ]
+      .filter(Boolean)
+      .join(" and ")}`
+  );
+};
+
+/**
  * Run every deploy post-step of a real (non-isolated) build: the search index +
  * hosted-provider sync, llms.txt, sitemap/robots, redirect files, the summary
  * box, and the optional bundle report / budget gate. Exits non-zero if a budget
@@ -258,12 +294,7 @@ const publishBuildArtifacts = async (
   });
 
   if (project.config.ai.llmsTxt) {
-    const { index, full } = await buildLlmsFiles(project);
-    await Promise.all([
-      writeFile(join(distDir, "llms.txt"), index, "utf-8"),
-      writeFile(join(distDir, "llms-full.txt"), full, "utf-8"),
-    ]);
-    logger.success("Generated llms.txt and llms-full.txt");
+    await publishLlmsFiles(project, distDir);
   }
 
   // A user's own public/ file (copied into dist by Astro) always wins.

@@ -22,6 +22,8 @@ While enabled, `blume build` writes two files to the root of your site:
 
 Draft pages are excluded. Set [`deployment.site`](/docs/deployment) so the links and source URLs resolve to absolute addresses.
 
+To take full control of either file, add your own `llms.txt` or `llms-full.txt` to your `public/` folder. Like a custom favicon, it's picked up automatically and ships in place of the generated file — override one and Blume still generates the other.
+
 ## Raw Markdown
 
 Append `.md` or `.mdx` to any page's URL to fetch its raw Markdown source — perfect for LLMs, coding agents, and "copy as Markdown" workflows. It's available for every page, in dev and production, with no configuration.
