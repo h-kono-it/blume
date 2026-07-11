@@ -420,7 +420,7 @@ const AskAI = ({
       >
         <textarea
           aria-label={t.label}
-          className="max-h-48 min-h-[5rem] w-full resize-none bg-transparent px-4 py-3.5 pe-14 text-foreground text-sm outline-none placeholder:text-muted-foreground"
+          className="max-h-48 min-h-[5rem] w-full resize-none bg-transparent px-4 py-3.5 pe-14 text-foreground text-sm pointer-coarse:text-base outline-none placeholder:text-muted-foreground"
           onChange={(event) => setInput(event.target.value)}
           onKeyDown={onInputKeyDown}
           placeholder={t.placeholder}
