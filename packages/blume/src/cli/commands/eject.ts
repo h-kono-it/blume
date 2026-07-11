@@ -1,29 +1,10 @@
-import { readFile, writeFile } from "node:fs/promises";
-
 import { defineCommand } from "citty";
-import { join, relative } from "pathe";
+import { relative } from "pathe";
 
 import { eject } from "../../registry/eject.ts";
 import { refuseIfDevRunning } from "../dev-lock.ts";
+import { updatePackageScripts } from "../eject-scripts.ts";
 import { logger } from "../log.ts";
-
-const updatePackageScripts = async (root: string): Promise<void> => {
-  const pkgPath = join(root, "package.json");
-  let pkg: Record<string, unknown>;
-  try {
-    pkg = JSON.parse(await readFile(pkgPath, "utf-8"));
-  } catch {
-    return;
-  }
-  const scripts = (pkg.scripts ?? {}) as Record<string, string>;
-  pkg.scripts = {
-    ...scripts,
-    build: "astro build",
-    dev: "astro dev",
-    preview: "astro preview",
-  };
-  await writeFile(pkgPath, `${JSON.stringify(pkg, null, 2)}\n`, "utf-8");
-};
 
 export const ejectCommand = defineCommand({
   args: {

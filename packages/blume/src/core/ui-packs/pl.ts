@@ -23,6 +23,7 @@ export const pl: UIStringsOverride = {
     send: "Wyślij",
     title: "Zapytaj AI",
   },
+  banner: { dismiss: "Zamknij ogłoszenie" },
   feedback: {
     no: "Nie",
     question: "Czy ta strona była pomocna?",

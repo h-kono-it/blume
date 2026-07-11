@@ -23,6 +23,7 @@ export const ptBR: UIStringsOverride = {
     send: "Enviar",
     title: "Perguntar à IA",
   },
+  banner: { dismiss: "Fechar o anúncio" },
   feedback: {
     no: "Não",
     question: "Esta página foi útil?",

@@ -23,6 +23,7 @@ export const vi: UIStringsOverride = {
     send: "Gửi",
     title: "Hỏi AI",
   },
+  banner: { dismiss: "Đóng thông báo" },
   feedback: {
     no: "Không",
     question: "Trang này có hữu ích không?",

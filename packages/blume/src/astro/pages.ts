@@ -1,23 +1,14 @@
 import { extname, relative } from "pathe";
-import { glob } from "tinyglobby";
+import { glob, globSync } from "tinyglobby";
 
+import type { BlumeProject } from "../core/project-graph.ts";
 import type { BlumePageRoute } from "./integration.ts";
 
-/**
- * Discover user `.astro` pages and map them to route patterns. Files keep their
- * original location; only the route pattern is derived (index -> parent,
- * dynamic `[param]` segments preserved).
- */
-export const discoverPages = async (
-  pagesRoot: string
-): Promise<BlumePageRoute[]> => {
-  const files = await glob(["**/*.astro"], {
-    absolute: true,
-    cwd: pagesRoot,
-    onlyFiles: true,
-  });
-  files.sort();
+const PAGE_GLOB = ["**/*.astro"];
 
+/** Map discovered page files to routes; shared by the async/sync discoverers. */
+const toPageRoutes = (pagesRoot: string, files: string[]): BlumePageRoute[] => {
+  files.sort();
   return files.map((file) => {
     const rel = relative(pagesRoot, file);
     const withoutExt = rel.slice(0, rel.length - extname(rel).length);
@@ -31,6 +22,26 @@ export const discoverPages = async (
     return { entrypoint: file, pattern };
   });
 };
+
+/**
+ * Discover user `.astro` pages and map them to route patterns. Files keep their
+ * original location; only the route pattern is derived (index -> parent,
+ * dynamic `[param]` segments preserved).
+ */
+export const discoverPages = async (
+  pagesRoot: string
+): Promise<BlumePageRoute[]> =>
+  toPageRoutes(
+    pagesRoot,
+    await glob(PAGE_GLOB, { absolute: true, cwd: pagesRoot, onlyFiles: true })
+  );
+
+/** {@link discoverPages} for synchronous callers (e.g. the sitemap builder). */
+export const discoverPagesSync = (pagesRoot: string): BlumePageRoute[] =>
+  toPageRoutes(
+    pagesRoot,
+    globSync(PAGE_GLOB, { absolute: true, cwd: pagesRoot, onlyFiles: true })
+  );
 
 /**
  * Whether the project already owns `route` — through a custom `.astro` page
@@ -56,6 +67,59 @@ export interface OgCustomRoute {
 
 /** Skip private (`_partial`, `.well-known`) and Astro dynamic (`[param]`) parts. */
 const PRIVATE_SEGMENT = /^[._]/u;
+
+/** Segments of a static, shareable page pattern; null for dynamic/private ones. */
+const staticSegments = (pattern: string): string[] | null => {
+  const segments = pattern.split("/").filter(Boolean);
+  return segments.some(
+    (part) => PRIVATE_SEGMENT.test(part) || part.includes("[")
+  )
+    ? null
+    : segments;
+};
+
+/**
+ * The static routes served by custom `.astro` pages — the same filtering as
+ * {@link customOgRoutes}, but yielding the routes themselves. Feeds the route
+ * sets that must know every servable page beyond the content graph (the link
+ * checker, the sitemap); dynamic (`[param]`) and private segments are skipped
+ * because their concrete URLs can't be enumerated statically.
+ */
+export const customStaticRoutes = (pages: { pattern: string }[]): string[] => {
+  const routes = new Set<string>();
+  for (const { pattern } of pages) {
+    const segments = staticSegments(pattern);
+    if (segments !== null) {
+      routes.add(segments.length === 0 ? "/" : `/${segments.join("/")}`);
+    }
+  }
+  return [...routes];
+};
+
+/**
+ * Whether the generated `/changelog` index route exists for this project —
+ * `generate.ts` (which writes the page) and the sitemap/link validator all
+ * share this check: there are visible `type: changelog` entries — or a
+ * release-backed changelog source, whose route must resolve even when a fetch
+ * fails — and no user content or custom page already owns `/changelog`.
+ */
+export const hasGeneratedChangelog = (
+  project: BlumeProject,
+  userPages: { pattern: string }[]
+): boolean => {
+  const hasChangelog = project.graph.pages.some(
+    (page) =>
+      page.contentType === "changelog" &&
+      !(page.meta.draft || page.meta.sidebar.hidden)
+  );
+  const hasChangelogSource = (project.config.content.sources ?? []).some(
+    (source) => source.type === "github-releases"
+  );
+  return (
+    (hasChangelog || hasChangelogSource) &&
+    !routeIsTaken(userPages, project.graph.pages, "/changelog")
+  );
+};
 
 const humanizeSegment = (segment: string): string =>
   segment
@@ -83,10 +147,8 @@ export const customOgRoutes = (
   // Extracted so the skip paths become early `return`s (one `continue` budget
   // per loop under the lint rule) instead of `continue` statements.
   const collectRoute = (pattern: string): void => {
-    const segments = pattern.split("/").filter(Boolean);
-    if (
-      segments.some((part) => PRIVATE_SEGMENT.test(part) || part.includes("["))
-    ) {
+    const segments = staticSegments(pattern);
+    if (segments === null) {
       return;
     }
     const slug = segments.length === 0 ? "index" : segments.join("/");

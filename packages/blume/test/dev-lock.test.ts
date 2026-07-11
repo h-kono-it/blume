@@ -234,7 +234,7 @@ describe("refuseIfDevRunning", () => {
     }) as never);
     try {
       expect(() =>
-        refuseIfDevRunning(root, "building", ".blume-verify")
+        refuseIfDevRunning(root, "building", { runtimeDir: ".blume-verify" })
       ).not.toThrow();
       expect(exit).not.toHaveBeenCalled();
     } finally {
@@ -273,10 +273,39 @@ describe("refuseIfDevRunning", () => {
       throw new Error("exit");
     }) as never);
     try {
-      expect(() => refuseIfDevRunning(root, "building", ".blume")).toThrow(
-        "exit"
-      );
+      expect(() =>
+        refuseIfDevRunning(root, "building", { runtimeDir: ".blume" })
+      ).toThrow("exit");
       expect(exit).toHaveBeenCalledWith(1);
+    } finally {
+      exit.mockRestore();
+      errorSpy.mockRestore();
+    }
+  });
+
+  it("suggests --isolated only when the caller supports the flag", async () => {
+    const root = await rootDir();
+    acquireDevLock(join(root, ".blume"));
+    let message = "";
+    const errorSpy = spyOn(logger, "error").mockImplementation(((
+      text: string
+    ) => {
+      message = text;
+    }) as never);
+    const exit = spyOn(process, "exit").mockImplementation((() => {
+      throw new Error("exit");
+    }) as never);
+    try {
+      // build/check accept --isolated, so they keep the escape-hatch hint.
+      expect(() =>
+        refuseIfDevRunning(root, "building", { isolatedHint: true })
+      ).toThrow("exit");
+      expect(message).toContain("--isolated");
+
+      // eject has no --isolated flag; suggesting it would silently do nothing.
+      expect(() => refuseIfDevRunning(root, "ejecting")).toThrow("exit");
+      expect(message).not.toContain("--isolated");
+      expect(message).toContain("Reuse that server or stop it first.");
     } finally {
       exit.mockRestore();
       errorSpy.mockRestore();

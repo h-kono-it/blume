@@ -68,7 +68,12 @@ export const materializeAssets = async (
           throw new Error(`${res.status}`);
         }
         const bytes = new Uint8Array(await res.arrayBuffer());
-        const file = `${hashText(url)}${extFor(url)}`;
+        // Hash the query-less URL (as `extFor` does): CMS asset URLs are
+        // pre-signed, so the query changes on every fetch of the same image —
+        // hashing it would mint a new file each refresh and re-dirty the
+        // content digest. Two real assets sharing scheme+host+path and
+        // differing only in query are rare enough to accept colliding.
+        const file = `${hashText(url.split("?")[0] ?? url)}${extFor(url)}`;
         await mkdir(ctx.assetsDir, { recursive: true });
         await writeFile(join(ctx.assetsDir, file), bytes);
         rewrites.set(url, `${ctx.assetsBaseUrl}/${file}`);

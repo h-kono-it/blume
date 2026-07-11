@@ -1,3 +1,4 @@
+import { withBasePath } from "../core/base-path.ts";
 import matter from "../core/frontmatter.ts";
 import { hashText } from "../core/sources/cache.ts";
 import type {
@@ -90,7 +91,11 @@ export const openApiSource = (
         ctx.projectRoot,
         { cacheDir: ctx.cacheDir, refresh: ctx.refresh }
       );
-      const { operations, tags } = extractOperations(document, reference.route);
+      const {
+        operations,
+        tags,
+        warnings: extractWarnings,
+      } = extractOperations(document, reference.route);
       const info = document.info ?? { title: reference.label, version: "" };
       const spec: ApiSpecData = {
         codeSamples: reference.display.codeSamples,
@@ -98,8 +103,18 @@ export const openApiSource = (
         document,
         expandSchemas: reference.display.expandSchemas,
         label: reference.label,
+        // Operation pages flow through the content pipeline, which mounts them
+        // under the site-wide `basePath` (staged entry refs below stay
+        // base-less); serialize the served route so components link to the
+        // pages' real URLs.
         operations: Object.fromEntries(
-          operations.map((operation) => [operation.key, operation])
+          operations.map((operation) => [
+            operation.key,
+            {
+              ...operation,
+              route: withBasePath(reference.basePath, operation.route),
+            },
+          ])
         ),
         route: reference.route,
         slug: reference.slug,
@@ -108,11 +123,18 @@ export const openApiSource = (
         version: info.version ?? "",
       };
       return {
-        diagnostics: warnings.map((message) => ({
-          code: "BLUME_OPENAPI_STALE",
-          message,
-          severity: "warning" as const,
-        })),
+        diagnostics: [
+          ...warnings.map((message) => ({
+            code: "BLUME_OPENAPI_STALE",
+            message,
+            severity: "warning" as const,
+          })),
+          ...extractWarnings.map((message) => ({
+            code: "BLUME_OPENAPI_REF_PATH_ITEM",
+            message: `In OpenAPI spec "${reference.spec}": ${message}`,
+            severity: "warning" as const,
+          })),
+        ],
         entries: specEntries(spec, operations),
         slug: reference.slug,
         spec,

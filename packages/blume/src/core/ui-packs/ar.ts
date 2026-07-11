@@ -23,6 +23,7 @@ export const ar: UIStringsOverride = {
     send: "إرسال",
     title: "اسأل الذكاء الاصطناعي",
   },
+  banner: { dismiss: "إغلاق الإعلان" },
   feedback: {
     no: "لا",
     question: "هل كانت هذه الصفحة مفيدة؟",

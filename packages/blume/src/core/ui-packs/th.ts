@@ -23,6 +23,7 @@ export const th: UIStringsOverride = {
     send: "ส่ง",
     title: "ถาม AI",
   },
+  banner: { dismiss: "ปิดประกาศ" },
   feedback: {
     no: "ไม่",
     question: "หน้านี้มีประโยชน์หรือไม่?",

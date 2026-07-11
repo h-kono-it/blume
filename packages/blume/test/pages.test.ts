@@ -4,7 +4,13 @@ import { tmpdir } from "node:os";
 
 import { dirname, join } from "pathe";
 
-import { discoverPages } from "../src/astro/pages.ts";
+import {
+  customStaticRoutes,
+  discoverPages,
+  discoverPagesSync,
+  hasGeneratedChangelog,
+} from "../src/astro/pages.ts";
+import type { BlumeProject } from "../src/core/project-graph.ts";
 
 let root: string;
 
@@ -51,5 +57,86 @@ describe("discoverPages", () => {
     const routes = await discoverPages(root);
     const about = routes.find((route) => route.pattern === "/about");
     expect(about?.entrypoint).toBe(join(root, "about.astro"));
+  });
+
+  it("discoverPagesSync matches the async discovery", async () => {
+    expect(discoverPagesSync(root)).toStrictEqual(await discoverPages(root));
+  });
+});
+
+describe("customStaticRoutes", () => {
+  it("keeps static routes, skipping dynamic and private patterns", () => {
+    const routes = customStaticRoutes([
+      { pattern: "/" },
+      { pattern: "/about" },
+      { pattern: "/blog/[slug]" },
+      { pattern: "/_partials/hero" },
+      { pattern: "/.well-known/mcp.json" },
+      // Two files can map to the same pattern set; routes are deduped.
+      { pattern: "/about" },
+    ]);
+    expect(routes.toSorted()).toStrictEqual(["/", "/about"]);
+  });
+});
+
+const projectOf = (
+  pages: {
+    contentType: string;
+    route: string;
+    meta?: Record<string, unknown>;
+  }[],
+  sources: { type: string }[] = []
+): BlumeProject =>
+  ({
+    config: { content: { sources } },
+    graph: {
+      pages: pages.map((page) => ({
+        meta: { draft: false, sidebar: { hidden: false } },
+        ...page,
+      })),
+    },
+  }) as unknown as BlumeProject;
+
+describe("hasGeneratedChangelog", () => {
+  it("is true when visible changelog entries exist", () => {
+    const project = projectOf([
+      { contentType: "changelog", route: "/changelog/v1" },
+    ]);
+    expect(hasGeneratedChangelog(project, [])).toBe(true);
+  });
+
+  it("ignores draft and hidden changelog entries", () => {
+    const project = projectOf([
+      {
+        contentType: "changelog",
+        meta: { draft: true, sidebar: { hidden: false } },
+        route: "/changelog/v1",
+      },
+      {
+        contentType: "changelog",
+        meta: { draft: false, sidebar: { hidden: true } },
+        route: "/changelog/v2",
+      },
+    ]);
+    expect(hasGeneratedChangelog(project, [])).toBe(false);
+  });
+
+  it("is true for a release-backed source even with no entries", () => {
+    const project = projectOf([], [{ type: "github-releases" }]);
+    expect(hasGeneratedChangelog(project, [])).toBe(true);
+  });
+
+  it("is false when a custom page or content page owns /changelog", () => {
+    const withEntries = projectOf([
+      { contentType: "changelog", route: "/changelog/v1" },
+    ]);
+    expect(
+      hasGeneratedChangelog(withEntries, [{ pattern: "/changelog" }])
+    ).toBe(false);
+
+    const ownedByContent = projectOf([
+      { contentType: "changelog", route: "/changelog" },
+    ]);
+    expect(hasGeneratedChangelog(ownedByContent, [])).toBe(false);
   });
 });

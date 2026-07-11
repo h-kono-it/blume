@@ -23,6 +23,7 @@ export const ca: UIStringsOverride = {
     send: "Envia",
     title: "Pregunta a la IA",
   },
+  banner: { dismiss: "Tanca l'anunci" },
   feedback: {
     no: "No",
     question: "Aquesta pàgina t'ha estat útil?",

@@ -191,17 +191,21 @@ export const describeDevLock = (lock: DevLockInfo): string =>
  * `action` names the operation being refused (e.g. "building"). `runtimeDir`
  * relocates the checked dir: an isolated verify (`.blume-verify`) targets a dir
  * dev never locks, so it proceeds; a default or `--runtime-dir .blume` run still
- * refuses.
+ * refuses. Only commands that actually accept `--isolated` (build, check) should
+ * set `isolatedHint`, so the refusal never suggests a flag the command ignores.
  */
 export const refuseIfDevRunning = (
   root: string,
   action: string,
-  runtimeDir?: string
+  options: { runtimeDir?: string; isolatedHint?: boolean } = {}
 ): void => {
-  const lock = readDevLock(resolveRuntimeDir(root, runtimeDir));
+  const lock = readDevLock(resolveRuntimeDir(root, options.runtimeDir));
   if (lock) {
+    const remedies = options.isolatedHint
+      ? "Reuse that server, stop it first, or re-run with --isolated to build/verify against .blume-verify without touching it."
+      : "Reuse that server or stop it first.";
     logger.error(
-      `A \`blume dev\` server is running${describeDevLock(lock)}; ${action} would corrupt its .blume runtime. Reuse that server, stop it first, or re-run with --isolated to build/verify against .blume-verify without touching it.`
+      `A \`blume dev\` server is running${describeDevLock(lock)}; ${action} would corrupt its .blume runtime. ${remedies}`
     );
     process.exit(1);
   }

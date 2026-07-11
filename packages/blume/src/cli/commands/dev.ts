@@ -15,7 +15,7 @@ import {
   DevLockHeldError,
   updateDevLockPort,
 } from "../dev-lock.ts";
-import { logger } from "../log.ts";
+import { logger, reportDiagnostics } from "../log.ts";
 import { prepareProject } from "../prepare.ts";
 
 /**
@@ -160,7 +160,12 @@ export const devCommand = defineCommand({
         // next watch event retries the structural path — committing early would
         // route it to the non-structural branch with the server still down.
         lastSignature = nextSignature;
-        // Surface any content/config errors in the browser overlay too.
+        // Surface any content/config errors in the terminal AND the browser
+        // overlay. The terminal report must not be skipped: on a published
+        // install the CLI bundle holds its own copy of the integration module,
+        // separate from the Vite module graph that registers the overlay, so
+        // the overlay call below can be a no-op there.
+        reportDiagnostics(next.diagnostics, root);
         showBlumeErrorOverlay(next.diagnostics);
       } catch (error) {
         logger.error(`Regeneration failed: ${(error as Error).message}`);

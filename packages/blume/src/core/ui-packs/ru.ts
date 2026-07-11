@@ -23,6 +23,7 @@ export const ru: UIStringsOverride = {
     send: "Отправить",
     title: "Спросить ИИ",
   },
+  banner: { dismiss: "Закрыть объявление" },
   feedback: {
     no: "Нет",
     question: "Эта страница была полезной?",

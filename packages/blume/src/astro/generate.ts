@@ -54,7 +54,12 @@ import { planComponentSlots } from "./component-slots.ts";
 import type { ComponentSlotPlan } from "./component-slots.ts";
 import { discoverExamples } from "./examples.ts";
 import { discoverIslands } from "./islands.ts";
-import { customOgRoutes, discoverPages, routeIsTaken } from "./pages.ts";
+import {
+  customOgRoutes,
+  discoverPages,
+  hasGeneratedChangelog,
+  routeIsTaken,
+} from "./pages.ts";
 import {
   askEndpointTemplate,
   astroConfigTemplate,
@@ -1014,32 +1019,6 @@ export interface GenerateResult {
 }
 
 /**
- * Whether to generate the default `/changelog` index. Written when there are
- * `type: changelog` entries — or when a release-backed changelog source is
- * configured, so its route (and any nav tab pointing at it) still resolves to an
- * empty timeline on a build where the source could not be fetched (e.g. CI
- * without a token). Skipped when a user content page or a custom `.astro` page
- * already owns `/changelog`.
- */
-const shouldGenerateChangelog = (
-  project: BlumeProject,
-  userPages: { pattern: string }[]
-): boolean => {
-  const hasChangelog = project.graph.pages.some(
-    (page) =>
-      page.contentType === "changelog" &&
-      !(page.meta.draft || page.meta.sidebar.hidden)
-  );
-  const hasChangelogSource = (project.config.content.sources ?? []).some(
-    (source) => source.type === "github-releases"
-  );
-  return (
-    (hasChangelog || hasChangelogSource) &&
-    !routeIsTaken(userPages, project.graph.pages, "/changelog")
-  );
-};
-
-/**
  * Statically analyze the user's `components.ts` (never executing it) and plan the
  * generated `components.ts` module plus any hydration wrappers. Returns the plan
  * and the analyzer's warnings; a project with no components file gets an empty
@@ -1304,7 +1283,7 @@ export const generateRuntime = async (
   }
 
   // Changelog index (`/changelog`), rendered through the Update timeline layout.
-  if (shouldGenerateChangelog(project, pages)) {
+  if (hasGeneratedChangelog(project, pages)) {
     await write(
       join(srcDir, "pages", "changelog.astro"),
       changelogIndexTemplate({
@@ -1411,7 +1390,7 @@ export const generateRuntime = async (
     ...pages.map((page) => page.pattern),
     ...referenceTabs(config).map((tab) => tab.path),
   ]);
-  if (shouldGenerateChangelog(project, pages)) {
+  if (hasGeneratedChangelog(project, pages)) {
     navTargetRoutes.add("/changelog");
   }
   warnings.push(

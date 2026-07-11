@@ -136,11 +136,16 @@ export const STARTERS: Record<Template, Starter> = {
   },
 };
 
-/** Install + dev commands to print for the chosen package manager. */
+/**
+ * Install + dev commands to print for the chosen package manager, plus the
+ * prefix that runs a locally installed bin (`exec`, e.g. `npx blume eject`) —
+ * dependency bins aren't on PATH, so a bare `blume …` hint would not run.
+ */
 export const commandsFor = (
   pm: PackageManager
-): { dev: string; install: string } => ({
+): { dev: string; exec: string; install: string } => ({
   dev: pm === "npm" ? "npm run dev" : `${pm} dev`,
+  exec: { bun: "bunx", npm: "npx", pnpm: "pnpm exec", yarn: "yarn" }[pm],
   install: `${pm} install`,
 });
 

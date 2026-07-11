@@ -23,6 +23,7 @@ export const fr: UIStringsOverride = {
     send: "Envoyer",
     title: "Demander à l'IA",
   },
+  banner: { dismiss: "Fermer l'annonce" },
   feedback: {
     no: "Non",
     question: "Cette page vous a-t-elle été utile ?",

@@ -1,6 +1,7 @@
 import { relative } from "pathe";
 
 import { loadConfig } from "./config.ts";
+import { applyDeploymentEnv } from "./deployment-env.ts";
 import { buildContentGraph } from "./graph.ts";
 import { i18nDiagnostics } from "./i18n.ts";
 import {
@@ -139,7 +140,13 @@ export const scanProject = async (
   const configResult = await loadConfig(root, {
     devServerUrl: options.devServerUrl,
   });
-  const config = applyConfigOverrides(configResult.config, options.overrides);
+  // Re-run platform detection after CLI overrides: `loadConfig` already ran it,
+  // but adapter inference keys off `deployment.output`, which `--output server`
+  // only sets here. Idempotent for already-resolved fields — `deployment.site`
+  // keeps loadConfig's explicit > platform env > devServerUrl precedence.
+  const config = applyDeploymentEnv(
+    applyConfigOverrides(configResult.config, options.overrides)
+  );
   const context = resolveProjectContext(root, config, {
     runtimeDir: options.runtimeDir,
   });

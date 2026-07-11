@@ -96,6 +96,15 @@ describe(extractLinks, () => {
       { column: 8, line: 1, target: "/a/b" },
     ]);
   });
+
+  it("shifts recorded lines by the supplied offset", () => {
+    // The body passed in is frontmatter-stripped; the offset re-anchors the
+    // recorded lines to the raw file so diagnostics point at the right line.
+    const body = ["intro", "[x](/a)"].join("\n");
+    expect(extractLinks(body, 4)).toStrictEqual([
+      { column: 5, line: 6, target: "/a" },
+    ]);
+  });
 });
 
 describe(validateLinks, () => {
@@ -268,6 +277,44 @@ describe(validateLinks, () => {
       makePage({ id: "b.mdx", route: "/b" }),
     ]);
     expect(diagnostics).toHaveLength(0);
+  });
+
+  it("accepts links to extra known routes (custom pages, generated routes)", async () => {
+    // A custom `pages/index.astro` and the generated `/changelog` index are
+    // servable but absent from the content graph — extraRoutes marks them known.
+    const diagnostics = await validateLinks(
+      makeGraph([
+        makePage({
+          id: "a.mdx",
+          links: [link("/"), link("/changelog")],
+          route: "/a",
+        }),
+      ]),
+      { extraRoutes: ["/", "/changelog"], publicDir: null }
+    );
+    expect(diagnostics).toHaveLength(0);
+  });
+
+  it("accepts an anchor on an extra route without checking it", async () => {
+    // Headings of custom `.astro` pages aren't indexed, so a fragment there
+    // must not be false-flagged as a broken anchor.
+    const diagnostics = await validateLinks(
+      makeGraph([
+        makePage({ id: "a.mdx", links: [link("/#hero")], route: "/a" }),
+      ]),
+      { extraRoutes: ["/"], publicDir: null }
+    );
+    expect(diagnostics).toHaveLength(0);
+  });
+
+  it("still flags links outside both the graph and the extra routes", async () => {
+    const diagnostics = await validateLinks(
+      makeGraph([
+        makePage({ id: "a.mdx", links: [link("/nope")], route: "/a" }),
+      ]),
+      { extraRoutes: ["/"], publicDir: null }
+    );
+    expect(diagnostics.map((d) => d.code)).toStrictEqual(["BLUME_BROKEN_LINK"]);
   });
 });
 

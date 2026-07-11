@@ -20,10 +20,19 @@ export const createSearch = (opts: {
   searchApiKey: string;
 }): SearchFn => {
   const client = liteClient(opts.appId, opts.searchApiKey);
-  return async (query) => {
+  return async (query, options) => {
     const { results } = await client.search<AlgoliaRecord>({
       requests: [
-        { hitsPerPage: SEARCH_LIMIT, indexName: opts.indexName, query },
+        {
+          hitsPerPage: SEARCH_LIMIT,
+          indexName: opts.indexName,
+          query,
+          // The sync uploads `locale` on every record so an i18n site can
+          // scope hosted results to the active language.
+          ...(options?.locale && {
+            facetFilters: [`locale:${options.locale}`],
+          }),
+        },
       ],
     });
     const [first] = results;

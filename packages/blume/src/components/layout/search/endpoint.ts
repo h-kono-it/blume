@@ -1,10 +1,11 @@
-import { SEARCH_LIMIT } from "./types.ts";
+import { highlight, SEARCH_LIMIT } from "./types.ts";
 import type { SearchFn, SearchHit } from "./types.ts";
 
 /**
  * Server-proxied search (Mixedbread): POST the query to a generated endpoint
- * that holds the secret key and talks to the service, then renders the
- * already-shaped hits it returns.
+ * that holds the secret key and talks to the service. The returned hits carry
+ * service-derived text and the dialog injects title/excerpt as HTML, so both
+ * are escaped (and query matches marked) here, like every other provider.
  */
 export const createSearch =
   (opts: { api: string }): SearchFn =>
@@ -17,6 +18,11 @@ export const createSearch =
     if (!response.ok) {
       return { hits: [], sections: [] };
     }
-    const hits = (await response.json()) as SearchHit[];
-    return { hits: hits.slice(0, SEARCH_LIMIT), sections: [] };
+    const records = (await response.json()) as SearchHit[];
+    const hits = records.slice(0, SEARCH_LIMIT).map((hit) => ({
+      ...hit,
+      excerpt: highlight(hit.excerpt, query),
+      title: highlight(hit.title, query),
+    }));
+    return { hits, sections: [] };
   };

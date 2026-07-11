@@ -23,6 +23,7 @@ export const tr: UIStringsOverride = {
     send: "Gönder",
     title: "Yapay zekâya sor",
   },
+  banner: { dismiss: "Duyuruyu kapat" },
   feedback: {
     no: "Hayır",
     question: "Bu sayfa yardımcı oldu mu?",

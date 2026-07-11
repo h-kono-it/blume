@@ -445,6 +445,9 @@ hr { border: 0; border-top: 1px solid #ddd; margin: 2em 0; }`;
 
     const epubButton = root.querySelector("[data-blume-export-epub]");
     const epubLabel = root.querySelector("[data-blume-epub-label]");
+    // Captured once — inside the handler a click during a generation would
+    // capture and permanently restore "Generating…".
+    const epubReset = epubLabel?.textContent ?? "";
     epubButton?.addEventListener("click", async () => {
       const article = document.querySelector("#blume-content article");
       if (!article) {
@@ -452,7 +455,6 @@ hr { border: 0; border-top: 1px solid #ddd; margin: 2em 0; }`;
       }
       const heading = document.querySelector("#blume-content h1");
       const title = heading?.textContent?.trim() || document.title;
-      const reset = epubLabel?.textContent ?? "";
       if (epubLabel) {
         epubLabel.textContent = generatingLabel;
       }
@@ -492,7 +494,7 @@ hr { border: 0; border-top: 1px solid #ddd; margin: 2em 0; }`;
         console.error("[blume] EPUB export failed", error);
       } finally {
         if (epubLabel) {
-          epubLabel.textContent = reset;
+          epubLabel.textContent = epubReset;
         }
       }
     });

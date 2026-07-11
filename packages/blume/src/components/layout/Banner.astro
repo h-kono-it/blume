@@ -1,4 +1,6 @@
 ---
+import { EN_UI } from "../../core/i18n-ui.ts";
+import type { UIStrings } from "../../core/i18n-ui.ts";
 import { withBase } from "../islands/base-path.ts";
 import Icon from "../Icon.astro";
 
@@ -14,9 +16,15 @@ interface Props {
         key: string;
       }
     | null;
+  /** Localized banner labels. */
+  strings?: UIStrings["banner"];
 }
 
-const { banner } = Astro.props;
+const { banner, strings } = Astro.props;
+// Merge over the English baseline per key (rather than `strings ?? …`) so a
+// partial — or missing — strings object still resolves every label to a
+// default, matching the pattern PageFeedback and Search use.
+const b = { ...EN_UI.banner, ...strings };
 ---
 
 {
@@ -38,7 +46,7 @@ const { banner } = Astro.props;
       )}
       {banner.dismissible && (
         <button
-          aria-label="Dismiss announcement"
+          aria-label={b.dismiss}
           class="absolute end-1.5 inline-flex size-7 items-center justify-center rounded-full text-background/80 transition-colors hover:bg-white/10 hover:text-background dark:text-foreground/70 dark:hover:bg-foreground/10 dark:hover:text-foreground"
           data-blume-banner-dismiss
           type="button"

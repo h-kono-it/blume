@@ -1,4 +1,8 @@
-import { describe, expect, it } from "bun:test";
+import { afterAll, beforeAll, describe, expect, it } from "bun:test";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+
+import { join } from "pathe";
 
 import { buildAgentReadability } from "../src/ai/agent-readability.ts";
 import {
@@ -58,7 +62,8 @@ const postPage = (
 
 const makeProject = (
   pages: PageRecord[],
-  config: Record<string, unknown> = {}
+  config: Record<string, unknown> = {},
+  context: Partial<ProjectContext> = {}
 ): BlumeProject =>
   ({
     config: blumeConfigSchema.parse({
@@ -66,6 +71,7 @@ const makeProject = (
       title: "Docs",
       ...config,
     }),
+    context: { pagesRoot: null, ...context },
     graph: { pages },
   }) as unknown as BlumeProject;
 
@@ -472,7 +478,10 @@ describe("structured data", () => {
 
   it("emits a BlogPosting with absolute url, datePublished, and breadcrumbs", () => {
     const data = buildStructuredData({
-      breadcrumbs: [{ label: "Blog", route: "/blog" }, { label: "Post" }],
+      breadcrumbs: [
+        { label: "Blog", route: "/blog" },
+        { label: "Post", route: "/blog/post" },
+      ],
       description: "Hi",
       pageType: "blog",
       published: "2026-01-01",
@@ -487,6 +496,51 @@ describe("structured data", () => {
     expect(article?.datePublished).toBe("2026-01-01T00:00:00.000Z");
     expect(article?.isPartOf).toStrictEqual({ "@id": "https://x.com#website" });
     expect(graph.some((n) => n["@type"] === "BreadcrumbList")).toBeTruthy();
+  });
+
+  it("drops route-less group crumbs and renumbers positions", () => {
+    // A sidebar group without an index page yields a crumb with no route;
+    // Google requires `item` on every position except the last, so those
+    // crumbs must not appear as link-less ListItems.
+    const data = buildStructuredData({
+      breadcrumbs: [
+        { label: "Guides" },
+        { label: "Advanced", route: "/guides/advanced" },
+        { label: "Deep", route: "/guides/advanced/deep" },
+      ],
+      route: "/guides/advanced/deep",
+      siteName: "Docs",
+      siteUrl: "https://x.com",
+      title: "Deep",
+    });
+    const list = graphOf(data).find((n) => n["@type"] === "BreadcrumbList");
+    expect(list?.itemListElement).toStrictEqual([
+      {
+        "@type": "ListItem",
+        item: "https://x.com/guides/advanced",
+        name: "Advanced",
+        position: 1,
+      },
+      {
+        "@type": "ListItem",
+        item: "https://x.com/guides/advanced/deep",
+        name: "Deep",
+        position: 2,
+      },
+    ]);
+  });
+
+  it("omits the BreadcrumbList when fewer than two crumbs have routes", () => {
+    const data = buildStructuredData({
+      breadcrumbs: [{ label: "Group" }, { label: "Page", route: "/page" }],
+      route: "/page",
+      siteName: "Docs",
+      siteUrl: "https://x.com",
+      title: "Page",
+    });
+    expect(
+      graphOf(data).some((n) => n["@type"] === "BreadcrumbList")
+    ).toBeFalsy();
   });
 
   it("falls back to relative urls and TechArticle without a site", () => {
@@ -577,6 +631,69 @@ describe("sitemap", () => {
     expect(xml).toContain("<lastmod>2024-05-01</lastmod>");
     // A page without a date gets a plain <url> with no lastmod.
     expect(xml).toContain("<loc>https://example.com/b</loc></url>");
+  });
+});
+
+describe("sitemap — custom pages and generated routes", () => {
+  let pagesRoot: string;
+
+  beforeAll(async () => {
+    pagesRoot = await mkdtemp(join(tmpdir(), "blume-sitemap-pages-"));
+    await mkdir(join(pagesRoot, "blog"), { recursive: true });
+    await Promise.all([
+      writeFile(join(pagesRoot, "index.astro"), "<h1>home</h1>"),
+      writeFile(join(pagesRoot, "about.astro"), "<h1>about</h1>"),
+      writeFile(join(pagesRoot, "blog", "[slug].astro"), "<h1>post</h1>"),
+      writeFile(join(pagesRoot, "_partial.astro"), "<h1>private</h1>"),
+    ]);
+  });
+
+  afterAll(async () => {
+    await rm(pagesRoot, { force: true, recursive: true });
+  });
+
+  it("includes static custom pages, skipping dynamic and private ones", () => {
+    const pages = [makePage({ id: "a", route: "/a", title: "A" })];
+    const xml = buildSitemap(makeProject(pages, {}, { pagesRoot })) ?? "";
+    // The custom landing page is the most important shared URL on the site.
+    expect(xml).toContain("<loc>https://example.com/</loc>");
+    expect(xml).toContain("<loc>https://example.com/about</loc>");
+    expect(xml).not.toContain("slug");
+    expect(xml).not.toContain("_partial");
+  });
+
+  it("emits a single entry when a custom page and a content route collide", () => {
+    const pages = [makePage({ id: "about", route: "/about", title: "About" })];
+    const xml = buildSitemap(makeProject(pages, {}, { pagesRoot })) ?? "";
+    const occurrences = xml.split("<loc>https://example.com/about</loc>");
+    expect(occurrences).toHaveLength(2);
+  });
+
+  it("layers the deployment base onto custom-page URLs", () => {
+    const xml =
+      buildSitemap(
+        makeProject(
+          [],
+          { deployment: { base: "/base", site: "https://example.com" } },
+          { pagesRoot }
+        )
+      ) ?? "";
+    expect(xml).toContain("<loc>https://example.com/base/about</loc>");
+  });
+
+  it("includes the generated /changelog index when it exists", () => {
+    const pages = [
+      postPage("v1", "/changelog/v1", "changelog", { date: "2024-01-01" }),
+    ];
+    const xml = buildSitemap(makeProject(pages)) ?? "";
+    expect(xml).toContain("<loc>https://example.com/changelog</loc>");
+  });
+
+  it("omits /changelog when a content page already owns the route", () => {
+    const pages = [postPage("cl", "/changelog", "changelog", {})];
+    const xml = buildSitemap(makeProject(pages)) ?? "";
+    const occurrences = xml.split("<loc>https://example.com/changelog</loc>");
+    expect(occurrences).toHaveLength(2);
   });
 });
 
@@ -714,6 +831,7 @@ describe("api reference (scalar)", () => {
     });
     expect(resolveReferences(config)).toStrictEqual([
       {
+        basePath: "",
         display: {
           codeSamples: ["curl", "js", "python"],
           expandSchemas: false,

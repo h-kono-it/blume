@@ -4,6 +4,7 @@ import { resolve } from "pathe";
 
 import { ensureGitignore } from "../../core/gitignore.ts";
 import { eject } from "../../registry/eject.ts";
+import { updatePackageScripts } from "../eject-scripts.ts";
 import { collectAnswers } from "../init/questions.ts";
 import {
   applyPlan,
@@ -21,6 +22,40 @@ import type {
   Template,
 } from "../init/scaffold.ts";
 import { logger } from "../log.ts";
+
+/**
+ * Eject the freshly scaffolded project, or print the install-then-eject path.
+ * Eject jiti-loads the scaffolded blume.config.ts, whose `import { defineConfig }
+ * from "blume"` only resolves once dependencies are installed (or blume is
+ * hoisted from an ancestor node_modules, as in a monorepo) — so on a fresh
+ * scaffold the fallback below is the common path.
+ */
+const ejectScaffold = async (
+  root: string,
+  answers: InitAnswers
+): Promise<void> => {
+  const commands = commandsFor(answers.packageManager);
+  const cd = answers.directory === "." ? [] : [`cd ${answers.directory}`];
+  try {
+    await eject(root);
+    // The scaffolded scripts point at the Blume CLI; the ejected app runs
+    // Astro directly (mirroring the standalone `blume eject` command).
+    await updatePackageScripts(root);
+    logger.success("Ejected to a standalone Astro project.");
+    const steps = [...cd, commands.install, commands.dev];
+    logger.box(`Next steps:\n\n  ${steps.join("\n  ")}\n`);
+  } catch (error) {
+    logger.warn(
+      `Scaffolded, but eject needs the project's dependencies installed to load blume.config.ts: ${(error as Error).message}`
+    );
+    const steps = [
+      ...cd,
+      commands.install,
+      `${commands.exec} blume eject --yes`,
+    ];
+    logger.box(`Next steps:\n\n  ${steps.join("\n  ")}\n`);
+  }
+};
 
 export const initCommand = defineCommand({
   args: {
@@ -130,23 +165,8 @@ export const initCommand = defineCommand({
       sink.success(`Added ${ignored.join(", ")} to .gitignore`);
     }
 
-    const commands = commandsFor(answers.packageManager);
-
     if (args.eject) {
-      // Eject only generates files (no Astro runtime), so it works right after
-      // scaffolding. The standalone app then runs with Astro directly.
-      try {
-        await eject(root);
-        logger.success("Ejected to a standalone Astro project.");
-        logger.box(`Next steps:\n\n  ${commands.install}\n  npx astro dev\n`);
-      } catch (error) {
-        logger.warn(
-          `Scaffolded, but eject failed: ${(error as Error).message}`
-        );
-        logger.box(
-          `Next steps:\n\n  ${commands.install}\n  blume eject --yes\n`
-        );
-      }
+      await ejectScaffold(root, answers);
       return;
     }
 

@@ -39,7 +39,70 @@ export interface SchemaLike {
   [key: string]: unknown;
 }
 
+/** A permissive view of an operation parameter — only the fields we render. */
+export interface ParameterLike {
+  $ref?: string;
+  name?: string;
+  in?: string;
+  description?: string;
+  required?: boolean;
+  deprecated?: boolean;
+  schema?: SchemaLike;
+  example?: unknown;
+}
+
 const REF_PATTERN = /#\/components\/schemas\/(?<name>[^/]+)$/u;
+
+const COMPONENT_REF = /#\/components\/(?<section>[^/]+)\/(?<name>[^/]+)$/u;
+
+/**
+ * Resolve one level of `$ref` against a named `components` section
+ * (`parameters`, `requestBodies`, `responses`). Mirrors {@link resolveSchema}:
+ * an unknown ref — or one pointing into a different section — is returned
+ * as-is.
+ */
+export const resolveComponentRef = <T extends { $ref?: string }>(
+  node: T,
+  components: Record<string, unknown> | undefined,
+  section: string
+): T => {
+  if (typeof node.$ref !== "string") {
+    return node;
+  }
+  const groups = COMPONENT_REF.exec(node.$ref)?.groups;
+  if (groups?.section !== section) {
+    return node;
+  }
+  const table = components?.[section] as Record<string, T> | undefined;
+  return table?.[groups.name ?? ""] ?? node;
+};
+
+/**
+ * Path-level and operation-level parameters merged into one render list.
+ * `$ref`s resolve against `components.parameters` first; then an operation
+ * parameter overrides a path-level one with the same `name` + `in` (the
+ * OpenAPI override rule), so a re-declared parameter appears once.
+ */
+export const mergeParameters = (
+  pathParameters: ParameterLike[] | undefined,
+  operationParameters: ParameterLike[] | undefined,
+  components?: Record<string, unknown>
+): ParameterLike[] => {
+  const merged = new Map<string, ParameterLike>();
+  let position = 0;
+  for (const raw of [
+    ...(pathParameters ?? []),
+    ...(operationParameters ?? []),
+  ]) {
+    const param = resolveComponentRef(raw, components, "parameters");
+    // A nameless parameter is invalid per spec, but key it uniquely so it is
+    // still rendered rather than collapsing with other invalid entries.
+    const key = param.name ? `${param.in ?? ""}:${param.name}` : `#${position}`;
+    merged.set(key, param);
+    position += 1;
+  }
+  return [...merged.values()];
+};
 
 /** The display name of a `$ref`, e.g. `#/components/schemas/Pet` -> `Pet`. */
 export const refName = (ref: string): string =>
@@ -166,13 +229,18 @@ export const objectProperties = (
 /** Sentinel: no explicit example is declared on a schema. */
 const NO_VALUE = Symbol("no-value");
 
-/** The declared example/default/enum for a schema, or {@link NO_VALUE}. */
+/** The declared example/const/default/enum for a schema, or {@link NO_VALUE}. */
 const explicitExample = (schema: SchemaLike): unknown => {
   if (schema.example !== undefined) {
     return schema.example;
   }
   if (Array.isArray(schema.examples) && schema.examples.length > 0) {
     return schema.examples[0];
+  }
+  // `const` is the schema's only valid value (the 3.1 discriminator idiom), so
+  // it outranks `default`/`enum` — either of those differing would be invalid.
+  if (schema.const !== undefined) {
+    return schema.const;
   }
   if (schema.default !== undefined) {
     return schema.default;
@@ -202,8 +270,8 @@ const primitiveExample = (
 
 /**
  * Build a representative example value for a schema (honoring `example` /
- * `default` / `enum` first). A `seen` set of `$ref`s guards against the circular
- * schemas that keeping refs intact allows.
+ * `const` / `default` / `enum` first). A `seen` set of `$ref`s guards against
+ * the circular schemas that keeping refs intact allows.
  */
 export const exampleValue = (
   schema: SchemaLike | undefined,

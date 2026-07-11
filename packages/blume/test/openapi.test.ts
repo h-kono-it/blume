@@ -8,8 +8,10 @@ import {
   constraints,
   exampleValue,
   isNullable,
+  mergeParameters,
   objectProperties,
   refName,
+  resolveComponentRef,
   resolveSchema,
   toJson,
   typeLabel,
@@ -206,6 +208,18 @@ describe("references", () => {
     expect(refs.map((ref) => ref.slug)).toStrictEqual(["api-v1", "api-v1-2"]);
   });
 
+  it("carries the site-wide basePath onto every resolved reference", () => {
+    const config = blumeConfigSchema.parse({
+      basePath: "/docs",
+      openapi: { enabled: true, spec: "spec.json" },
+    });
+    const [ref] = resolveReferences(config);
+    expect(ref?.basePath).toBe("/docs");
+    // The route itself stays base-less: the content pipeline mounts the staged
+    // pages under `basePath`, so only emitted URLs get the prefix.
+    expect(ref?.route).toBe("/reference");
+  });
+
   it("appends a staged openapi source when a Blume reference is configured", () => {
     const config = blumeConfigSchema.parse({
       openapi: { enabled: true, spec: "spec.json" },
@@ -226,9 +240,10 @@ describe("references", () => {
 
 describe("model.extractOperations", () => {
   it("flattens operations, groups by tag, and maps routes", () => {
-    const { operations, tags } = extractOperations(SPEC_3_1, "/api");
+    const { operations, tags, warnings } = extractOperations(SPEC_3_1, "/api");
     const byKey = new Map(operations.map((op) => [op.key, op]));
     expect(operations).toHaveLength(3);
+    expect(warnings).toStrictEqual([]);
     expect(byKey.get("addpet")?.route).toBe("/api/pet/addpet");
     expect(byKey.get("addpet")?.method).toBe("post");
     expect(tags.map((tag) => tag.slug)).toContain("pet");
@@ -245,6 +260,24 @@ describe("model.extractOperations", () => {
     }
     const addPet = operations.find((op) => op.key === "addpet");
     expect(addPet?.route).toBe("/pet/addpet");
+  });
+
+  it("warns on a $ref path item instead of silently dropping it", () => {
+    const { operations, warnings } = extractOperations(
+      {
+        openapi: "3.1.0",
+        paths: {
+          "/gone": null,
+          "/pets": { $ref: "#/components/pathItems/pets" },
+          "/x": { get: { operationId: "x" } },
+        },
+      } as unknown as ApiDocument,
+      "/api"
+    );
+    // The empty item is skipped silently; only the $ref one is reported.
+    expect(operations.map((op) => op.key)).toStrictEqual(["x"]);
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0]).toContain('"/pets"');
   });
 
   it("derives an operation key from method+path when operationId is absent", () => {
@@ -709,6 +742,7 @@ describe("source.openApiSource", () => {
   it("emits one entry per operation plus an overview, and exposes parsed data", async () => {
     const dir = await tempSpec(SPEC_3_1);
     const reference = {
+      basePath: "",
       display: { codeSamples: ["curl"], expandSchemas: false },
       kind: "openapi" as const,
       label: "API",
@@ -734,7 +768,56 @@ describe("source.openApiSource", () => {
     await rm(dir, { force: true, recursive: true });
   });
 
+  it("serializes operation routes under basePath while entries stay base-less", async () => {
+    const dir = await tempSpec(SPEC_3_1);
+    const reference = {
+      basePath: "/docs",
+      display: { codeSamples: [], expandSchemas: false },
+      kind: "openapi" as const,
+      label: "API",
+      renderer: "blume" as const,
+      route: "/api",
+      slug: "api",
+      spec: "spec.json",
+    };
+    const source = openApiSource([reference], ctx(dir));
+    const { entries } = await source.load();
+    // The content pipeline mounts staged entries under `basePath` itself, so
+    // the refs stay base-less...
+    expect(entries.map((entry) => entry.ref)).toContain("api/pet/addpet.mdx");
+    // ...but the routes components link to carry it, matching the served URLs.
+    expect(source.openApiData().api?.operations.addpet?.route).toBe(
+      "/docs/api/pet/addpet"
+    );
+    await rm(dir, { force: true, recursive: true });
+  });
+
+  it("surfaces a warning diagnostic for a $ref path item", async () => {
+    const dir = await tempSpec({
+      info: { title: "Refs", version: "1" },
+      openapi: "3.1.0",
+      paths: { "/pets": { $ref: "#/components/pathItems/pets" } },
+    });
+    const reference = {
+      basePath: "",
+      display: { codeSamples: [], expandSchemas: false },
+      kind: "openapi" as const,
+      label: "API",
+      renderer: "blume" as const,
+      route: "/api",
+      slug: "api",
+      spec: "spec.json",
+    };
+    const { diagnostics } = await openApiSource([reference], ctx(dir)).load();
+    expect(diagnostics[0]?.code).toBe("BLUME_OPENAPI_REF_PATH_ITEM");
+    expect(diagnostics[0]?.severity).toBe("warning");
+    expect(diagnostics[0]?.message).toContain('"/pets"');
+    expect(diagnostics[0]?.message).toContain("spec.json");
+    await rm(dir, { force: true, recursive: true });
+  });
+
   const missingReference = {
+    basePath: "",
     display: { codeSamples: [], expandSchemas: false },
     kind: "openapi" as const,
     label: "API",
@@ -768,6 +851,7 @@ describe("source.openApiSource", () => {
     const original = globalThis.fetch;
     const cacheDir = await mkdtemp(join(tmpdir(), "blume-openapi-src-"));
     const reference = {
+      basePath: "",
       display: { codeSamples: [], expandSchemas: false },
       kind: "openapi" as const,
       label: "API",
@@ -916,6 +1000,112 @@ describe("helpers", () => {
     expect(exampleValue({ default: "d" }, schemas)).toBe("d");
     expect(exampleValue(undefined, schemas)).toBeNull();
     expect(toJson({ a: 1 })).toContain('"a": 1');
+  });
+
+  it("honors const in example values (the 3.1 discriminator idiom)", () => {
+    expect(exampleValue({ const: "dog", type: "string" }, schemas)).toBe("dog");
+    // const is the only valid value, so it outranks default and enum...
+    expect(
+      exampleValue({ const: "dog", default: "cat", enum: ["cat"] }, schemas)
+    ).toBe("dog");
+    // ...but a declared example still wins.
+    expect(exampleValue({ const: "dog", example: "pup" }, schemas)).toBe("pup");
+  });
+});
+
+describe("helpers.resolveComponentRef", () => {
+  interface BodyLike {
+    $ref?: string;
+    description?: string;
+  }
+  const components = {
+    requestBodies: { PetBody: { description: "A pet body" } },
+    responses: { NotFound: { description: "Not found" } },
+  };
+
+  it("resolves requestBody and response $refs by section", () => {
+    expect(
+      resolveComponentRef<BodyLike>(
+        { $ref: "#/components/requestBodies/PetBody" },
+        components,
+        "requestBodies"
+      ).description
+    ).toBe("A pet body");
+    expect(
+      resolveComponentRef<BodyLike>(
+        { $ref: "#/components/responses/NotFound" },
+        components,
+        "responses"
+      ).description
+    ).toBe("Not found");
+  });
+
+  it("returns unresolvable nodes as-is", () => {
+    const inline: BodyLike = { description: "inline" };
+    expect(resolveComponentRef(inline, components, "responses")).toBe(inline);
+    const unknown: BodyLike = { $ref: "#/components/responses/Nope" };
+    expect(resolveComponentRef(unknown, components, "responses")).toBe(unknown);
+    // A ref into another section must not resolve against this one.
+    const wrongSection: BodyLike = {
+      $ref: "#/components/requestBodies/PetBody",
+    };
+    expect(resolveComponentRef(wrongSection, components, "responses")).toBe(
+      wrongSection
+    );
+    const malformed: BodyLike = { $ref: "#/nope" };
+    expect(resolveComponentRef(malformed, components, "responses")).toBe(
+      malformed
+    );
+    expect(resolveComponentRef(unknown, undefined, "responses")).toBe(unknown);
+  });
+});
+
+describe("helpers.mergeParameters", () => {
+  it("lets an operation parameter override a same-name+in path parameter", () => {
+    const merged = mergeParameters(
+      [
+        { in: "query", name: "limit", schema: { type: "integer" } },
+        { in: "query", name: "offset", schema: { type: "integer" } },
+      ],
+      [
+        {
+          in: "query",
+          name: "limit",
+          required: true,
+          schema: { type: "integer" },
+        },
+        // Same name, different location: a distinct parameter, both kept.
+        { in: "header", name: "limit" },
+      ]
+    );
+    expect(
+      merged.map((param) => [param.in, param.name, param.required ?? false])
+    ).toStrictEqual([
+      ["query", "limit", true],
+      ["query", "offset", false],
+      ["header", "limit", false],
+    ]);
+  });
+
+  it("resolves parameter $refs before comparing", () => {
+    const components = {
+      parameters: {
+        Limit: { description: "resolved", in: "query", name: "limit" },
+      },
+    };
+    const merged = mergeParameters(
+      [{ in: "query", name: "limit" }],
+      [{ $ref: "#/components/parameters/Limit" }],
+      components
+    );
+    expect(merged).toHaveLength(1);
+    expect(merged[0]?.description).toBe("resolved");
+  });
+
+  it("keeps nameless (invalid) parameters distinct instead of dropping them", () => {
+    expect(mergeParameters([{ in: "query" }], [{ in: "query" }])).toHaveLength(
+      2
+    );
   });
 });
 

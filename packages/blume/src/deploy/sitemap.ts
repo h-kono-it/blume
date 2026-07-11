@@ -1,3 +1,8 @@
+import {
+  customStaticRoutes,
+  discoverPagesSync,
+  hasGeneratedChangelog,
+} from "../astro/pages.ts";
 import { normalizeBasePath, withBasePath } from "../core/base-path.ts";
 import type { BlumeProject } from "../core/project-graph.ts";
 import { escapeXml } from "./xml.ts";
@@ -14,9 +19,11 @@ const lastmodTag = (value: string | undefined): string => {
 };
 
 /**
- * Build a sitemap.xml from the route manifest. Returns null when the sitemap is
- * disabled or no `site` is configured (absolute URLs are required for a valid
- * sitemap). Drafts, hidden, and `noindex` pages are excluded.
+ * Build a sitemap.xml from the route manifest plus the routes the manifest
+ * can't see: custom `.astro` pages (most importantly a custom landing `/`) and
+ * the generated `/changelog` index. Returns null when the sitemap is disabled
+ * or no `site` is configured (absolute URLs are required for a valid sitemap).
+ * Drafts, hidden, and `noindex` pages are excluded.
  */
 export const buildSitemap = (project: BlumeProject): string | null => {
   const { site } = project.config.deployment;
@@ -27,19 +34,38 @@ export const buildSitemap = (project: BlumeProject): string | null => {
   const base = site.replace(/\/$/u, "");
   // Routes carry `basePath`; a `deployment.base` subdirectory is layered on top.
   const deployBase = normalizeBasePath(project.config.deployment.base);
+  const seen = new Set<string>();
   const urls: string[] = [];
-  for (const page of project.graph.pages) {
-    if (page.meta.draft || page.meta.sidebar.hidden || page.meta.seo.noindex) {
-      continue;
-    }
+  const pushUrl = (route: string, lastModified?: string): void => {
     // `<loc>` must be a well-formed, XML-escaped URL: percent-encode the path,
     // then escape XML metacharacters (notably `&`) so a route like
     // `/Tips & Tricks` doesn't produce invalid XML that gets the whole sitemap
     // rejected.
-    const loc = escapeXml(
-      encodeURI(`${base}${withBasePath(deployBase, page.route)}`)
-    );
-    urls.push(`  <url><loc>${loc}</loc>${lastmodTag(page.lastModified)}</url>`);
+    const loc = escapeXml(encodeURI(`${base}${route}`));
+    if (seen.has(loc)) {
+      return;
+    }
+    seen.add(loc);
+    urls.push(`  <url><loc>${loc}</loc>${lastmodTag(lastModified)}</url>`);
+  };
+  for (const page of project.graph.pages) {
+    if (page.meta.draft || page.meta.sidebar.hidden || page.meta.seo.noindex) {
+      continue;
+    }
+    pushUrl(withBasePath(deployBase, page.route), page.lastModified);
+  }
+  // Custom `.astro` pages and the generated changelog index mount outside
+  // `basePath` (they're injected at their pattern — see `blumeIntegration`), so
+  // only the deployment base layers onto their URLs.
+  const userPages = project.context.pagesRoot
+    ? discoverPagesSync(project.context.pagesRoot)
+    : [];
+  const extraRoutes = customStaticRoutes(userPages);
+  if (hasGeneratedChangelog(project, userPages)) {
+    extraRoutes.push("/changelog");
+  }
+  for (const route of extraRoutes) {
+    pushUrl(withBasePath(deployBase, route));
   }
   urls.sort();
 

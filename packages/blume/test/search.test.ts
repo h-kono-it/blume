@@ -53,9 +53,30 @@ const projectWith = (
 ): BlumeProject =>
   ({ graph: { pages }, manifest: { routes } }) as unknown as BlumeProject;
 
+const VIS_BODY = [
+  "---",
+  "title: V",
+  "---",
+  "# V",
+  "",
+  '<Visibility for="web">',
+  "Webonly note.",
+  "</Visibility>",
+  "",
+  '<Visibility for="agents">',
+  "Agentonly note.",
+  "</Visibility>",
+  "",
+  "```astro",
+  '<Visibility for="agents">Fenced sample.</Visibility>',
+  "```",
+  "",
+].join("\n");
+
 beforeAll(async () => {
   root = await mkdtemp(join(tmpdir(), "blume-search-"));
   await writeFile(join(root, "a.md"), BODY);
+  await writeFile(join(root, "vis.md"), VIS_BODY);
 });
 
 afterAll(async () => {
@@ -118,6 +139,52 @@ describe("buildSearchDocuments", () => {
     );
     expect(doc?.content).toBe("");
     expect(doc?.description).toBe("");
+  });
+});
+
+describe("buildSearchDocuments — <Visibility> audiences", () => {
+  const visProject = (): BlumeProject =>
+    projectWith(
+      [page({ id: "vis.md" })],
+      [
+        route({
+          id: "vis.md",
+          path: "/vis",
+          sourcePath: join(root, "vis.md"),
+          title: "V",
+        }),
+      ]
+    );
+
+  it("web (default): keeps web-only content, drops agents-only blocks", async () => {
+    // The dialog must never surface content the rendered page hides.
+    const [doc] = await buildSearchDocuments(visProject());
+    expect(doc?.content).toContain("Webonly note.");
+    expect(doc?.content).not.toContain("Agentonly note.");
+  });
+
+  it("agents: mirrors llms-full.txt (web removed, agents unwrapped)", async () => {
+    const [doc] = await buildSearchDocuments(visProject(), {
+      audience: "agents",
+    });
+    expect(doc?.content).toContain("Agentonly note.");
+    expect(doc?.content).not.toContain("Webonly note.");
+  });
+
+  it("leaves fenced samples showing the tag intact in markdown mode", async () => {
+    const [doc] = await buildSearchDocuments(visProject(), {
+      audience: "agents",
+      content: "markdown",
+    });
+    expect(doc?.content).toContain(
+      '<Visibility for="agents">Fenced sample.</Visibility>'
+    );
+    expect(doc?.content).toContain("Agentonly note.");
+    expect(doc?.content).not.toContain("Webonly note.");
+    // The unwrap leaves no live tags outside the fence.
+    expect(doc?.content.replaceAll(/```[\s\S]*?```/gu, "")).not.toContain(
+      "<Visibility"
+    );
   });
 });
 

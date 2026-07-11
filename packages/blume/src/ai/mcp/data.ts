@@ -43,8 +43,13 @@ export const buildMcpData = async (project: BlumeProject): Promise<McpData> => {
   const { config, graph, manifest } = project;
   const [documents, pages] = await Promise.all([
     // The MCP server is independent of on-page search, so index docs even when
-    // the search provider is `none`.
-    buildSearchDocuments(project, { includeWhenDisabled: true }),
+    // the search provider is `none`. Documents are agent-facing, so
+    // `<Visibility>` resolves like `get_page`/llms-full.txt (web-only content
+    // removed, agents-only kept).
+    buildSearchDocuments(project, {
+      audience: "agents",
+      includeWhenDisabled: true,
+    }),
     buildRawMarkdown(project),
   ]);
 

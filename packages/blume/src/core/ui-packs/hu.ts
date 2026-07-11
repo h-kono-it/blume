@@ -23,6 +23,7 @@ export const hu: UIStringsOverride = {
     send: "Küldés",
     title: "Kérdezd az AI-t",
   },
+  banner: { dismiss: "Közlemény bezárása" },
   feedback: {
     no: "Nem",
     question: "Hasznos volt ez az oldal?",

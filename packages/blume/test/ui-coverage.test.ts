@@ -227,6 +227,28 @@ describe("server-proxied search endpoint", () => {
     expect(result.hits).toHaveLength(12);
     expect(result.sections).toStrictEqual([]);
   });
+
+  it("escapes server-derived hit text and marks the query matches", async () => {
+    // The dialog injects title/excerpt as HTML, so markup returned by the
+    // service must render literally rather than execute.
+    globalThis.fetch = (() =>
+      Promise.resolve(
+        Response.json([
+          {
+            excerpt: 'needle <img src=x onerror="x">',
+            title: "<b>needle</b>",
+            url: "/x",
+          },
+        ])
+      )) as unknown as typeof fetch;
+    const result = await createSearch({ api: "/api/search" })("needle");
+    expect(result.hits[0]?.title).toBe(
+      "&lt;b&gt;<mark>needle</mark>&lt;/b&gt;"
+    );
+    expect(result.hits[0]?.excerpt).toBe(
+      "<mark>needle</mark> &lt;img src=x onerror=&quot;x&quot;&gt;"
+    );
+  });
 });
 
 describe("search text helpers", () => {
@@ -285,6 +307,14 @@ describe("search text helpers", () => {
     const excerpt = excerptFor("", "a".repeat(200));
     expect(excerpt).toHaveLength(141);
     expect(excerpt.endsWith("…")).toBe(true);
+  });
+
+  it("adds no ellipsis when the content fits the fallback slice", () => {
+    expect(excerptFor("", "short text")).toBe("short text");
+  });
+
+  it("returns an empty excerpt for empty content", () => {
+    expect(excerptFor("", "")).toBe("");
   });
 });
 

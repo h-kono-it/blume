@@ -11,6 +11,10 @@ import { askBackendRuntimeDep, resolveAskBackend } from "../src/ai/ask.ts";
 import { buildLlmsFiles } from "../src/ai/llms.ts";
 import { buildRawMarkdown } from "../src/ai/markdown.ts";
 import {
+  applyAgentVisibility,
+  applyAudienceVisibility,
+} from "../src/ai/visibility.ts";
+import {
   askEndpointTemplate,
   runtimeDependencies,
 } from "../src/astro/templates.ts";
@@ -79,6 +83,25 @@ beforeAll(async () => {
     "a.md": "---\ntitle: Alpha\n---\n# Alpha\n\nBody A.\n",
     "b.md": "---\ntitle: Beta\n---\n# Beta\n\nBody B.\n",
     "c.md": "---\ntitle: Gamma\n---\n# Gamma\n\nDraft body.\n",
+    "v.md": [
+      "---",
+      "title: Vis",
+      "---",
+      "# Vis",
+      "",
+      '<Visibility for="web">',
+      "Web-only body.",
+      "</Visibility>",
+      "",
+      '<Visibility for="agents">',
+      "Agent-only body.",
+      "</Visibility>",
+      "",
+      "```astro",
+      '<Visibility for="web">Sample markup.</Visibility>',
+      "```",
+      "",
+    ].join("\n"),
   };
   await Promise.all(
     Object.entries(files).map(async ([rel, content]) => {
@@ -184,6 +207,130 @@ describe("buildRawMarkdown", () => {
   });
 });
 
+describe("agent-facing markdown honours <Visibility>", () => {
+  const visProject = (): BlumeProject =>
+    makeProject([makePage("v.md", "/v", "Vis")]);
+
+  it("filters llms-full.txt: web removed, agents unwrapped, fences kept", async () => {
+    const { full } = await buildLlmsFiles(visProject());
+    expect(full).not.toContain("Web-only body.");
+    expect(full).toContain("Agent-only body.");
+    expect(full).not.toContain('<Visibility for="agents">');
+    // The fenced code sample documenting the tag survives verbatim.
+    expect(full).toContain('<Visibility for="web">Sample markup.</Visibility>');
+  });
+
+  it("filters the raw .md mirrors while keeping frontmatter", async () => {
+    const raw = await buildRawMarkdown(visProject());
+    expect(raw["/v"]).toContain("title: Vis");
+    expect(raw["/v"]).not.toContain("Web-only body.");
+    expect(raw["/v"]).toContain("Agent-only body.");
+    expect(raw["/v"]).not.toContain('<Visibility for="agents">');
+    expect(raw["/v"]).toContain(
+      '<Visibility for="web">Sample markup.</Visibility>'
+    );
+  });
+});
+
+describe("applyAgentVisibility", () => {
+  it("removes web blocks, unwraps agents blocks, and collapses the gaps", () => {
+    const input = [
+      "Intro.",
+      "",
+      '<Visibility for="web">',
+      "Web-only note.",
+      "</Visibility>",
+      "",
+      '<Visibility for="agents">',
+      "Agent-only note.",
+      "</Visibility>",
+      "",
+      "Outro.",
+    ].join("\n");
+    expect(applyAgentVisibility(input)).toBe(
+      "Intro.\n\nAgent-only note.\n\nOutro."
+    );
+  });
+
+  it("accepts single quotes and whitespace around the attribute", () => {
+    const input =
+      "A <Visibility  for = 'web' >gone</Visibility > B " +
+      "<Visibility for='agents'>kept</Visibility> C";
+    const out = applyAgentVisibility(input);
+    expect(out).not.toContain("gone");
+    expect(out).toContain("kept");
+    expect(out).not.toContain("<Visibility");
+  });
+
+  it("returns markdown without Visibility blocks byte-identical", () => {
+    // Includes a run of blank lines: the tidy pass must not fire when nothing
+    // matched, so raw sources stay raw.
+    const input = "# Title\n\n\n\nBody with `<code>`.\n";
+    expect(applyAgentVisibility(input)).toBe(input);
+  });
+
+  it("leaves other audiences (the component default) untouched", () => {
+    const input = '<Visibility for="humans">On the web.</Visibility>\n';
+    expect(applyAgentVisibility(input)).toBe(input);
+  });
+
+  it("leaves fenced samples untouched, including tilde fences", () => {
+    const input = [
+      "~~~astro",
+      '<Visibility for="web">shown in the sample</Visibility>',
+      "~~~",
+      "",
+      '<Visibility for="web">really gone</Visibility>',
+      "",
+    ].join("\n");
+    const out = applyAgentVisibility(input);
+    expect(out).toContain("shown in the sample");
+    expect(out).not.toContain("really gone");
+  });
+
+  it("degrades safely on nested blocks (unsupported)", () => {
+    // Non-greedy matching closes the outer block at the FIRST end tag, so a
+    // nested block truncates the removal early and the remainder passes
+    // through verbatim. Nesting is not supported — this only pins down that
+    // the degradation is inert rather than destructive.
+    const input =
+      '<Visibility for="web">A ' +
+      '<Visibility for="agents">B</Visibility> C</Visibility>';
+    expect(applyAgentVisibility(input)).toBe(" C</Visibility>");
+  });
+
+  it("resolves the web audience symmetrically: agents dropped, web unwrapped", () => {
+    const input = [
+      "Intro.",
+      "",
+      '<Visibility for="web">',
+      "Web-only note.",
+      "</Visibility>",
+      "",
+      "<Visibility for='agents'>",
+      "Agent-only note.",
+      "</Visibility>",
+      "",
+      "Outro.",
+    ].join("\n");
+    expect(applyAudienceVisibility(input, "web")).toBe(
+      "Intro.\n\nWeb-only note.\n\nOutro."
+    );
+  });
+
+  it("web audience also round-trips untouched markdown byte-identical", () => {
+    const input = "# Title\n\n\n\nBody.\n";
+    expect(applyAudienceVisibility(input, "web")).toBe(input);
+  });
+
+  it("restores an unrecognized fence token verbatim", () => {
+    // A NUL-delimited token cannot appear in authored markdown; if one does,
+    // it must round-trip untouched rather than crash the unmask pass.
+    const weird = "before \u0000blume-fence-9\u0000 after";
+    expect(applyAgentVisibility(weird)).toBe(weird);
+  });
+});
+
 /** A route manifest entry backed by one of the temp fixture files. */
 const askRoute = (over: Partial<RouteManifestEntry>): RouteManifestEntry =>
   ({
@@ -227,6 +374,31 @@ describe("buildAskData", () => {
     expect(alpha?.title).toBe("Alpha");
     expect(alpha?.content).toContain("Body A.");
     expect(alpha).toHaveProperty("locale", "");
+  });
+
+  it("resolves <Visibility> for the agents audience", async () => {
+    const proj = {
+      config: blumeConfigSchema.parse({ title: "Docs" }),
+      graph: { pages: [makePage("v.md", "/v", "Vis")] },
+      manifest: {
+        routes: [
+          askRoute({
+            id: "v.md",
+            path: "/v",
+            sourcePath: join(root, "v.md"),
+            title: "Vis",
+          }),
+        ],
+      },
+    } as unknown as BlumeProject;
+    const data = await buildAskData(proj);
+    const doc = data.documents.find((entry) => entry.route === "/v");
+    expect(doc?.content).toContain("Agent-only body.");
+    expect(doc?.content).not.toContain("Web-only body.");
+    // Grounding keeps Markdown, so the fenced sample survives verbatim.
+    expect(doc?.content).toContain(
+      '<Visibility for="web">Sample markup.</Visibility>'
+    );
   });
 });
 

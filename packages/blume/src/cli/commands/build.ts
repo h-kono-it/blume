@@ -330,7 +330,7 @@ export const buildCommand = defineCommand({
     const runtimeDir = args.isolated
       ? ".blume-verify"
       : process.env.BLUME_RUNTIME_DIR;
-    refuseIfDevRunning(root, "building", runtimeDir);
+    refuseIfDevRunning(root, "building", { isolatedHint: true, runtimeDir });
     if (args.isolated) {
       await ensureGitignore(root, [".blume-verify/"]);
     }

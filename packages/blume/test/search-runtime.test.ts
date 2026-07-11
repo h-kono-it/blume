@@ -21,25 +21,33 @@ import { syncSearchProvider } from "../src/search/sync/index.ts";
  */
 
 interface AlgoliaSearchParams {
-  requests: { hitsPerPage: number; indexName: string; query: string }[];
+  requests: {
+    facetFilters?: string[];
+    hitsPerPage: number;
+    indexName: string;
+    query: string;
+  }[];
 }
 interface SaveObjectsArgs {
   indexName: string;
   objects: Record<string, unknown>[];
 }
 interface TypesenseSearchParams {
+  filter_by?: string;
   per_page: number;
   q: string;
   query_by: string;
+}
+interface OramaCloudSearchParams {
+  limit: number;
+  term: string;
+  where?: Record<string, string>;
 }
 
 // --- Mutable SDK behaviors the module mocks delegate to (set per test) ---
 let algoliaSearch: (params: AlgoliaSearchParams) => Promise<unknown>;
 let algoliaSave: (args: SaveObjectsArgs) => Promise<unknown>;
-let oramaCloudSearch: (query: {
-  limit: number;
-  term: string;
-}) => Promise<unknown>;
+let oramaCloudSearch: (query: OramaCloudSearchParams) => Promise<unknown>;
 let cloudSnapshot: (data: unknown[]) => Promise<boolean>;
 let cloudDeploy: () => Promise<boolean>;
 let typesenseSearch: (params: TypesenseSearchParams) => Promise<unknown>;
@@ -76,7 +84,7 @@ mock.module("@oramacloud/client", () => ({
     }),
   })),
   OramaClient: asConstructor(() => ({
-    search: (query: { limit: number; term: string }) => oramaCloudSearch(query),
+    search: (query: OramaCloudSearchParams) => oramaCloudSearch(query),
   })),
 }));
 // Hoisted out of the mock factory so its inner methods don't nest past the
@@ -173,12 +181,21 @@ describe("client loaders", () => {
     });
     const { hits } = await search("q");
     expect(captured.value?.requests[0]?.indexName).toBe("docs");
+    // No locale option means no facet filter — every language matches.
+    expect(captured.value?.requests[0]?.facetFilters).toBeUndefined();
     expect(hits[0]?.url).toBe("/a");
     expect(hits[0]?.excerpt).toBe("d");
+
+    await search("q", { locale: "fr" });
+    expect(captured.value?.requests[0]?.facetFilters).toStrictEqual([
+      "locale:fr",
+    ]);
   });
 
   it("orama-cloud queries the hosted index", async () => {
-    const captured: { value?: { limit: number; term: string } } = {};
+    const captured: {
+      value?: { limit: number; term: string; where?: Record<string, string> };
+    } = {};
     oramaCloudSearch = (query) => {
       captured.value = query;
       return Promise.resolve({
@@ -191,11 +208,15 @@ describe("client loaders", () => {
     };
     const { createSearch } =
       await import("../src/components/layout/search/orama-cloud.ts");
-    const { hits } = await createSearch({ apiKey: "k", endpoint: "https://x" })(
-      "q"
-    );
+    const search = createSearch({ apiKey: "k", endpoint: "https://x" });
+    const { hits } = await search("q");
     expect(captured.value?.term).toBe("q");
+    // No locale option means no where clause — every language matches.
+    expect(captured.value?.where).toBeUndefined();
     expect(hits[0]?.url).toBe("/o");
+
+    await search("q", { locale: "fr" });
+    expect(captured.value?.where).toStrictEqual({ locale: "fr" });
   });
 
   it("typesense searches the collection by the indexed fields", async () => {
@@ -212,14 +233,20 @@ describe("client loaders", () => {
     };
     const { createSearch } =
       await import("../src/components/layout/search/typesense.ts");
-    const result = await createSearch({
+    const search = createSearch({
       collection: "docs",
       host: "h",
       searchApiKey: "k",
-    })("q");
+    });
+    const result = await search("q");
     expect(captured.value?.q).toBe("q");
     expect(captured.value?.query_by).toContain("title");
+    // No locale option means no filter — every language matches.
+    expect(captured.value?.filter_by).toBeUndefined();
     expect(result.hits[0]?.url).toBe("/t");
+
+    await search("q", { locale: "fr" });
+    expect(captured.value?.filter_by).toBe("locale:=fr");
   });
 
   it("pagefind imports the built bundle and maps its results", async () => {

@@ -23,6 +23,7 @@ export const hr: UIStringsOverride = {
     send: "Pošalji",
     title: "Pitaj AI",
   },
+  banner: { dismiss: "Zatvori obavijest" },
   feedback: {
     no: "Ne",
     question: "Je li vam ova stranica bila korisna?",

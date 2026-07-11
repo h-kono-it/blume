@@ -23,6 +23,7 @@ export const cs: UIStringsOverride = {
     send: "Odeslat",
     title: "Zeptat se AI",
   },
+  banner: { dismiss: "Zavřít oznámení" },
   feedback: {
     no: "Ne",
     question: "Byla tato stránka užitečná?",

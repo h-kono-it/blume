@@ -3,6 +3,11 @@ import { existsSync } from "node:fs";
 import { defineCommand } from "citty";
 import { join } from "pathe";
 
+import {
+  customStaticRoutes,
+  discoverPages,
+  hasGeneratedChangelog,
+} from "../../astro/pages.ts";
 import { BlumeError } from "../../core/diagnostics.ts";
 import { validateLinks } from "../../core/links.ts";
 import { scanProject } from "../../core/project-graph.ts";
@@ -44,11 +49,23 @@ export const validateCommand = defineCommand({
       // link-validation blind spot, so silently passing would be misleading.
       diagnostics.push(...project.diagnostics);
 
+      // Custom `.astro` pages and the generated changelog index are servable
+      // routes the content graph can't see — without them, a docs link to e.g.
+      // a custom landing page fails as BLUME_BROKEN_LINK.
+      const userPages = project.context.pagesRoot
+        ? await discoverPages(project.context.pagesRoot)
+        : [];
+      const extraRoutes = customStaticRoutes(userPages);
+      if (hasGeneratedChangelog(project, userPages)) {
+        extraRoutes.push("/changelog");
+      }
+
       const publicDir = join(root, "public");
       diagnostics.push(
         ...(await validateLinks(project.graph, {
           basePath: project.config.basePath,
           checkExternal: Boolean(args.external),
+          extraRoutes,
           publicDir: existsSync(publicDir) ? publicDir : null,
           redirects: project.config.redirects,
         }))

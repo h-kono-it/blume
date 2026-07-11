@@ -23,6 +23,7 @@ export const hi: UIStringsOverride = {
     send: "भेजें",
     title: "AI से पूछें",
   },
+  banner: { dismiss: "घोषणा बंद करें" },
   feedback: {
     no: "नहीं",
     question: "क्या यह पेज सहायक था?",

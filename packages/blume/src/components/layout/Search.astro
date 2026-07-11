@@ -196,6 +196,7 @@ const kbd = "rounded border border-border bg-muted px-1 py-0.5 font-mono";
       preview!: HTMLElement;
       searchFn: SearchFn | null = null;
       loaded = false;
+      loadFailed = false;
       askEnabled = false;
       popular: PopularPage[] = [];
       selectables: Selectable[] = [];
@@ -334,8 +335,13 @@ const kbd = "rounded border border-border bg-muted px-1 py-0.5 font-mono";
             // fetching the index) must retry on the next open, not disable
             // search until a full page reload.
             this.loaded = true;
+            this.loadFailed = false;
           } catch {
             this.searchFn = null;
+            // In dev a client can be missing by design (Pagefind's bundle
+            // only exists in the production build) — that's the "dev only"
+            // hint. The same failure in production is a real error.
+            this.loadFailed = !import.meta.env.DEV;
           }
         }
         this.render();
@@ -389,7 +395,7 @@ const kbd = "rounded border border-border bg-muted px-1 py-0.5 font-mono";
         if (!this.searchFn) {
           this.renderFilters([]);
           this.clearPreview();
-          this.setMessage(this.devOnlyMsg);
+          this.setMessage(this.loadFailed ? this.errorMsg : this.devOnlyMsg);
           return;
         }
 

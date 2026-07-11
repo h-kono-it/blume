@@ -43,11 +43,19 @@ const brandText = logo?.text ?? site.title;
     !logoSvg &&
       logoLight &&
       (logoLight === logoDark ? (
-        <img alt={logoAlt} class="h-5 w-auto" src={logoLight} />
+        <img alt={logoAlt} class="h-5 w-auto" src={withBase(logoLight)} />
       ) : (
         <>
-          <img alt={logoAlt} class="h-5 w-auto dark:hidden" src={logoLight} />
-          <img alt={logoAlt} class="hidden h-5 w-auto dark:block" src={logoDark} />
+          <img
+            alt={logoAlt}
+            class="h-5 w-auto dark:hidden"
+            src={withBase(logoLight)}
+          />
+          <img
+            alt={logoAlt}
+            class="hidden h-5 w-auto dark:block"
+            src={withBase(logoDark)}
+          />
         </>
       ))
   }

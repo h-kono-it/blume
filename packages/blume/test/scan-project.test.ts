@@ -88,6 +88,43 @@ describe("scanProject", () => {
     expect(project.context.contentRoot.endsWith("guides")).toBe(true);
   });
 
+  it("auto-detects the platform adapter when --output server is a CLI override", async () => {
+    const root = await makeProject({ "docs/index.md": "# Home\n" });
+    const saved = {
+      VERCEL: process.env.VERCEL,
+      VERCEL_PROJECT_PRODUCTION_URL: process.env.VERCEL_PROJECT_PRODUCTION_URL,
+    };
+    process.env.VERCEL = "1";
+    process.env.VERCEL_PROJECT_PRODUCTION_URL = "docs.example.com";
+    try {
+      // No `deployment` config block: output only becomes "server" via the
+      // override, so adapter inference must run after overrides are applied.
+      const project = await scanProject(root, {
+        mode: "build",
+        overrides: { output: "server" },
+      });
+      expect(project.config.deployment.output).toBe("server");
+      expect(project.config.deployment.adapter).toBe("vercel");
+      // Platform site resolution from loadConfig is preserved, not clobbered.
+      expect(project.config.deployment.site).toBe("https://docs.example.com");
+
+      // An explicit --adapter override still beats platform detection.
+      const explicit = await scanProject(root, {
+        mode: "build",
+        overrides: { adapter: "node", output: "server" },
+      });
+      expect(explicit.config.deployment.adapter).toBe("node");
+    } finally {
+      for (const [key, value] of Object.entries(saved)) {
+        if (value === undefined) {
+          Reflect.deleteProperty(process.env, key);
+        } else {
+          process.env[key] = value;
+        }
+      }
+    }
+  });
+
   it("throws a BlumeError when the content root is missing", async () => {
     const root = await makeProject({ "README.md": "# no docs here\n" });
     let thrown: unknown;

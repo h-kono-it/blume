@@ -23,6 +23,7 @@ export const fa: UIStringsOverride = {
     send: "ارسال",
     title: "از هوش مصنوعی بپرسید",
   },
+  banner: { dismiss: "بستن اطلاعیه" },
   feedback: {
     no: "خیر",
     question: "آیا این صفحه مفید بود؟",

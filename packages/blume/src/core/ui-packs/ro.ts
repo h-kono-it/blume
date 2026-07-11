@@ -23,6 +23,7 @@ export const ro: UIStringsOverride = {
     send: "Trimite",
     title: "Întreabă AI",
   },
+  banner: { dismiss: "Închide anunțul" },
   feedback: {
     no: "Nu",
     question: "Ți-a fost utilă această pagină?",

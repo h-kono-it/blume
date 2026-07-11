@@ -376,6 +376,36 @@ describe("materializeAssets: failure path", () => {
   });
 });
 
+/** The rewritten local asset filename in a materialized markdown body. */
+const localAssetFile = (md: string): string | undefined =>
+  /\(\/assets\/(?<file>[^)]+)\)/u.exec(md)?.groups?.file;
+
+describe("materializeAssets: signed-url stability", () => {
+  it("addresses an asset by its query-less url, so re-signed urls reuse one file", async () => {
+    const fetchImpl = (() =>
+      Promise.resolve({
+        arrayBuffer: () => Promise.resolve(new ArrayBuffer(4)),
+        ok: true,
+      })) as unknown as typeof fetch;
+    const dir = await tempDir();
+    const materialize = (signature: string) =>
+      materializeAssets(
+        `![pic](https://s3.example.com/img.png?X-Amz-Signature=${signature})`,
+        { assetsBaseUrl: "/assets", assetsDir: join(dir, "assets"), fetchImpl }
+      );
+    // Notion-style pre-signed URLs change their query on every API call; the
+    // local filename must not, or every dev poll re-dirties the content and
+    // duplicate files pile up under the assets dir.
+    const first = await materialize("aaa");
+    const second = await materialize("bbb");
+    expect(localAssetFile(first.markdown)).toBeDefined();
+    expect(localAssetFile(first.markdown)).toBe(
+      localAssetFile(second.markdown) as string
+    );
+    expect(localAssetFile(first.markdown)).toEndWith(".png");
+  });
+});
+
 describe("materializeAssets: fenced code", () => {
   it("never downloads or rewrites an image url inside a code fence", async () => {
     const fetched: string[] = [];

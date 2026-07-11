@@ -49,6 +49,9 @@ interface LinkContext {
   anchors: Map<string, Set<string>>;
   /** Site-wide route mount point (`""` or `/seg`); routes carry it, assets don't. */
   basePath: string;
+  /** Servable routes outside the graph (custom pages, generated routes); their
+   * headings are unknown, so anchors there are accepted unchecked. */
+  extraRoutes: Set<string>;
   publicDir: string | null;
   /** Normalized `redirect.from` paths — valid targets that resolve at runtime. */
   redirects: Set<string>;
@@ -168,6 +171,11 @@ const checkPathLink = (
   const route = toRoute(withBasePath(ctx.basePath, resolved));
   if (ctx.routes.has(route)) {
     return fragment ? checkAnchor(route, fragment, site, ctx) : null;
+  }
+  // A custom `.astro` page or generated route serves this path, but its
+  // headings aren't indexed — accept any fragment rather than false-flag it.
+  if (ctx.extraRoutes.has(route)) {
+    return null;
   }
   // A configured `redirect.from` resolves at runtime, so it's a valid target.
   // Its destination (and any anchor there) is validated on its own page, so we
@@ -372,6 +380,13 @@ export const validateLinks = async (
   options: {
     /** Site-wide route mount point (`""` or `/seg`); routes and redirects carry it. */
     basePath?: string;
+    /**
+     * Servable routes the graph can't know: custom `.astro` pages and generated
+     * routes (e.g. the `/changelog` index). Mounted outside `basePath` (they're
+     * injected at their pattern), so they are *not* based here — mirroring the
+     * full-route-set resolution in `nav-diagnostics.ts`/`generateRuntime`.
+     */
+    extraRoutes?: string[];
     publicDir: string | null;
     checkExternal?: boolean;
     /** Configured redirects; their `from` paths count as valid link targets. */
@@ -382,6 +397,7 @@ export const validateLinks = async (
   const ctx: LinkContext = {
     anchors: buildAnchorIndex(graph.pages),
     basePath,
+    extraRoutes: new Set((options.extraRoutes ?? []).map(toRoute)),
     publicDir: options.publicDir,
     redirects: new Set(
       (options.redirects ?? []).map((redirect) =>

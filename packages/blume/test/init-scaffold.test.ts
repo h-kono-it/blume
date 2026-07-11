@@ -110,12 +110,21 @@ describe("commandsFor", () => {
   it("uses `run` only for npm", () => {
     expect(commandsFor("npm")).toEqual({
       dev: "npm run dev",
+      exec: "npx",
       install: "npm install",
     });
     expect(commandsFor("pnpm")).toEqual({
       dev: "pnpm dev",
+      exec: "pnpm exec",
       install: "pnpm install",
     });
+  });
+
+  it("maps each package manager to its local-bin exec prefix", () => {
+    expect(commandsFor("npm").exec).toBe("npx");
+    expect(commandsFor("pnpm").exec).toBe("pnpm exec");
+    expect(commandsFor("yarn").exec).toBe("yarn");
+    expect(commandsFor("bun").exec).toBe("bunx");
   });
 });
 

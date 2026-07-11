@@ -23,6 +23,7 @@ export const ko: UIStringsOverride = {
     send: "보내기",
     title: "AI에게 질문",
   },
+  banner: { dismiss: "공지 닫기" },
   feedback: {
     no: "아니요",
     question: "이 페이지가 도움이 되었나요?",

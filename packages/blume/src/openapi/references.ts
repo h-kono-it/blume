@@ -31,6 +31,12 @@ export interface ReferenceSource {
   slug: string;
   /** Normalized route the reference mounts at, e.g. `/reference`. */
   route: string;
+  /**
+   * Site-wide `basePath` the rendered pages are mounted under (`""` when
+   * none). Kept separate from `route` — the content pipeline applies it to
+   * staged entries itself — so consumers prefix only the URLs they emit.
+   */
+  basePath: string;
   label: string;
   /** Local path or `http(s)` URL, verbatim from config. */
   spec: string;
@@ -78,7 +84,8 @@ const referencesFor = (
   block: Block,
   defaultLabel: string,
   renderer: ReferenceRenderer,
-  display: ReferenceDisplay
+  display: ReferenceDisplay,
+  basePath: string
 ): ReferenceSource[] => {
   if (!block.enabled) {
     return [];
@@ -102,6 +109,7 @@ const referencesFor = (
     }
 
     return {
+      basePath,
       display,
       kind,
       label,
@@ -131,9 +139,17 @@ export const resolveReferences = (
     {
       codeSamples: config.openapi.codeSamples,
       expandSchemas: config.openapi.expandSchemas,
-    }
+    },
+    config.basePath
   ),
-  ...referencesFor("asyncapi", config.asyncapi, "Events", "scalar", NO_DISPLAY),
+  ...referencesFor(
+    "asyncapi",
+    config.asyncapi,
+    "Events",
+    "scalar",
+    NO_DISPLAY,
+    config.basePath
+  ),
 ];
 
 /** Nav tabs (header links) for every reference, regardless of renderer. */

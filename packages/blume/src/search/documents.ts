@@ -1,3 +1,5 @@
+import { applyAudienceVisibility } from "../ai/visibility.ts";
+import type { VisibilityAudience } from "../ai/visibility.ts";
 import matter from "../core/frontmatter.ts";
 import { contentIndexable } from "../core/manifest.ts";
 import type { BlumeProject } from "../core/project-graph.ts";
@@ -122,10 +124,19 @@ const buildCrumbIndex = (sidebar: NavNode[]): Map<string, Crumbs> => {
  * searchable text; `"markdown"` keeps the body's Markdown — code blocks, lists,
  * headings — for Ask AI grounding, where fenced examples are often the answer
  * and stripping them makes the model unable to cite content the docs do contain.
+ *
+ * `audience` resolves `<Visibility>` blocks before extraction: `"web"`
+ * (default) keeps web-only content and drops agents-only blocks — the site
+ * search and hosted syncs must not surface content the page hides — while
+ * `"agents"` mirrors llms-full.txt/MCP `get_page` (web removed, agents kept).
  */
 export const buildSearchDocuments = async (
   project: BlumeProject,
-  options?: { includeWhenDisabled?: boolean; content?: "markdown" | "plain" }
+  options?: {
+    includeWhenDisabled?: boolean;
+    content?: "markdown" | "plain";
+    audience?: VisibilityAudience;
+  }
 ): Promise<SearchDocument[]> => {
   const pageById = new Map(project.graph.pages.map((page) => [page.id, page]));
 
@@ -157,8 +168,12 @@ export const buildSearchDocuments = async (
       const page = pageById.get(route.id);
       const raw = page ? await readEntryText(project, page) : "";
       const source = raw ? matter(raw).content : "";
+      const visible = applyAudienceVisibility(
+        source,
+        options?.audience ?? "web"
+      );
       const body =
-        options?.content === "markdown" ? source.trim() : toPlainText(source);
+        options?.content === "markdown" ? visible.trim() : toPlainText(visible);
       const tags = page?.meta?.search?.tags;
       const crumb = crumbs.get(route.path);
       return {

@@ -31,7 +31,7 @@ export const createSearch = (opts: {
       },
     ],
   });
-  return async (query) => {
+  return async (query, options) => {
     const response = await client
       .collections<TypesenseRecord>(opts.collection)
       .documents()
@@ -40,6 +40,9 @@ export const createSearch = (opts: {
           per_page: SEARCH_LIMIT,
           q: query,
           query_by: "title,description,content",
+          // The sync marks `locale` as a facet so an i18n site can scope
+          // hosted results to the active language.
+          ...(options?.locale && { filter_by: `locale:=${options.locale}` }),
         },
         {}
       );

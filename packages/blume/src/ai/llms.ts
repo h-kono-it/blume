@@ -3,6 +3,7 @@ import matter from "../core/frontmatter.ts";
 import type { BlumeProject } from "../core/project-graph.ts";
 import { readEntryText } from "../core/sources/read.ts";
 import type { PageRecord } from "../core/types.ts";
+import { applyAgentVisibility } from "./visibility.ts";
 
 // Routes carry `basePath`; a `deployment.base` subdirectory is layered on top so
 // the emitted URL matches where the page is served. Encoded like the sitemap:
@@ -54,7 +55,9 @@ const buildFull = async (project: BlumeProject): Promise<string> => {
   const sections = await Promise.all(
     pages.map(async (page) => {
       const raw = await readEntryText(project, page);
-      const body = matter(raw).content.trim();
+      // Resolve `<Visibility>` audiences: web-only content is omitted from the
+      // agent-facing output, agents-only content is unwrapped into it.
+      const body = applyAgentVisibility(matter(raw).content).trim();
       const url = pageUrl(
         page.route,
         config.deployment.site,

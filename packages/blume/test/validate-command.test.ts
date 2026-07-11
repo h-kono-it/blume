@@ -76,3 +76,40 @@ describe("blume validate --strict", () => {
     expect(strict.exitCode).toBe(1);
   });
 });
+
+describe("blume validate — routes beyond the content graph", () => {
+  it("accepts links to custom .astro pages", async () => {
+    // `pages/index.astro` serves `/`; a docs link to it must not fail CI as
+    // BLUME_BROKEN_LINK just because the graph only knows content routes.
+    const root = await fixture({
+      "docs/a.md": "---\ntitle: A\n---\n\n[home](/)\n",
+      "pages/index.astro": "<h1>home</h1>",
+    });
+    const { exitCode, stderr } = await validate(root);
+    expect(stderr).not.toContain("BLUME_BROKEN_LINK");
+    expect(exitCode).toBe(0);
+  });
+
+  it("accepts links to the generated /changelog index", async () => {
+    const root = await fixture({
+      "docs/a.md": "---\ntitle: A\n---\n\n[updates](/changelog)\n",
+      "docs/v1.md": "---\ntitle: v1\ntype: changelog\n---\n\nFirst release.\n",
+    });
+    const { exitCode, stderr } = await validate(root);
+    expect(stderr).not.toContain("BLUME_BROKEN_LINK");
+    expect(exitCode).toBe(0);
+  });
+
+  it("still fails for a route no page serves, pointing at the raw file line", async () => {
+    const root = await fixture({
+      "docs/a.md": "---\ntitle: A\n---\n\n[nope](/missing)\n",
+      "pages/index.astro": "<h1>home</h1>",
+    });
+    const { exitCode, stderr } = await validate(root);
+    expect(stderr).toContain("BLUME_BROKEN_LINK");
+    // The link sits on line 5 of the file *including* its frontmatter block —
+    // the reported position must not be the stripped-body line 2.
+    expect(stderr).toContain("docs/a.md:5:8");
+    expect(exitCode).toBe(1);
+  });
+});

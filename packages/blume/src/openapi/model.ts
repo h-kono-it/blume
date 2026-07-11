@@ -104,12 +104,13 @@ const isOperation = (value: unknown): value is OperationObject =>
 /**
  * Flatten a 3.1 document into a route-mapped operation list and its ordered
  * tags. Operations inherit the first tag they declare; keys are de-duplicated so
- * a repeated `operationId` still yields distinct routes.
+ * a repeated `operationId` still yields distinct routes. `warnings` reports
+ * anything skipped (a `$ref` path item), so missing operations aren't silent.
  */
 export const extractOperations = (
   document: ApiDocument,
   baseRoute: string
-): { operations: ApiOperationRef[]; tags: ApiTagRef[] } => {
+): { operations: ApiOperationRef[]; tags: ApiTagRef[]; warnings: string[] } => {
   const operations: ApiOperationRef[] = [];
   const tagOrder: string[] = [];
   const tagsSeen = new Set<string>();
@@ -117,10 +118,17 @@ export const extractOperations = (
     (document.tags ?? []).map((tag) => [tag.name, tag.description ?? ""])
   );
   const seen = new Set<string>();
+  const warnings: string[] = [];
 
   for (const [path, rawItem] of Object.entries(document.paths ?? {})) {
     const item = rawItem as PathItemObject | undefined;
-    if (!item || "$ref" in item) {
+    if (!item) {
+      continue;
+    }
+    if ("$ref" in item) {
+      warnings.push(
+        `Path "${path}" is a $ref to a shared path item; referenced path items are not resolved, so its operations are missing from the reference. Inline the path item under "paths" to render it.`
+      );
       continue;
     }
     for (const method of HTTP_METHODS) {
@@ -161,7 +169,7 @@ export const extractOperations = (
     slug: slugify(name) || "operations",
   }));
 
-  return { operations, tags };
+  return { operations, tags, warnings };
 };
 
 /** Resolve the operation object for a ref out of its document. */

@@ -99,6 +99,16 @@ const urlFor = (route: string, data: McpData): string => {
   return data.site ? `${data.site.replace(/\/+$/u, "")}${path}` : path;
 };
 
+/** A hit's excerpt: its description, else the head of its content with an
+ * ellipsis only when something was actually cut off. */
+const excerptFor = (doc: OramaDoc): string => {
+  if (doc.description) {
+    return doc.description;
+  }
+  const head = doc.content.slice(0, EXCERPT_LENGTH).trim();
+  return doc.content.length > EXCERPT_LENGTH ? `${head}…` : head;
+};
+
 const text = (value: string, isError = false) => ({
   content: [{ text: value, type: "text" as const }],
   ...(isError ? { isError: true } : {}),
@@ -132,8 +142,7 @@ const buildServer = (
         asLimit(args.limit)
       );
       const results = hits.map((doc: OramaDoc) => ({
-        excerpt:
-          doc.description || `${doc.content.slice(0, EXCERPT_LENGTH)}…`.trim(),
+        excerpt: excerptFor(doc),
         title: doc.title,
         url: urlFor(doc.route, data),
       }));

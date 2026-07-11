@@ -23,6 +23,7 @@ export const bn: UIStringsOverride = {
     send: "পাঠান",
     title: "AI-কে জিজ্ঞাসা করুন",
   },
+  banner: { dismiss: "ঘোষণা বন্ধ করুন" },
   feedback: {
     no: "না",
     question: "এই পৃষ্ঠাটি কি সহায়ক ছিল?",

@@ -63,6 +63,10 @@ export const filesystemSource = (
         return {
           body: { format, text: parsed.content },
           data: parsed.data,
+          // The unstripped text: lets `normalizeEntry` offset link line numbers
+          // by the frontmatter block's height, so diagnostics point at the real
+          // file line (and spares a re-read on the frontmatter-error path).
+          raw: source,
           ref: relative(contentRoot, file),
           sourcePath: file,
         };

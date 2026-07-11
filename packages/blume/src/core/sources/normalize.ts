@@ -168,6 +168,8 @@ const INLINE_CODE = /`[^`]*`/gu;
 /**
  * Extract link targets from a markdown body for later validation, recording the
  * 1-based line/column of each target. Skips fenced code blocks and inline code.
+ * `lineOffset` shifts every recorded line: the body is frontmatter-stripped, so
+ * diagnostics that point into the raw file must add the stripped block's height.
  */
 /** Scan one line for link targets; returns the next fenced-block state. */
 const scanLinkLine = (
@@ -205,10 +207,10 @@ const scanLinkLine = (
   return next;
 };
 
-export const extractLinks = (body: string): PageLink[] => {
+export const extractLinks = (body: string, lineOffset = 0): PageLink[] => {
   const links: PageLink[] = [];
   let fence: FenceState = null;
-  let lineNumber = 0;
+  let lineNumber = lineOffset;
 
   for (const line of body.split("\n")) {
     lineNumber += 1;
@@ -260,6 +262,15 @@ export const extractComponentTags = (body: string): string[] => {
   }
   return [...tags];
 };
+
+/**
+ * Height of the frontmatter block stripped from `raw` to produce `body` (0
+ * when the raw text is unknown or nothing was stripped). Link positions are
+ * extracted from the stripped body, but diagnostics point into the raw
+ * document — recorded lines must shift by this offset to match it.
+ */
+const strippedLineOffset = (raw: string | undefined, body: string): number =>
+  raw ? Math.max(0, raw.split("\n").length - body.split("\n").length) : 0;
 
 const deriveTitle = (
   meta: PageMeta,
@@ -369,7 +380,10 @@ export const normalizeEntry = (
     headings,
     id: `${ctx.source.name}:${entry.ref}`,
     lastModified: meta.lastModified ?? entry.lastModified,
-    links: extractLinks(entry.body.text),
+    links: extractLinks(
+      entry.body.text,
+      strippedLineOffset(entry.raw, entry.body.text)
+    ),
     meta,
     navPath,
     segments,

@@ -23,6 +23,7 @@ export const uk: UIStringsOverride = {
     send: "Надіслати",
     title: "Запитати ШІ",
   },
+  banner: { dismiss: "Закрити оголошення" },
   feedback: {
     no: "Ні",
     question: "Чи була ця сторінка корисною?",

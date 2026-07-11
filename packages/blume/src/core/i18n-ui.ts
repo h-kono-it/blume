@@ -48,6 +48,11 @@ const uiStringsObject = z.object({
       you: z.string().default("You"),
     })
     .default({}),
+  banner: z
+    .object({
+      dismiss: z.string().default("Dismiss announcement"),
+    })
+    .default({}),
   changelog: z
     .object({
       // `{version}` is replaced with the major line ("2.x") at render time.

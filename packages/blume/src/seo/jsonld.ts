@@ -98,20 +98,21 @@ export const buildStructuredData = (
     }
     graph.push(node);
 
-    if (input.breadcrumbs.length > 1) {
+    // Google requires `item` on every ListItem except the last; sidebar groups
+    // without an index page produce route-less crumbs, so those are dropped
+    // (positions renumbered) rather than emitted as invalid link-less items.
+    const linked = input.breadcrumbs.filter(
+      (crumb): crumb is Required<Crumb> => typeof crumb.route === "string"
+    );
+    if (linked.length > 1) {
       graph.push({
         "@type": "BreadcrumbList",
-        itemListElement: input.breadcrumbs.map((crumb, index) => {
-          const item: Record<string, unknown> = {
-            "@type": "ListItem",
-            name: crumb.label,
-            position: index + 1,
-          };
-          if (crumb.route) {
-            item.item = absolute(base, withBasePath(deployBase, crumb.route));
-          }
-          return item;
-        }),
+        itemListElement: linked.map((crumb, index) => ({
+          "@type": "ListItem",
+          item: absolute(base, withBasePath(deployBase, crumb.route)),
+          name: crumb.label,
+          position: index + 1,
+        })),
       });
     }
   }

@@ -260,6 +260,45 @@ describe("normalizeEntry", () => {
     expect(pages[0]?.meta.seo.noindex).toBe(true);
   });
 
+  it("offsets link lines by the stripped frontmatter block's height", async () => {
+    // The link sits on line 6 of the raw file; the offset (raw minus stripped
+    // body line counts) must surface that line, not the body-relative line 2.
+    const root = await makeProject({
+      "docs/a.md": "---\ntitle: A\ndescription: D\n---\n\n[missing](/nope)\n",
+    });
+    const source = filesystemSource({
+      exclude: [],
+      include: ["**/*.md"],
+      name: "filesystem",
+      projectRoot: root,
+      root: "docs",
+    });
+    const { entries } = await source.load();
+    const entry = entries[0] as SourceEntry;
+    const { pages } = normalizeEntry(entry, {
+      defaultType: "doc",
+      source: { name: "filesystem", staged: false },
+    });
+    expect(pages[0]?.links).toStrictEqual([
+      { column: 11, line: 6, target: "/nope" },
+    ]);
+  });
+
+  it("leaves link lines unshifted when an entry carries no raw text", () => {
+    // A body-only entry (no frontmatter was stripped) keeps body-relative lines.
+    const { pages } = normalizeEntry(
+      {
+        body: { format: "md", text: "# X\n\n[a](/a)\n" },
+        data: {},
+        ref: "x.md",
+      },
+      { defaultType: "doc", source: { name: "s", staged: false } }
+    );
+    expect(pages[0]?.links).toStrictEqual([
+      { column: 5, line: 3, target: "/a" },
+    ]);
+  });
+
   it("reports a diagnostic for invalid frontmatter", () => {
     const { pages, diagnostics } = normalizeEntry(
       {

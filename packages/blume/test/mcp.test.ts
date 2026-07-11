@@ -222,6 +222,87 @@ describe("MCP tools", () => {
   });
 });
 
+describe("search_docs fallback excerpts", () => {
+  // Pages without a description fall back to a content excerpt; the ellipsis
+  // must mark real truncation only.
+  const excerptHandler = createMcpFetchHandler({
+    ...DATA,
+    documents: [
+      {
+        content: "Shortpage body only.",
+        description: "",
+        route: "/short",
+        title: "Shortpage",
+      },
+      {
+        // 11-char head + 7-char units puts a space at index 199, so the
+        // 200-char slice ends in whitespace and must be trimmed.
+        content: `Longstart. ${"filler ".repeat(40)}end`,
+        description: "",
+        route: "/long",
+        title: "Longpage",
+      },
+      {
+        content: "",
+        description: "",
+        route: "/empty",
+        title: "Emptypage",
+      },
+      {
+        content: "Descpage body.",
+        description: "Described here.",
+        route: "/desc",
+        title: "Descpage",
+      },
+    ],
+  });
+
+  const firstExcerpt = async (query: string): Promise<string> => {
+    const response = await excerptHandler(
+      new Request("https://docs.example.com/mcp", {
+        body: JSON.stringify({
+          id: 1,
+          jsonrpc: "2.0",
+          method: "tools/call",
+          params: { arguments: { query }, name: "search_docs" },
+        }),
+        headers: {
+          accept: "application/json, text/event-stream",
+          "content-type": "application/json",
+        },
+        method: "POST",
+      })
+    );
+    const body = (await response.json()) as {
+      result?: { content?: { text: string }[] };
+    };
+    const hits = JSON.parse(body.result?.content?.[0]?.text ?? "[]") as {
+      excerpt: string;
+    }[];
+    return hits[0]?.excerpt ?? "missing";
+  };
+
+  it("prefers the description when one exists", async () => {
+    expect(await firstExcerpt("Descpage")).toBe("Described here.");
+  });
+
+  it("returns short content whole, with no fake truncation marker", async () => {
+    expect(await firstExcerpt("Shortpage")).toBe("Shortpage body only.");
+  });
+
+  it("truncates long content with a trimmed, whitespace-free ellipsis", async () => {
+    const excerpt = await firstExcerpt("Longpage");
+    // The 200-char cut lands on a space; it must be trimmed before the marker.
+    expect(excerpt).toMatch(/\S…$/u);
+    expect(excerpt.length).toBeLessThan(201);
+    expect(excerpt).toContain("Longstart.");
+  });
+
+  it("leaves an empty-content page's excerpt empty, not a bare ellipsis", async () => {
+    expect(await firstExcerpt("Emptypage")).toBe("");
+  });
+});
+
 describe("orama index helpers", () => {
   it("ranks a title match above a body-only match", async () => {
     const db = await buildOramaIndex(DATA.documents);
@@ -352,6 +433,8 @@ describe("buildMcpData", () => {
         "---\ntitle: Home\ndescription: The home page\n---\n# Home\n\nWelcome to the docs.\n",
       "docs/secret.md":
         "---\ntitle: Secret\nsidebar:\n  hidden: true\n---\n# Secret\n\nHidden content.\n",
+      "docs/vis.md":
+        '---\ntitle: Vis\n---\n# Vis\n\n<Visibility for="web">\nWebonly body.\n</Visibility>\n\n<Visibility for="agents">\nAgentonly body.\n</Visibility>\n',
     });
 
     const data = await buildMcpData(project);
@@ -370,7 +453,7 @@ describe("buildMcpData", () => {
 
     // Hidden routes are excluded from the route list and search documents.
     const routePaths = data.routes.map((route) => route.route).toSorted();
-    expect(routePaths).toStrictEqual(["/", "/guides/install"]);
+    expect(routePaths).toStrictEqual(["/", "/guides/install", "/vis"]);
     expect(routePaths).not.toContain("/secret");
 
     // Route entries carry the page description and a normalized lastModified.
@@ -405,6 +488,12 @@ describe("buildMcpData", () => {
     expect(data.pages["/guides/install"]).toContain("# Installation");
     expect(data.pages["/guides/install"]).toContain("title: Installation");
     expect(data.pages["/secret"]).toContain("Hidden content.");
+
+    // Documents are agent-facing: `<Visibility>` resolves like `get_page`
+    // (web-only content dropped, agents-only content kept, tags unwrapped).
+    const vis = data.documents.find((entry) => entry.route === "/vis");
+    expect(vis?.content).toContain("Agentonly body.");
+    expect(vis?.content).not.toContain("Webonly body.");
   });
 
   it("falls back to config.title for the name and null for the site", async () => {

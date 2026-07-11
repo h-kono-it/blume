@@ -132,5 +132,6 @@ Patch oxfmt so it preserves the line break that sits directly against a `:::` fe
    bun install
    ```
 
-:::warning[Version-pinned] The patch targets a specific oxfmt build — its diff references a file whose name is hashed per release (`dist/markdown-*.js`). When you bump oxfmt, regenerate the patch (e.g. `bun patch oxfmt`) or check whether the upstream fix has landed and the patch is no longer needed.
+:::warning[Version-pinned]
+The patch targets a specific oxfmt build — its diff references a file whose name is hashed per release (`dist/markdown-*.js`). When you bump oxfmt, regenerate the patch (e.g. `bun patch oxfmt`) or check whether the upstream fix has landed and the patch is no longer needed.
 :::

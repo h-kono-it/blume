@@ -23,6 +23,7 @@ export const de: UIStringsOverride = {
     send: "Senden",
     title: "KI fragen",
   },
+  banner: { dismiss: "Ankündigung schließen" },
   feedback: {
     no: "Nein",
     question: "War diese Seite hilfreich?",

@@ -23,6 +23,7 @@ export const sv: UIStringsOverride = {
     send: "Skicka",
     title: "Fråga AI",
   },
+  banner: { dismiss: "Stäng meddelandet" },
   feedback: {
     no: "Nej",
     question: "Var den här sidan till hjälp?",

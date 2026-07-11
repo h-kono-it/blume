@@ -22,8 +22,14 @@ export const createSearch = (opts: {
     api_key: opts.apiKey,
     endpoint: opts.endpoint,
   });
-  return async (query) => {
-    const results = await client.search({ limit: SEARCH_LIMIT, term: query });
+  return async (query, options) => {
+    const results = await client.search({
+      limit: SEARCH_LIMIT,
+      term: query,
+      // The sync carries `locale` on every record so an i18n site can scope
+      // hosted results to the active language.
+      ...(options?.locale && { where: { locale: options.locale } }),
+    });
     const hits = (results?.hits ?? []).map((hit) => {
       const doc = hit.document as unknown as OramaCloudRecord;
       return {

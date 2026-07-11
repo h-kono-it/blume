@@ -134,7 +134,11 @@ export const excerptFor = (
   if (query && matchIndex(content, query) >= 0) {
     return matchSnippet(content, query, 160);
   }
-  return description || `${content.slice(0, 140)}…`;
+  if (description) {
+    return description;
+  }
+  const head = content.slice(0, 140);
+  return head.length < content.length ? `${head}…` : head;
 };
 
 /** Tally how many matches fall into each section, in first-seen order. */

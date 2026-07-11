@@ -23,6 +23,7 @@ export const ja: UIStringsOverride = {
     send: "送信",
     title: "AI に質問",
   },
+  banner: { dismiss: "お知らせを閉じる" },
   feedback: {
     no: "いいえ",
     question: "このページは役に立ちましたか？",

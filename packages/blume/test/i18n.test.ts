@@ -496,6 +496,20 @@ describe("UI dictionaries", () => {
     expect(dict.search.popular).toBe("Popular");
   });
 
+  it("localizes the banner dismiss label in every shipped pack", () => {
+    // Formerly hardcoded "Dismiss announcement" in Banner.astro; now
+    // dictionary-driven so localized sites get localized banner chrome.
+    expect(EN_UI.banner.dismiss).toBe("Dismiss announcement");
+    const de = resolveUIStrings("de", { defaultLocale: "en" });
+    expect(de.banner.dismiss).toBe("Ankündigung schließen");
+    for (const [code, pack] of Object.entries(UI_PACKS)) {
+      expect(
+        pack.banner?.dismiss,
+        `pack "${code}" misses banner.dismiss`
+      ).toBeTruthy();
+    }
+  });
+
   it("applies a shipped pack for a translated locale", () => {
     const dict = resolveUIStrings("fr", { defaultLocale: "en" });
     expect(dict.search.button).toBe("Rechercher");

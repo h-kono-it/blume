@@ -23,6 +23,7 @@ export const zhTW: UIStringsOverride = {
     send: "傳送",
     title: "向 AI 提問",
   },
+  banner: { dismiss: "關閉公告" },
   feedback: {
     no: "沒有幫助",
     question: "這個頁面有幫助嗎？",

@@ -23,6 +23,7 @@ export const he: UIStringsOverride = {
     send: "שלח",
     title: "שאל את ה-AI",
   },
+  banner: { dismiss: "סגירת ההודעה" },
   feedback: {
     no: "לא",
     question: "האם העמוד הזה היה מועיל?",

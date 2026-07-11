@@ -1,11 +1,17 @@
+diff --git a/node_modules/oxfmt/.bun-tag-5e4651067266cef3 b/.bun-tag-5e4651067266cef3
+new file mode 100644
+index 0000000000000000000000000000000000000000..e69de29bb2d1d6434b8b29ae775ad8c2e48c5391
 diff --git a/node_modules/oxfmt/.bun-tag-ca147c7dea06d01a b/.bun-tag-ca147c7dea06d01a
 new file mode 100644
 index 0000000000000000000000000000000000000000..e69de29bb2d1d6434b8b29ae775ad8c2e48c5391
+diff --git a/node_modules/oxfmt/.bun-tag-deb4271ce4cb6024 b/.bun-tag-deb4271ce4cb6024
+new file mode 100644
+index 0000000000000000000000000000000000000000..e69de29bb2d1d6434b8b29ae775ad8c2e48c5391
 diff --git a/dist/markdown-BjyDFyaO.js b/dist/markdown-BjyDFyaO.js
-index 1905aa7563e612808426e26f1ed28bebbef3456f..3dcdeeeca1f809939218186889826cf55348bc49 100644
+index 1905aa7563e612808426e26f1ed28bebbef3456f..42bb9f66829068676c5697fc9fc39279bf937f3e 100644
 --- a/dist/markdown-BjyDFyaO.js
 +++ b/dist/markdown-BjyDFyaO.js
-@@ -4830,7 +4830,18 @@ function lu(e, t, r) {
+@@ -4830,7 +4830,43 @@ function lu(e, t, r) {
  		case "sentence": return Mh(e, r);
  		case "word": return t.parser !== "mdx" ? Vh(e, t) : Gh(e);
  		case "whitespace": {
@@ -18,9 +24,34 @@ index 1905aa7563e612808426e26f1ed28bebbef3456f..3dcdeeeca1f809939218186889826cf5
 +			// See prettier/prettier#19040.
 +			let oxfmtIsFence = (w) => w != null && typeof w.value === "string" && w.value.startsWith(":::");
 +			// A titled directive (`:::warning[Heads up]`) parses its `[title]` as a
-+			// linkReference that splits the fence text node, so also look one
-+			// sibling further back when the previous node is a (link) reference.
-+			let oxfmtPrevIsTitledFence = oxfmtFencePrev != null && (oxfmtFencePrev.type === "linkReference" || oxfmtFencePrev.type === "link") && oxfmtIsFence(e.parent && e.parent.children[e.index - 2]);
++			// linkReference between two sentence nodes at the paragraph level: the
++			// fence word ends the sentence before the reference, and the body's
++			// leading newline opens the sentence after it. So when this whitespace
++			// starts its sentence, climb to the paragraph and check whether the two
++			// preceding siblings are a (link) reference and a sentence ending in a
++			// `:::` fence word.
++			let oxfmtPrevIsTitledFence = !1;
++			if (oxfmtFencePrev == null && e.index === 0 && e.grandparent != null && Array.isArray(e.grandparent.children)) {
++				let oxfmtSibs = e.grandparent.children, oxfmtSentIdx = oxfmtSibs.indexOf(e.parent);
++				if (oxfmtSentIdx >= 2) {
++					let oxfmtLink = oxfmtSibs[oxfmtSentIdx - 1], oxfmtBefore = oxfmtSibs[oxfmtSentIdx - 2];
++					let oxfmtLastWord = oxfmtBefore && oxfmtBefore.type === "sentence" && Array.isArray(oxfmtBefore.children) ? oxfmtBefore.children[oxfmtBefore.children.length - 1] : null;
++					oxfmtPrevIsTitledFence = oxfmtLink != null && (oxfmtLink.type === "linkReference" || oxfmtLink.type === "link") && oxfmtIsFence(oxfmtLastWord);
++				}
++			}
++			// The plain-markdown parser keeps a titled fence's `[title]` as literal
++			// words, so the whole directive is one sentence. For a newline
++			// whitespace, walk back to the start of its visual line within the
++			// sentence; a line led by a `:::` word is a fence whose break must stay.
++			if (!oxfmtPrevIsTitledFence && e.node.value.includes("\n") && e.parent != null && Array.isArray(e.parent.children)) {
++				let oxfmtLineFirst = null;
++				for (let oxfmtJ = e.index - 1; oxfmtJ >= 0; oxfmtJ--) {
++					let oxfmtSib = e.parent.children[oxfmtJ];
++					if (oxfmtSib.type === "whitespace" && typeof oxfmtSib.value === "string" && oxfmtSib.value.includes("\n")) break;
++					oxfmtLineFirst = oxfmtSib;
++				}
++				oxfmtPrevIsTitledFence = oxfmtIsFence(oxfmtLineFirst);
++			}
 +			let u = oxfmtIsFence(oxfmtFencePrev) || oxfmtPrevIsTitledFence || oxfmtIsFence(i) ? "preserve" : i && /^>|^(?:[*+-]|#{1,6}|\d+[).])$/.test(i.value) && !ME(e) && !(t.proseWrap === "preserve" && zE(e)) ? "never" : t.proseWrap;
  			return ou(e, n.value, u, !1, t);
  		}

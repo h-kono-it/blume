@@ -23,6 +23,7 @@ export const fi: UIStringsOverride = {
     send: "Lähetä",
     title: "Kysy tekoälyltä",
   },
+  banner: { dismiss: "Sulje ilmoitus" },
   feedback: {
     no: "Ei",
     question: "Oliko tästä sivusta apua?",

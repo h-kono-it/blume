@@ -23,6 +23,7 @@ export const el: UIStringsOverride = {
     send: "Αποστολή",
     title: "Ρωτήστε την AI",
   },
+  banner: { dismiss: "Κλείσιμο ανακοίνωσης" },
   feedback: {
     no: "Όχι",
     question: "Σας φάνηκε χρήσιμη αυτή η σελίδα;",

@@ -1,6 +1,11 @@
 ---
 import specs from "blume:openapi";
-import type { SchemaLike } from "./helpers.ts";
+import {
+  mergeParameters,
+  type ParameterLike,
+  resolveComponentRef,
+  type SchemaLike,
+} from "./helpers.ts";
 import { buildRequestSample, sampleLanguages } from "./snippets.ts";
 import MethodBadge from "./MethodBadge.astro";
 import ParametersTable from "./ParametersTable.astro";
@@ -13,36 +18,31 @@ interface Props {
   id: string;
 }
 
-interface ParamLike {
-  $ref?: string;
-  name?: string;
-  in?: string;
-  description?: string;
-  required?: boolean;
-  deprecated?: boolean;
+interface MediaTypeLike {
   schema?: SchemaLike;
   example?: unknown;
 }
 
-interface MediaTypeLike {
-  schema?: SchemaLike;
-  example?: unknown;
+interface RequestBodyLike {
+  $ref?: string;
+  description?: string;
+  required?: boolean;
+  content?: Record<string, MediaTypeLike>;
+}
+
+interface ResponseLike {
+  $ref?: string;
+  description?: string;
+  content?: Record<string, MediaTypeLike>;
 }
 
 interface FullOperation {
   summary?: string;
   description?: string;
   deprecated?: boolean;
-  parameters?: ParamLike[];
-  requestBody?: {
-    description?: string;
-    required?: boolean;
-    content?: Record<string, MediaTypeLike>;
-  };
-  responses?: Record<
-    string,
-    { description?: string; content?: Record<string, MediaTypeLike> }
-  >;
+  parameters?: ParameterLike[];
+  requestBody?: RequestBodyLike;
+  responses?: Record<string, ResponseLike>;
 }
 
 const { source, id } = Astro.props;
@@ -50,10 +50,15 @@ const spec = specs[source];
 const ref = spec?.operations[id];
 
 const doc = (spec?.document ?? {}) as {
-  paths?: Record<string, Record<string, unknown> & { parameters?: ParamLike[] }>;
+  paths?: Record<
+    string,
+    Record<string, unknown> & { parameters?: ParameterLike[] }
+  >;
   components?: {
     schemas?: Record<string, SchemaLike>;
-    parameters?: Record<string, ParamLike>;
+    parameters?: Record<string, ParameterLike>;
+    requestBodies?: Record<string, RequestBodyLike>;
+    responses?: Record<string, ResponseLike>;
   };
   servers?: { url?: string }[];
 };
@@ -63,24 +68,26 @@ const operation = (
 ) as FullOperation | undefined;
 
 const schemas = doc.components?.schemas ?? {};
-const componentParams = doc.components?.parameters ?? {};
-const PARAM_REF = /#\/components\/parameters\/(?<name>[^/]+)$/u;
-const resolveParam = (param: ParamLike): ParamLike => {
-  if (typeof param.$ref === "string") {
-    const name = PARAM_REF.exec(param.$ref)?.groups?.name;
-    return (name && componentParams[name]) || param;
-  }
-  return param;
-};
-const params = [
-  ...(pathItem?.parameters ?? []),
-  ...(operation?.parameters ?? []),
-].map(resolveParam);
+const components = doc.components ?? {};
+const params = mergeParameters(
+  pathItem?.parameters,
+  operation?.parameters,
+  components
+);
+const requestBody = operation?.requestBody
+  ? resolveComponentRef(operation.requestBody, components, "requestBodies")
+  : undefined;
+const responses = Object.fromEntries(
+  Object.entries(operation?.responses ?? {}).map(([status, response]) => [
+    status,
+    resolveComponentRef(response, components, "responses"),
+  ])
+);
 
 const sample =
   ref && operation
     ? buildRequestSample(
-        { parameters: params, requestBody: operation.requestBody },
+        { parameters: params, requestBody },
         ref.method,
         ref.path,
         doc.servers ?? [],
@@ -109,17 +116,17 @@ const languages = sampleLanguages(spec?.codeSamples ?? []);
       <div class="grid grid-cols-1 items-start gap-x-10 gap-y-8 xl:grid-cols-[minmax(0,1fr)_minmax(0,28rem)]">
         <div>
           <ParametersTable parameters={params} schemas={schemas} />
-          {operation.requestBody && (
+          {requestBody && (
             <RequestBody
               expandAll={spec.expandSchemas}
-              requestBody={operation.requestBody}
+              requestBody={requestBody}
               schemas={schemas}
             />
           )}
           {operation.responses && (
             <Responses
               expandAll={spec.expandSchemas}
-              responses={operation.responses}
+              responses={responses}
               schemas={schemas}
             />
           )}
@@ -128,7 +135,7 @@ const languages = sampleLanguages(spec?.codeSamples ?? []);
           <div class="xl:sticky xl:top-24 xl:self-start">
             <RequestPanel
               languages={languages}
-              responses={operation.responses ?? {}}
+              responses={responses}
               sample={sample}
               schemas={schemas}
             />

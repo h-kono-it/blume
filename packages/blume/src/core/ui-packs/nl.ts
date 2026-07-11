@@ -23,6 +23,7 @@ export const nl: UIStringsOverride = {
     send: "Verzenden",
     title: "AI vragen",
   },
+  banner: { dismiss: "Aankondiging sluiten" },
   feedback: {
     no: "Nee",
     question: "Was deze pagina nuttig?",
