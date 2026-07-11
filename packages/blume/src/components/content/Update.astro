@@ -1,5 +1,5 @@
 ---
-import { withBase } from "../islands/base-path.ts";
+import { contentHref } from "./base-href.ts";
 
 interface RssMetadata {
   description?: string;
@@ -10,8 +10,9 @@ interface Props {
   description?: string;
   /**
    * Link the heading to a dedicated page; falls back to the in-page anchor.
-   * A root-relative route is prefixed with the deployment base at emit time
-   * (like every other link emitter); anchors and external URLs pass through.
+   * A root-relative route gains the composed `deployment.base` + `basePath`
+   * prefix at emit time (like a markdown link); anchors and external URLs
+   * pass through.
    */
   href?: string;
   id?: string;
@@ -53,7 +54,7 @@ const tagList = Array.isArray(tags) ? tags : tags ? [tags] : [];
   <header class="md:border-border md:border-e md:pe-4">
     <a
       class="font-semibold text-foreground text-sm no-underline hover:text-accent"
-      href={withBase(href ?? `#${id}`)}
+      href={contentHref(href ?? `#${id}`)}
     >
       {updateLabel}
     </a>

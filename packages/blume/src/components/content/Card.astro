@@ -1,5 +1,7 @@
 ---
 import Icon from "../Icon.astro";
+import { withBase } from "../islands/base-path.ts";
+import { contentHref } from "./base-href.ts";
 
 interface Props {
   title?: string;
@@ -54,7 +56,7 @@ const variantClass = {
     isHorizontal ? "sm:flex" : "",
   ]}
   data-blume-card
-  href={href}
+  href={href === undefined ? undefined : contentHref(href)}
   rel={external ? "noreferrer" : undefined}
   target={external ? "_blank" : undefined}
 >
@@ -66,7 +68,7 @@ const variantClass = {
           "w-full object-cover",
           isHorizontal ? "sm:w-40 sm:shrink-0" : "max-h-48",
         ]}
-        src={img}
+        src={withBase(img)}
       />
     )
   }

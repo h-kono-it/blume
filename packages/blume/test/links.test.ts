@@ -190,6 +190,28 @@ describe(validateLinks, () => {
     expect(diagnostics).toHaveLength(0);
   });
 
+  it("treats a dot-parser localized index as an index for relative links", async () => {
+    // `guides/index.fr.mdx` routes to `/fr/guides` with a locale-stripped
+    // navPath of `guides/index.mdx` — `./setup` must resolve to
+    // `/fr/guides/setup`, not `/fr/setup`. Same for a shared `index.$.mdx`.
+    const diagnostics = await validate([
+      makePage({
+        id: "guides/index.fr.mdx",
+        links: [link("./setup")],
+        locale: "fr",
+        navPath: "guides/index.mdx",
+        route: "/fr/guides",
+      }),
+      makePage({
+        id: "guides/setup.fr.mdx",
+        locale: "fr",
+        navPath: "guides/setup.mdx",
+        route: "/fr/guides/setup",
+      }),
+    ]);
+    expect(diagnostics).toHaveLength(0);
+  });
+
   it("warns on a missing anchor but accepts a real heading", async () => {
     const target = makePage({
       headings: [heading("Setup", "setup")],

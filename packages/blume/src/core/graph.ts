@@ -115,6 +115,10 @@ const buildLocaleNavigation = (
     display: options.navigation.sidebar.display,
     featured: options.navigation.featured,
     folderMeta: options.folderMeta,
+    // The localized tree root ("/" for the hidden default, "/fr" otherwise):
+    // the tab pointing here spans the whole tree and must not be treated as a
+    // tab section.
+    localizedRoot: localizeRoute("/", code, i18n),
     // Meta files live in locale directories only under the `dir` parser
     // (`fr/guides/meta.ts` -> key `fr/guides`). Under `dot`, translations sit
     // next to the originals and `guides/meta.ts` applies to every locale —

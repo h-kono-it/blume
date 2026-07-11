@@ -10,6 +10,7 @@ import {
 } from "../../astro/pages.ts";
 import { BlumeError } from "../../core/diagnostics.ts";
 import { validateLinks } from "../../core/links.ts";
+import { buildManifest } from "../../core/manifest.ts";
 import { scanProject } from "../../core/project-graph.ts";
 import type { Diagnostic } from "../../core/types.ts";
 import { reportInternalError } from "../internal-error.ts";
@@ -58,6 +59,23 @@ export const validateCommand = defineCommand({
       const extraRoutes = customStaticRoutes(userPages);
       if (hasGeneratedChangelog(project, userPages)) {
         extraRoutes.push("/changelog");
+      }
+
+      // Fallback-materialized locale routes (an untranslated page prerendered
+      // at its localized URL) are servable but absent from the content graph —
+      // without them a link to an untranslated sibling under a non-default
+      // locale fails as BLUME_BROKEN_LINK even though the built site serves it.
+      if (project.config.i18n) {
+        const manifest = buildManifest({
+          config: project.config,
+          context: project.context,
+          graph: project.graph,
+        });
+        extraRoutes.push(
+          ...manifest.routes.flatMap((route) =>
+            route.fallback ? [route.path] : []
+          )
+        );
       }
 
       const publicDir = join(root, "public");

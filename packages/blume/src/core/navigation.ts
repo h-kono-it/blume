@@ -456,6 +456,13 @@ export const buildNavigation = (
     refByLogical?: boolean;
     /** Shared `meta.$.*` meta, keyed by locale-stripped dir path. */
     sharedFolderMeta?: Map<string, FolderMeta>;
+    /**
+     * The tree's root route before `basePath` (`"/"`, or the locale prefix
+     * under i18n, e.g. `/fr` — tab paths arrive already localized). The tab
+     * pointing here spans the whole tree, so it is excluded from tab-section
+     * scoping.
+     */
+    localizedRoot?: string;
   }
 ): Navigation => {
   const basePath = options.basePath ?? "";
@@ -520,6 +527,13 @@ export const buildNavigation = (
     };
   }
 
+  // A tab pointing at the tree root spans the whole sidebar rather than one
+  // section, so it must not feed tab-section hoisting. `tabs` carries final
+  // paths (localized, then based), so the root is compared in the same space —
+  // a root-level `(group)` folder's routePath is exactly the based/localized
+  // prefix (`/docs`, `/fr`) and a bare `"/"` check would miss the match (or,
+  // under a base, falsely scope a group named like the prefix).
+  const rootTabPath = withBasePath(basePath, options.localizedRoot ?? "/");
   return {
     featured,
     selectors,
@@ -529,7 +543,9 @@ export const buildNavigation = (
       sharedFolderMeta,
       metaPrefix,
       display,
-      new Set(tabs.flatMap((tab) => (tab.path === "/" ? [] : [tab.path])))
+      new Set(
+        tabs.flatMap((tab) => (tab.path === rootTabPath ? [] : [tab.path]))
+      )
     ),
     tabs,
   };

@@ -5,7 +5,7 @@ export const fr: UIStringsOverride = {
   actions: {
     addToCursor: "Ajouter à Cursor",
     addToVscode: "Ajouter à VS Code",
-    askAI: "Demander à l'IA",
+    askAI: "Demander à l'IA à propos de cette page",
     connectMcp: "Se connecter à MCP",
     copied: "Copié !",
     copyClaudeCode: "Copier la commande Claude Code",

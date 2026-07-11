@@ -1,6 +1,8 @@
 ---
 import { randomUUID } from "node:crypto";
 
+import { contentHref } from "./base-href.ts";
+
 interface Props {
   cta?: string;
   headline?: string;
@@ -43,7 +45,7 @@ const labelHtml = Astro.slots.has("default")
       cta && href && (
         <a
           class="mt-2 inline-flex font-medium text-accent text-xs hover:underline"
-          href={href}
+          href={contentHref(href)}
           rel={external ? "noreferrer" : undefined}
           target={external ? "_blank" : undefined}
         >

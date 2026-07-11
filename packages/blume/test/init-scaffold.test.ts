@@ -107,16 +107,26 @@ describe("titleize", () => {
 });
 
 describe("commandsFor", () => {
-  it("uses `run` only for npm", () => {
+  it("uses `run` for npm, and for bun's shadowed `build` script", () => {
     expect(commandsFor("npm")).toEqual({
+      build: "npm run build",
       dev: "npm run dev",
       exec: "npx",
       install: "npm install",
     });
     expect(commandsFor("pnpm")).toEqual({
+      build: "pnpm build",
       dev: "pnpm dev",
       exec: "pnpm exec",
       install: "pnpm install",
+    });
+    // `bun build` is Bun's bundler ("Missing entrypoints"), not the script;
+    // `bun dev` has no builtin and falls through to the script.
+    expect(commandsFor("bun")).toEqual({
+      build: "bun run build",
+      dev: "bun dev",
+      exec: "bunx",
+      install: "bun install",
     });
   });
 

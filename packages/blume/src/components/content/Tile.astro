@@ -1,5 +1,6 @@
 ---
 import Icon from "../Icon.astro";
+import { contentHref } from "./base-href.ts";
 
 const { description, href, title } = Astro.props;
 const Tag = href ? "a" : "div";
@@ -11,7 +12,7 @@ const previewPattern =
 <Tag
   class="not-prose block overflow-hidden rounded-blume border border-border bg-background text-inherit no-underline! transition-colors hover:no-underline! hover:[&[href]]:border-accent"
   data-blume-tile
-  href={href}
+  href={href === undefined ? undefined : contentHref(href)}
   rel={external ? "noreferrer" : undefined}
   target={external ? "_blank" : undefined}
 >

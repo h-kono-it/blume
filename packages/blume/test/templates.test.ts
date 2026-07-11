@@ -364,17 +364,15 @@ describe("changelogIndexTemplate", () => {
   });
 
   it("timeline heading links resolve under the deployment base", async () => {
-    // The template passes base-less logical routes; Update.astro applies
-    // withBase at emit time like every other link emitter (NavTree,
-    // Pagination, ...), and pure-anchor `#id` fallbacks pass through.
+    // The template passes deploy-base-less routes; Update.astro rebases at
+    // emit time like a markdown link (composed deployment.base + basePath,
+    // idempotent per layer), and pure-anchor `#id` fallbacks pass through.
     const source = await readFile(
       new URL("../src/components/content/Update.astro", import.meta.url),
       "utf-8"
     );
-    expect(source).toContain(
-      'import { withBase } from "../islands/base-path.ts"'
-    );
-    expect(source).toContain(`href={withBase(href ?? \`#\${id}\`)}`);
+    expect(source).toContain('import { contentHref } from "./base-href.ts"');
+    expect(source).toContain(`href={contentHref(href ?? \`#\${id}\`)}`);
   });
 
   it("suffixes repeated heading slugs so each entry keeps its own anchor", () => {

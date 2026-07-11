@@ -88,6 +88,20 @@ describe("blume eject", () => {
     expect(output).not.toContain("bun run dev");
   });
 
+  it("prints `bun run build` for bun, whose bare `build` is the bundler", async () => {
+    const root = await fixture({
+      "docs/index.md": "---\ntitle: Home\n---\n# Home\n",
+    });
+    const { exitCode, output } = await runEject(
+      root,
+      "bun/1.3.0 npm/? node/v22.0.0",
+      "--yes"
+    );
+    expect(exitCode).toBe(0);
+    expect(output).toContain("bun dev");
+    expect(output).toContain("bun run build");
+  });
+
   it("falls back to npm's `run` form without a user agent", async () => {
     const root = await fixture({
       "docs/index.md": "---\ntitle: Home\n---\n# Home\n",

@@ -175,11 +175,13 @@ describe(toPackageCommands, () => {
   });
 
   it("maps npm ci to a frozen install per manager", () => {
+    // Yarn gets Berry's `--immutable` (`--frozen-lockfile` was removed in
+    // Yarn 4), consistent with the Berry-only `yarn dlx` the exec case emits.
     expect(toPackageCommands("npm ci")).toStrictEqual({
       bun: "bun install --frozen-lockfile",
       npm: "npm ci",
       pnpm: "pnpm install --frozen-lockfile",
-      yarn: "yarn install --frozen-lockfile",
+      yarn: "yarn install --immutable",
     });
   });
 });

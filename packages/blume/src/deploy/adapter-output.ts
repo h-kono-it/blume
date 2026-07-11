@@ -33,7 +33,10 @@ export const ADAPTER_OUTPUT_PATHS: Partial<Record<Adapter, string>> = {
  * Directory whose contents the deploy platform serves as static files. Build
  * artifacts (robots.txt, sitemap.xml, llms.txt, …) must be written here to be
  * served. For a Vercel server build that is the adapter's
- * `.vercel/output/static`; every other build serves `dist/`.
+ * `.vercel/output/static`; for a Node server build it is Astro's
+ * `build.client` dir (`dist/client/`), the only directory the standalone
+ * server's static handler reads from. Netlify publishes `dist/` itself and
+ * Cloudflare serves the `outDir` root, so every other build serves `dist/`.
  */
 export const deployStaticDir = (
   config: ResolvedConfig,
@@ -43,7 +46,11 @@ export const deployStaticDir = (
   if (output === "server" && adapter === "vercel") {
     return join(context.root, ".vercel", "output", "static");
   }
-  return context.distDir ?? join(context.root, "dist");
+  const dist = context.distDir ?? join(context.root, "dist");
+  if (output === "server" && adapter === "node") {
+    return join(dist, "client");
+  }
+  return dist;
 };
 
 /** Outcome of {@link surfaceAdapterOutput}, for logging and `.gitignore`. */

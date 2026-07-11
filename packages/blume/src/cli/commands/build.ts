@@ -224,7 +224,11 @@ export const isolatedStaticDir = (
   if (output === "server" && adapter === "vercel") {
     return join(context.outDir, ".vercel", "output", "static");
   }
-  return context.distDir ?? join(context.outDir, "dist");
+  const dist = context.distDir ?? join(context.outDir, "dist");
+  if (output === "server" && adapter === "node") {
+    return join(dist, "client");
+  }
+  return dist;
 };
 
 /**
@@ -292,6 +296,11 @@ const publishBuildArtifacts = async (
 
   const { config } = project;
   const features = serverFeatures(config);
+  // `buildSitemap` returns null both when the sitemap is disabled and when no
+  // `site` is configured — only the latter deserves the remediation hint.
+  const sitemapNote = config.seo.sitemap
+    ? "no (set deployment.site)"
+    : "no (seo.sitemap is false)";
   logger.box(
     [
       `Output     ${config.deployment.output}`,
@@ -299,7 +308,7 @@ const publishBuildArtifacts = async (
       `Site       ${config.deployment.site ?? "not set"}`,
       `Search     ${config.search.provider}`,
       `Redirects  ${config.redirects.length}`,
-      `Sitemap    ${sitemap ? "yes" : "no (set deployment.site)"}`,
+      `Sitemap    ${sitemap ? "yes" : sitemapNote}`,
       `Robots     ${robots ? "yes" : "no"}`,
       `Agent JSON ${agentReadability ? "yes" : "no"}`,
       `LLM files  ${config.ai.llmsTxt ? "yes" : "no"}`,

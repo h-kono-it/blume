@@ -49,11 +49,20 @@ describe("deployStaticDir", () => {
     expect(deployStaticDir(config(), ctx)).toBe("/proj/dist");
   });
 
-  it("serves dist/ for non-Vercel server adapters", () => {
+  it("serves dist/ for server adapters whose platform serves dist/", () => {
     const ctx = context("/proj");
     expect(
       deployStaticDir(config({ adapter: "netlify", output: "server" }), ctx)
     ).toBe("/proj/dist");
+  });
+
+  it("serves dist/client/ for a Node server build", () => {
+    // The @astrojs/node standalone server's static handler reads only
+    // Astro's `build.client` dir (`dist/client/`), never `dist/` itself.
+    const ctx = context("/proj");
+    expect(
+      deployStaticDir(config({ adapter: "node", output: "server" }), ctx)
+    ).toBe("/proj/dist/client");
   });
 
   it("falls back to <root>/dist when the context has no distDir", () => {

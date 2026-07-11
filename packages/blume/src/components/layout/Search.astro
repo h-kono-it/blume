@@ -197,6 +197,8 @@ const kbd = "rounded border border-border bg-muted px-1 py-0.5 font-mono";
       searchFn: SearchFn | null = null;
       loaded = false;
       loadFailed = false;
+      /** First-open client/index load still in flight. */
+      loading = false;
       askEnabled = false;
       popular: PopularPage[] = [];
       selectables: Selectable[] = [];
@@ -328,6 +330,7 @@ const kbd = "rounded border border-border bg-muted px-1 py-0.5 font-mono";
         this.input.focus();
         this.input.select();
         if (!this.loaded) {
+          this.loading = true;
           try {
             const { createSearch } = await import("blume:search-client");
             this.searchFn = await createSearch();
@@ -342,6 +345,8 @@ const kbd = "rounded border border-border bg-muted px-1 py-0.5 font-mono";
             // only exists in the production build) — that's the "dev only"
             // hint. The same failure in production is a real error.
             this.loadFailed = !import.meta.env.DEV;
+          } finally {
+            this.loading = false;
           }
         }
         this.render();
@@ -395,7 +400,15 @@ const kbd = "rounded border border-border bg-muted px-1 py-0.5 font-mono";
         if (!this.searchFn) {
           this.renderFilters([]);
           this.clearPreview();
-          this.setMessage(this.loadFailed ? this.errorMsg : this.devOnlyMsg);
+          if (this.loading) {
+            // Typing while the first-open load (client import + index fetch)
+            // is still in flight: the dev-only hint would be wrong in
+            // production and the error message premature. Show a neutral
+            // placeholder; `open()` re-renders once the load settles.
+            this.setMessage("…");
+          } else {
+            this.setMessage(this.loadFailed ? this.errorMsg : this.devOnlyMsg);
+          }
           return;
         }
 

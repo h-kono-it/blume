@@ -74,14 +74,15 @@ const NUMERIC_PREFIX = /^\d+[-_.]/u;
  * ignored). Its route already *is* its directory, so a relative link must
  * resolve against the route itself, not its parent — otherwise `./sibling`
  * from `guides/index.mdx` (route `/guides`) would resolve to `/sibling` and be
- * falsely flagged as broken.
+ * falsely flagged as broken. Tested against `navPath` — the locale-stripped
+ * path — so a dot-parser localized index (`index.fr.mdx`) and a shared
+ * locale-agnostic one (`index.$.mdx`) count too, matching how route mapping
+ * recognizes them.
  */
-const isIndexPage = (page: PageRecord): boolean => {
-  const ref = page.source?.ref ?? page.sourcePath ?? "";
-  return /^index\.(?:md|mdx)$/iu.test(
-    basename(ref).replace(NUMERIC_PREFIX, "")
+const isIndexPage = (page: PageRecord): boolean =>
+  /^index\.(?:md|mdx)$/iu.test(
+    basename(page.navPath).replace(NUMERIC_PREFIX, "")
   );
-};
 
 /** Apply one relative-path segment to the accumulated route segments. */
 const applyRelativePart = (segments: string[], part: string): void => {

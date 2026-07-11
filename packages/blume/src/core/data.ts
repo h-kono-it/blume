@@ -93,6 +93,8 @@ export interface BlumeDataConfig {
     suggestions: NonNullable<ResolvedConfig["ai"]["ask"]>["suggestions"];
   } | null;
   banner: BlumeBanner | null;
+  /** Site-wide route mount point, normalized to `""` or `/seg` (see config). */
+  basePath: string;
   /** `markdown.codeBlocks.theme`: light/dark Shiki themes for code surfaces. */
   codeThemes: ResolvedConfig["markdown"]["codeBlocks"]["theme"];
   /** `markdown.code.wrap`: wrap long code lines instead of scrolling. */

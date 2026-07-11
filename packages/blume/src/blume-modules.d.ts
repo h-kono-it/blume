@@ -15,6 +15,14 @@ declare module "blume:search-client" {
   export const createSearch: () => Fn | Promise<Fn>;
 }
 
+declare module "blume:data" {
+  /** The generated per-project data snapshot (see `core/data.ts`). */
+  // biome-ignore lint/style/useImportType: ambient module must stay a global script
+  // oxlint-disable-next-line typescript/consistent-type-imports
+  const data: import("./core/data.ts").BlumeData;
+  export default data;
+}
+
 // Package-only shim so `components/props.ts` can extract `.astro` prop types with
 // `ComponentProps<typeof import("./X.astro").default>` under the package's own
 // `tsc` (where the Astro TS plugin isn't active). Not shipped in `dist/types`, so

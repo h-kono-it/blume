@@ -149,10 +149,16 @@ const buildCommand = (manager: PackageManager, intent: Intent): string => {
       return `${manager} dlx ${args}`;
     }
     case "ci": {
-      // `npm ci` maps to a frozen, lockfile-faithful install elsewhere.
-      return manager === "npm"
-        ? "npm ci"
-        : `${manager} install --frozen-lockfile`;
+      // `npm ci` maps to a frozen, lockfile-faithful install elsewhere. Yarn
+      // Berry's flag is `--immutable` (`--frozen-lockfile` was removed in
+      // Yarn 4), matching the Berry-only `yarn dlx` the `exec` case emits.
+      if (manager === "npm") {
+        return "npm ci";
+      }
+      if (manager === "yarn") {
+        return "yarn install --immutable";
+      }
+      return `${manager} install --frozen-lockfile`;
     }
     case "remove": {
       if (manager === "npm") {

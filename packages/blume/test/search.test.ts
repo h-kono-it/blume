@@ -133,6 +133,45 @@ describe("buildSearchDocuments", () => {
     expect(doc?.content).toContain("# Heading");
   });
 
+  it("gives a config-sidebar section's landing page its own section facet", async () => {
+    // A section declared via `sidebar: [{ label, root, items }]` carries its
+    // landing route on the *group* node — the landing page must facet under
+    // its own section, not fall through to the "Docs" default.
+    const project = projectWith(
+      [page({ id: "a.md" })],
+      [
+        route({ id: "a.md", path: "/guides", title: "Guides" }),
+        route({ id: "a.md", path: "/guides/setup", title: "Setup" }),
+      ]
+    ) as unknown as { graph: { navigation: unknown } };
+    project.graph.navigation = {
+      featured: [],
+      selectors: [],
+      sidebar: [
+        {
+          children: [
+            {
+              key: "setup",
+              kind: "page",
+              label: "Setup",
+              pageId: "a.md",
+              route: "/guides/setup",
+            },
+          ],
+          kind: "group",
+          label: "Guides",
+          route: "/guides",
+        },
+      ],
+      tabs: [],
+    };
+    const docs = await buildSearchDocuments(project as BlumeProject);
+    expect(docs.find((doc) => doc.route === "/guides")?.section).toBe("Guides");
+    expect(docs.find((doc) => doc.route === "/guides/setup")?.section).toBe(
+      "Guides"
+    );
+  });
+
   it("yields empty content for a route with no matching page", async () => {
     const [doc] = await buildSearchDocuments(
       projectWith([], [route({ id: "missing.md", path: "/c", title: "C" })])

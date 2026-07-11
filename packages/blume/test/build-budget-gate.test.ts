@@ -158,7 +158,8 @@ describe("isolatedStaticDir", () => {
       "/proj/.blume-verify/.vercel/output/static"
     );
     expect(parsed.static).toBe("/proj/.blume-verify/dist");
-    expect(parsed.nodeServer).toBe("/proj/.blume-verify/dist");
+    // Node's standalone server serves only Astro's `build.client` dir.
+    expect(parsed.nodeServer).toBe("/proj/.blume-verify/dist/client");
     expect(parsed.missingDist).toBe("/proj/.blume-verify/dist");
   });
 });

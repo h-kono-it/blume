@@ -95,9 +95,21 @@ interface Crumbs {
  */
 const buildCrumbIndex = (sidebar: NavNode[]): Map<string, Crumbs> => {
   const index = new Map<string, Crumbs>();
+  // A config-sidebar section's landing page (the group's `root`) lives on the
+  // *group* node, not on any page leaf — record it under the group's own label
+  // so the section's landing page carries the same facet as its children. A
+  // real page leaf for the route (filesystem sidebars emit index pages as
+  // leaves) wins, so group routes are merged in only where no leaf claimed one.
+  const groupRoutes = new Map<string, Crumbs>();
   const walk = (nodes: NavNode[], trail: string[]): void => {
     for (const node of nodes) {
       if (node.kind === "group") {
+        if (node.route && !groupRoutes.has(node.route)) {
+          groupRoutes.set(node.route, {
+            breadcrumb: [...trail, node.label],
+            section: node.label,
+          });
+        }
         walk(node.children, [...trail, node.label]);
       } else if (node.route) {
         index.set(node.route, {
@@ -108,6 +120,11 @@ const buildCrumbIndex = (sidebar: NavNode[]): Map<string, Crumbs> => {
     }
   };
   walk(sidebar, []);
+  for (const [route, crumbs] of groupRoutes) {
+    if (!index.has(route)) {
+      index.set(route, crumbs);
+    }
+  }
   return index;
 };
 

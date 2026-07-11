@@ -143,7 +143,10 @@ export const STARTERS: Record<Template, Starter> = {
  */
 export const commandsFor = (
   pm: PackageManager
-): { dev: string; exec: string; install: string } => ({
+): { build: string; dev: string; exec: string; install: string } => ({
+  // `bun build` invokes Bun's bundler, not the package.json `build` script —
+  // unlike `bun dev`, the script name is shadowed by a builtin subcommand.
+  build: pm === "npm" || pm === "bun" ? `${pm} run build` : `${pm} build`,
   dev: pm === "npm" ? "npm run dev" : `${pm} dev`,
   exec: { bun: "bunx", npm: "npx", pnpm: "pnpm exec", yarn: "yarn" }[pm],
   install: `${pm} install`,

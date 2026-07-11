@@ -100,6 +100,26 @@ describe("blume validate — routes beyond the content graph", () => {
     expect(exitCode).toBe(0);
   });
 
+  it("accepts links to fallback-rendered locale routes", async () => {
+    // `guide.md` has no French translation, but the build prerenders the
+    // fallback locale's content at `/fr/guide` (docs/content/i18n.mdx promises
+    // "the link works") — a French page linking it must not fail validation.
+    const root = await fixture({
+      "blume.config.ts": [
+        "export default {",
+        '  i18n: { locales: [{ code: "en", label: "English" }, { code: "fr", label: "Français" }] },',
+        "};",
+        "",
+      ].join("\n"),
+      "docs/fr/intro.md": "---\ntitle: Intro\n---\n\n[guide](./guide)\n",
+      "docs/guide.md": "---\ntitle: Guide\n---\n\nSteps.\n",
+      "docs/intro.md": "---\ntitle: Intro\n---\n\n[guide](./guide)\n",
+    });
+    const { exitCode, stderr } = await validate(root);
+    expect(stderr).not.toContain("BLUME_BROKEN_LINK");
+    expect(exitCode).toBe(0);
+  });
+
   it("still fails for a route no page serves, pointing at the raw file line", async () => {
     const root = await fixture({
       "docs/a.md": "---\ntitle: A\n---\n\n[nope](/missing)\n",

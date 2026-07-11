@@ -202,6 +202,35 @@ describe("buildNavigation — filesystem sidebar", () => {
     ]);
   });
 
+  it("excludes the root tab from tab-section scoping under a basePath", () => {
+    // A `path: "/"` tab spans the whole tree. Tab paths are rebased before
+    // tab-section matching, so under `basePath: "/docs"` the root tab becomes
+    // `/docs` — exactly a root-level `(group)` folder's routePath. It must
+    // still be recognized as the root and not hoist that group's pages above
+    // its subgroups (non-flat displays keep file order inside groups).
+    const pages = [
+      page("(intro)/alpha/one.md", "/docs/alpha/one", "One"),
+      page("(intro)/zeta.md", "/docs/zeta", "Zeta"),
+    ];
+    const options = {
+      display: "group" as const,
+      folderMeta: empty,
+      tabs: [{ label: "Docs", path: "/" }],
+    };
+    const based = buildNavigation(pages, { ...options, basePath: "/docs" });
+    const baseless = buildNavigation(
+      [
+        page("(intro)/alpha/one.md", "/alpha/one", "One"),
+        page("(intro)/zeta.md", "/zeta", "Zeta"),
+      ],
+      options
+    );
+    // The based sidebar must order exactly like the base-less one.
+    expect(labels(asGroup(based.sidebar[0]).children)).toStrictEqual(
+      labels(asGroup(baseless.sidebar[0]).children)
+    );
+  });
+
   it("applies folder meta: title, collapsed, and explicit page order", () => {
     const folderMeta = new Map<string, FolderMeta>([
       [
