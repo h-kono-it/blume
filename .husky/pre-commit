@@ -1,4 +1,4 @@
 bun run check
 bun run typecheck
 bun run test:coverage
-bun run build
+bun run build --filter blume

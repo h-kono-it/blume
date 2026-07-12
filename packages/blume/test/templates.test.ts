@@ -420,7 +420,7 @@ describe("changelogIndexTemplate", () => {
       'const changelogTitle = data.ui.changelog?.title ?? "Changelog";'
     );
     expect(out).toContain(
-      'data.ui.changelog?.description ?? "Product updates and release notes.";'
+      'data.ui.changelog?.description ??\n  "Product updates, new features, and fixes from every release.";'
     );
     expect(out).toContain(
       'const pageTitle = data.config.title + " " + changelogTitle;'

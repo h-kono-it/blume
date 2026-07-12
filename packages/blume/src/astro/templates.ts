@@ -1523,7 +1523,8 @@ const htmlLang = i18n ? i18n.defaultLocale : "en";
 // not-yet-regenerated data snapshot from before these keys existed.
 const changelogTitle = data.ui.changelog?.title ?? "Changelog";
 const changelogDescription =
-  data.ui.changelog?.description ?? "Product updates and release notes.";
+  data.ui.changelog?.description ??
+  "Product updates, new features, and fixes from every release.";
 const pageTitle = data.config.title + " " + changelogTitle;
 
 const LayoutComponent = resolveSlot(layoutOverrides.Layout, RootLayout);

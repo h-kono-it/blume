@@ -632,7 +632,7 @@ describe("UI dictionaries", () => {
     expect(EN_UI.page.pagination).toBe("Pagination");
     expect(EN_UI.changelog.title).toBe("Changelog");
     expect(EN_UI.changelog.description).toBe(
-      "Product updates and release notes."
+      "Product updates, new features, and fixes from every release."
     );
     const dict = resolveUIStrings("fr", { defaultLocale: "en" });
     expect(dict.nav.breadcrumb).toBe("Fil d'Ariane");

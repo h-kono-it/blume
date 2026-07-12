@@ -96,12 +96,17 @@ const customerLogos = [
     {
       cards.map((card) => (
         <div class="relative isolate flex min-h-[380px] flex-col justify-between gap-12 overflow-hidden rounded-[2rem] border border-border p-8 text-white sm:p-10">
+          {/* Both photos are 1920×1080; declaring the intrinsic size lets the
+              browser reserve the box (no layout shift on load) while CSS still
+              stretches the image to fill the card. */}
           {card.photo ? (
             <img
               alt=""
               class="-z-20 absolute inset-0 size-full bg-muted object-cover"
+              height={1080}
               loading="lazy"
               src={card.photo}
+              width={1920}
             />
           ) : (
             <div aria-hidden="true" class="-z-20 absolute inset-0 bg-black" />

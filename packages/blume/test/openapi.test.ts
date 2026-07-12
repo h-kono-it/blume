@@ -664,6 +664,97 @@ describe("render-mdx", () => {
     expect(page.body).toContain("&#105;mport statements");
   });
 
+  it("gives every operation a distinct meta description", () => {
+    const op = {
+      deprecated: false,
+      description: "",
+      key: "op",
+      method: "delete" as const,
+      operationId: "op",
+      path: "/pet/{petId}",
+      route: "/api/pet/op",
+      summary: "Deletes a pet",
+      tag: "pet",
+      tagSlug: "pet",
+    };
+    const page = operationMdx(specData({ title: "Petstore" }), op);
+    // Without this the page sets no description and inherits the site-wide one,
+    // so every operation in the spec ships the same meta description. It lives
+    // under `seo` so it feeds the meta tag without also printing as a subtitle.
+    expect(page.data.seo).toStrictEqual({
+      description:
+        "Deletes a pet Reference for the DELETE /pet/{petId} endpoint in the Petstore API.",
+    });
+    expect(page.data).not.toHaveProperty("description");
+  });
+
+  it("flattens markdown prose into the meta description and caps its length", () => {
+    const op = {
+      deprecated: false,
+      description: `Fetch **every** pet from [the store](https://x.dev), ${"paginated ".repeat(30)}.\n\nA second paragraph is dropped.`,
+      key: "op",
+      method: "get" as const,
+      operationId: "op",
+      path: "/pet",
+      route: "/api/pet/op",
+      summary: "List pets",
+      tag: "pet",
+      tagSlug: "pet",
+    };
+    const { description } = operationMdx(specData(), op).data.seo as {
+      description: string;
+    };
+    expect(description.length).toBeLessThanOrEqual(160);
+    // Markdown formatting is stripped — a meta description is plain text.
+    expect(description).toContain("Fetch every pet from the store");
+    expect(description).not.toContain("**");
+    expect(description).not.toContain("](");
+    expect(description).not.toContain("second paragraph");
+    // Truncation cuts on a word boundary, never mid-word.
+    expect(description).toContain("…");
+  });
+
+  it("falls back to the API name when a long endpoint leaves no room for prose", () => {
+    const op = {
+      deprecated: false,
+      description: "Ping",
+      key: "op",
+      method: "get" as const,
+      operationId: "op",
+      path: `/${"very-long-segment/".repeat(8)}`,
+      route: "/api/x/op",
+      summary: "Ping",
+      tag: "x",
+      tagSlug: "x",
+    };
+    const { description } = operationMdx(specData(), op).data.seo as {
+      description: string;
+    };
+    // The endpoint sentence alone overruns the cap, so the prose budget is zero
+    // and the description is the clipped sentence — never an empty string. The
+    // path is one long token, so it is hard-cut rather than dropped whole.
+    expect(description.length).toBeLessThanOrEqual(160);
+    expect(description.startsWith("Reference for the GET /very-long")).toBe(
+      true
+    );
+    expect(description.endsWith("…")).toBe(true);
+  });
+
+  it("describes the overview page with the spec description, then the API name", () => {
+    const described = overviewMdx(
+      specData({ description: "The **Petstore** API.", title: "Petstore" })
+    );
+    expect(described.data.seo).toStrictEqual({
+      description: "The Petstore API.",
+    });
+    // A spec with no description still gets something better than the
+    // site-wide default, which every other page already uses.
+    const bare = overviewMdx(specData({ title: "Petstore" }));
+    expect(bare.data.seo).toStrictEqual({
+      description: "Petstore API reference.",
+    });
+  });
+
   it("renders one overview section per tag slug, not per tag name", () => {
     const document = {
       info: { title: "API", version: "1" },

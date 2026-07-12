@@ -55,7 +55,11 @@ const uiStringsObject = z.object({
     .default({}),
   changelog: z
     .object({
-      description: z.string().default("Product updates and release notes."),
+      description: z
+        .string()
+        .default(
+          "Product updates, new features, and fixes from every release."
+        ),
       // `{version}` is replaced with the major line ("2.x") at render time.
       showReleases: z.string().default("Show {version} releases"),
       title: z.string().default("Changelog"),
