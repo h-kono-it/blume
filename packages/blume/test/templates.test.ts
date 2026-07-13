@@ -9,6 +9,7 @@ import { resolveAskBackend } from "../src/ai/ask.ts";
 import type { ExampleSpec } from "../src/astro/examples.ts";
 import type { IslandSpec } from "../src/astro/islands.ts";
 import {
+  askComponentTemplate,
   askEndpointTemplate,
   astroConfigTemplate,
   catchAllPageTemplate,
@@ -42,6 +43,7 @@ import type { ProjectContext } from "../src/core/types.ts";
 
 const config = blumeConfigSchema.parse({});
 
+const ASK_PATH = "/p/.blume/src/generated/Ask.astro";
 const DATA_PATH = "/p/.blume/src/generated/data.json";
 const EXAMPLES_PATH = "/p/.blume/src/generated/examples.ts";
 const EXAMPLES_THEME_PATH = "/p/.blume/src/generated/examples.css";
@@ -87,7 +89,6 @@ const example = (over: Partial<ExampleSpec> = {}): ExampleSpec => ({
 });
 
 const exportOpts = {
-  askEnabled: false,
   exportEpub: false,
   exportPdf: false,
   needsReact: false,
@@ -146,9 +147,8 @@ describe("catchAllPageTemplate", () => {
     expect(out).toContain("YouTube,");
   });
 
-  it("imports Math and AskAI when those features are on", () => {
+  it("imports Math when the feature is on", () => {
     const out = catchAllPageTemplate({
-      askEnabled: true,
       exportEpub: true,
       exportPdf: true,
       mathEnabled: true,
@@ -157,14 +157,17 @@ describe("catchAllPageTemplate", () => {
     expect(out).toContain(
       'import Math from "blume/components/content/Math.astro"'
     );
-    expect(out).toContain(
-      'import AskAI from "blume/components/islands/AskAI.astro"'
-    );
-    expect(out).toContain('<AskAI slot="ask"');
     expect(out).toContain("Math,");
-    expect(out).toContain("askEnabled={true}");
     expect(out).toContain("exportPdf={true}");
     expect(out).toContain("exportEpub={true}");
+  });
+
+  // The Ask AI trigger is the shared header's, not the page's — see
+  // askComponentTemplate. A page that wired up its own would double-render it.
+  it("leaves the Ask AI trigger to the header", () => {
+    const out = catchAllPageTemplate({ ...exportOpts, mathEnabled: true });
+    expect(out).not.toContain("AskAI");
+    expect(out).not.toContain("askEnabled");
   });
 });
 
@@ -325,18 +328,10 @@ describe("changelogIndexTemplate", () => {
     expect(out).toContain('...(await getCollection("staged")),');
   });
 
-  it("includes the AskAI slot when ask is enabled", () => {
-    const out = changelogIndexTemplate({
-      askEnabled: true,
-      exportEpub: false,
-      exportPdf: false,
-      needsReact: false,
-      staged: false,
-    });
-    expect(out).toContain(
-      'import AskAI from "blume/components/islands/AskAI.astro"'
-    );
-    expect(out).toContain('<AskAI slot="ask"');
+  it("leaves the Ask AI trigger to the header", () => {
+    const out = changelogIndexTemplate({ ...exportOpts, staged: false });
+    expect(out).not.toContain("AskAI");
+    expect(out).not.toContain("askEnabled");
   });
 
   it("renders through the sidebar-less, TOC-less bare layout", () => {
@@ -540,9 +535,31 @@ describe("runtimeDependencies", () => {
   });
 });
 
+describe("askComponentTemplate", () => {
+  it("renders the island, taking its suggestions from the data snapshot", () => {
+    const out = askComponentTemplate(true);
+    expect(out).toContain(
+      'import AskAI from "blume/components/islands/AskAI.astro"'
+    );
+    expect(out).toContain("<AskAI");
+    expect(out).toContain("data.config.ask?.suggestions ?? []");
+  });
+
+  // The reason this component exists: the header imports it unconditionally, so
+  // when Ask is off it must not drag React into a project that has no React
+  // renderer wired into its generated Astro config.
+  it("imports no island when ask is off, and renders nothing", () => {
+    const out = askComponentTemplate(false);
+    expect(out).not.toContain("AskAI");
+    expect(out).not.toMatch(/^import /mu);
+    expect(out.replaceAll(/^---$[\S\s]*?^---$/gmu, "").trim()).toBe("");
+  });
+});
+
 describe("astroConfigTemplate", () => {
   it("emits a static config with fonts and no framework renderers by default", () => {
     const out = astroConfigTemplate({
+      askPath: ASK_PATH,
       config,
       contentRoutes: [],
       context: context(),
@@ -609,6 +626,7 @@ describe("astroConfigTemplate", () => {
       redirects: [{ from: "/old", to: "/new" }],
     });
     const out = astroConfigTemplate({
+      askPath: ASK_PATH,
       config: serverConfig,
       contentRoutes: [],
       context: context(),
@@ -652,6 +670,7 @@ describe("astroConfigTemplate", () => {
       redirects: [{ from: "/old", to: "/new" }],
     });
     const out = astroConfigTemplate({
+      askPath: ASK_PATH,
       config: basedConfig,
       contentRoutes: [],
       context: context(),
@@ -679,6 +698,7 @@ describe("astroConfigTemplate", () => {
     const compilerPath =
       "/abs/node_modules/babel-plugin-react-compiler/dist/index.js";
     const out = astroConfigTemplate({
+      askPath: ASK_PATH,
       config,
       contentRoutes: [],
       context: context(),
@@ -699,6 +719,7 @@ describe("astroConfigTemplate", () => {
 
   it("omits the compiler babel plugin when no compiler path is given", () => {
     const out = astroConfigTemplate({
+      askPath: ASK_PATH,
       config,
       contentRoutes: [],
       context: context(),
@@ -723,6 +744,7 @@ describe("astroConfigTemplate", () => {
       deployment: { adapter: "vercel", output: "server" },
     });
     const out = astroConfigTemplate({
+      askPath: ASK_PATH,
       config: vercelConfig,
       contentRoutes: [],
       context: context(),
@@ -742,6 +764,7 @@ describe("astroConfigTemplate", () => {
   it("wires project tsconfig aliases into vite resolve.alias, longest first", () => {
     const out = astroConfigTemplate({
       aliases: { "@": "/proj/src", "@ui": "/proj/src/components/ui" },
+      askPath: ASK_PATH,
       config,
       contentRoutes: [],
       context: context(),
@@ -780,6 +803,7 @@ describe("astroConfigTemplate workspace root", () => {
 
   const fsAllowFor = (root: string): string => {
     const out = astroConfigTemplate({
+      askPath: ASK_PATH,
       config,
       contentRoutes: [],
       context: context({
@@ -1107,6 +1131,10 @@ describe("env / package / tsconfig templates", () => {
     const out = envTemplate();
     expect(out).toContain('declare module "blume:data"');
     expect(out).toContain('import("blume").BlumeData');
+  });
+
+  it("declares the blume:ask module the header imports", () => {
+    expect(envTemplate()).toContain('declare module "blume:ask"');
   });
 
   it("emits an empty dependency map by default", () => {

@@ -58,6 +58,11 @@ interface Props {
   themeMode: "system" | "light" | "dark";
   fontCssVars?: string[];
   searchEnabled: boolean;
+  /**
+   * Opt this page out of the header's Ask AI trigger. Defaults to whether Ask
+   * AI is configured, so a custom page gets the same trigger the docs pages have
+   * without wiring anything up.
+   */
   askEnabled?: boolean;
   /**
    * Absolute site URL (`data.config.site`). When set, `canonical` and the
@@ -229,6 +234,7 @@ const bannerKey = banner?.dismissible ? banner.key : null;
     <Banner banner={banner} strings={strings.banner} />
     <Header
       askEnabled={askEnabled}
+      askStrings={strings.ask}
       hasSidebar={false}
       localeSwitch={localeSwitch}
       logo={logo}
@@ -240,9 +246,7 @@ const bannerKey = banner?.dismissible ? banner.key : null;
       searchStrings={strings.search}
       site={site}
       switcherStrings={strings.languageSwitcher}
-    >
-      <slot name="ask" slot="ask" />
-    </Header>
+    />
     <main id="blume-content"><slot /></main>
     <slot name="footer" />
     {

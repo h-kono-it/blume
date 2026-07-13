@@ -517,13 +517,20 @@ describe("generateRuntime", () => {
     // Blume's own deps — the preflight checks there too and stays quiet.
     expect(result.warnings.some((w) => w.includes("@orama/orama"))).toBe(false);
 
-    // The catch-all wires in Math + AskAI for this project.
+    // The catch-all wires in Math for this project. The Ask AI trigger is the
+    // header's, reached through the generated `blume:ask` component, so no page
+    // template mentions it.
     const catchAll = await readFile(
       join(out, "src/pages/[...slug].astro"),
       "utf-8"
     );
     expect(catchAll).toContain("Math.astro");
-    expect(catchAll).toContain("AskAI.astro");
+    expect(catchAll).not.toContain("AskAI");
+
+    const ask = await readFile(join(out, "src/generated/Ask.astro"), "utf-8");
+    expect(ask).toContain("AskAI.astro");
+    const astroConfig = await readFile(join(out, "astro.config.mjs"), "utf-8");
+    expect(astroConfig).toContain('"blume:ask"');
 
     // The default 404 renders through PageLayout and is kept out of search.
     const notFound = await readFile(join(out, "src/pages/404.astro"), "utf-8");

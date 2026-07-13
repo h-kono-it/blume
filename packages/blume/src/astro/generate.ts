@@ -61,6 +61,7 @@ import {
   routeIsTaken,
 } from "./pages.ts";
 import {
+  askComponentTemplate,
   askEndpointTemplate,
   astroConfigTemplate,
   catchAllPageTemplate,
@@ -1105,6 +1106,7 @@ export const generateRuntime = async (
   const { context, config } = project;
   const out = context.outDir;
   const srcDir = join(out, "src");
+  const askPath = join(srcDir, "generated", "Ask.astro");
   const dataPath = join(srcDir, "generated", "data.json");
   const themePath = join(srcDir, "generated", "app.css");
   const searchClientPath = join(srcDir, "generated", "search-client.ts");
@@ -1205,6 +1207,7 @@ export const generateRuntime = async (
         join(out, "astro.config.mjs"),
         astroConfigTemplate({
           aliases: resolveTsconfigAliases(context.root),
+          askPath,
           config,
           contentRoutes: project.manifest.routes.map((route) => route.path),
           context,
@@ -1242,13 +1245,16 @@ export const generateRuntime = async (
       write(
         join(srcDir, "pages", "[...slug].astro"),
         catchAllPageTemplate({
-          askEnabled,
           exportEpub,
           exportPdf,
           mathEnabled: usesMath,
           needsReact,
         })
       ),
+      // The header's Ask trigger, behind the `blume:ask` alias. Always written
+      // (even when Ask is off, as a component that renders nothing) so the alias
+      // resolves — the same contract as `blume:search-client`.
+      write(askPath, askComponentTemplate(askEnabled)),
       write(join(srcDir, "generated", "components.ts"), slotPlan.module),
       write(
         join(srcDir, "generated", "islands.ts"),
@@ -1336,7 +1342,6 @@ export const generateRuntime = async (
     await write(
       join(srcDir, "pages", "changelog.astro"),
       changelogIndexTemplate({
-        askEnabled,
         exportEpub,
         exportPdf,
         needsReact,

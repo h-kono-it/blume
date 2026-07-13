@@ -154,6 +154,7 @@ describe("astro config template", () => {
     } as ProjectContext;
 
     const output = astroConfigTemplate({
+      askPath: "/r/.blume/src/generated/Ask.astro",
       config,
       contentRoutes: [],
       context,
@@ -183,6 +184,7 @@ describe("astro config template", () => {
     } as ProjectContext;
 
     const output = astroConfigTemplate({
+      askPath: "/r/.blume/src/generated/Ask.astro",
       config,
       contentRoutes: [],
       context,
@@ -213,6 +215,7 @@ describe("astro config template", () => {
   } as ProjectContext;
   const configTemplate = (config: ReturnType<typeof blumeConfigSchema.parse>) =>
     astroConfigTemplate({
+      askPath: "/r/.blume/src/generated/Ask.astro",
       config,
       contentRoutes: [],
       context,

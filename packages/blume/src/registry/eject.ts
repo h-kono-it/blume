@@ -20,6 +20,7 @@ import { discoverIslands } from "../astro/islands.ts";
 import { customOgRoutes, discoverPages, routeIsTaken } from "../astro/pages.ts";
 import {
   askEndpointTemplate,
+  askComponentTemplate,
   astroConfigTemplate,
   catchAllPageTemplate,
   changelogIndexTemplate,
@@ -356,6 +357,7 @@ export const eject = async (
   }[] = [
     {
       content: astroConfigTemplate({
+        askPath: "./src/generated/Ask.astro",
         config,
         contentRoutes: project.manifest.routes.map((route) => route.path),
         context: relContext,
@@ -390,7 +392,6 @@ export const eject = async (
     },
     {
       content: catchAllPageTemplate({
-        askEnabled,
         exportEpub,
         exportPdf,
         mathEnabled: usesMath,
@@ -441,6 +442,12 @@ export const eject = async (
       path: join(genDir, "app.css"),
     },
     { content: buildRuntimeData(project), path: join(genDir, "data.json") },
+    // The header's Ask trigger behind the `blume:ask` alias. Always written — it
+    // renders nothing when Ask is off — so the alias always resolves.
+    {
+      content: askComponentTemplate(askEnabled),
+      path: join(genDir, "Ask.astro"),
+    },
     {
       content: `${JSON.stringify(ejectOpenApiData(project))}\n`,
       path: join(genDir, "openapi.json"),
@@ -475,7 +482,6 @@ export const eject = async (
   files.push(
     ...(await mcpFiles(project, pages, srcDir, genDir)),
     ...changelogFiles(project, pages, srcDir, {
-      askEnabled,
       exportEpub,
       exportPdf,
       needsReact,

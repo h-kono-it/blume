@@ -222,6 +222,8 @@ const { config } = data;
 </PageLayout>
 ```
 
+The header a custom page gets is the same one the docs pages get, so the chrome that lives in it comes along: search, the theme toggle, the language switcher, and — when [Ask AI](/docs/configuration/ai) is configured — the Ask AI trigger. None of it needs wiring up per page. Pass `askEnabled={false}` to leave the Ask trigger off one page while keeping it everywhere else.
+
 Passing `siteUrl` (and `ogEnabled`) derives the page's `canonical` and a generated `og:image` automatically: Blume renders an Open Graph card for every static custom page — the home included, the most-shared URL — served at `/og/<route>.png` (`/og/index.png` for `/`). The home card uses the site title with the description as its eyebrow; a deeper page is titled from its last path segment. Set `ogImage` or `canonical` explicitly to override either. `ogImage` takes a root-relative path — a file in `public/`, resolved against [`deployment.site`](/docs/deployment) to the absolute URL crawlers need — or an external URL, which passes through untouched:
 
 ```astro pages/index.astro lineNumbers

@@ -15,6 +15,12 @@ declare module "blume:search-client" {
   export const createSearch: () => Fn | Promise<Fn>;
 }
 
+declare module "blume:ask" {
+  /** The generated Ask trigger (see `askComponentTemplate`); empty when Ask is off. */
+  const Ask: (props: Record<string, unknown>) => unknown;
+  export default Ask;
+}
+
 declare module "blume:data" {
   /** The generated per-project data snapshot (see `core/data.ts`). */
   // biome-ignore lint/style/useImportType: ambient module must stay a global script
