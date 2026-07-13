@@ -34,7 +34,11 @@ if (repoMatch?.groups) {
     if (response.ok) {
       const release = await response.json();
       if (typeof release?.tag_name === "string") {
-        latestVersion = release.tag_name.replace(/^v/u, "");
+        // Tags are changesets-style (`blume@1.0.0`), but tolerate a plain
+        // `v1.0.0` too — drop any package prefix and the leading `v`.
+        latestVersion = release.tag_name
+          .replace(/^.*@/u, "")
+          .replace(/^v/u, "");
       }
     }
   } catch {
