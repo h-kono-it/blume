@@ -83,7 +83,17 @@ export const surfaceAdapterOutput = async (
   }
   await mkdir(dirname(to), { recursive: true });
   await rm(to, { force: true, recursive: true });
-  await cp(from, to, { recursive: true });
+  // `verbatimSymlinks` keeps each symlink's target text as written. Without it,
+  // `cp` resolves every relative target against the *source*, rewriting it to an
+  // absolute path under `.blume` — which this function then deletes. Adapters
+  // that trace dependencies into their function bundle link one package to
+  // another that way (under an isolated linker — Bun's `isolated` mode, pnpm —
+  // that is every external dependency the function imports), so the resolved
+  // links leave the deployed function dying on its first external import with
+  // ERR_MODULE_NOT_FOUND. Verbatim, the links stay relative and internal to the
+  // bundle, surviving both this move and the platform's own (Vercel mounts the
+  // bundle at `/var/task`).
+  await cp(from, to, { recursive: true, verbatimSymlinks: true });
   await rm(from, { force: true, recursive: true });
   // The `.gitignore` entry is the surfaced top-level dir (`.vercel`/`.netlify`),
   // never the moved sub-path — the platform's own state (`.vercel/project.json`,

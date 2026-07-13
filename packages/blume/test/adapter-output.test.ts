@@ -1,6 +1,13 @@
 import { describe, expect, it } from "bun:test";
 import { existsSync } from "node:fs";
-import { mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
+import {
+  mkdir,
+  mkdtemp,
+  readFile,
+  readlink,
+  symlink,
+  writeFile,
+} from "node:fs/promises";
 import { tmpdir } from "node:os";
 
 import { join } from "pathe";
@@ -34,6 +41,35 @@ const seed = async (root: string): Promise<void> => {
   await mkdir(join(src, "static"), { recursive: true });
   await writeFile(join(src, "config.json"), '{"version":3}', "utf-8");
   await writeFile(join(src, "static", "index.html"), "<h1>hi</h1>", "utf-8");
+};
+
+/** Surface a Vercel bundle in a Node process, the runtime `blume build` runs in. */
+const surfaceUnderNode = async (root: string): Promise<void> => {
+  const source = new URL("../src/deploy/adapter-output.ts", import.meta.url)
+    .href;
+  const proc = Bun.spawn(
+    [
+      "node",
+      // Required below Node 22.18, where type stripping is not yet on by
+      // default; accepted (and redundant) after.
+      "--experimental-strip-types",
+      "--input-type=module",
+      "--eval",
+      `const { surfaceAdapterOutput } = await import(${JSON.stringify(source)});
+       await surfaceAdapterOutput(
+         { deployment: { adapter: "vercel", output: "server" } },
+         { outDir: ${JSON.stringify(join(root, ".blume"))}, root: ${JSON.stringify(root)} }
+       );`,
+    ],
+    { stderr: "pipe", stdout: "pipe" }
+  );
+  const [exitCode, stderr] = await Promise.all([
+    proc.exited,
+    new Response(proc.stderr).text(),
+  ]);
+  if (exitCode !== 0) {
+    throw new Error(`surfaceAdapterOutput failed under node: ${stderr}`);
+  }
 };
 
 describe("deployStaticDir", () => {
@@ -134,6 +170,36 @@ describe("surfaceAdapterOutput", () => {
     expect(await readFile(join(root, ".netlify", "state.json"), "utf-8")).toBe(
       '{"siteId":"abc"}'
     );
+  });
+
+  it("keeps a traced dependency's symlink resolvable after the move", async () => {
+    // An adapter traces each dependency into the function bundle as a *relative*
+    // symlink (a package's `node_modules` entry pointing at the isolated
+    // linker's store copy). Node's `fs.cp` resolves such a target against the
+    // source unless told not to, anchoring it in the `.blume` dir this move goes
+    // on to delete — the deployed function then dies on its first external
+    // import. Run under Node because that is the runtime the CLI's shebang
+    // picks, and the only one that rewrites targets: Bun's `fs.cp` (which runs
+    // this suite) is verbatim either way, so an in-process call proves nothing.
+    const root = await mkdtemp(join(tmpdir(), "blume-surface-"));
+    await seed(root);
+    const fn = join(root, ".blume", ".vercel", "output", "functions", "f.func");
+    const store = join(fn, "node_modules", ".store", "dep");
+    await mkdir(store, { recursive: true });
+    await writeFile(join(store, "index.js"), "export default 1;", "utf-8");
+    await symlink("./.store/dep", join(fn, "node_modules", "dep"), "dir");
+
+    await surfaceUnderNode(root);
+
+    const moved = join(root, ".vercel", "output", "functions", "f.func");
+    // The link still names its target relatively, and resolves through to the
+    // package where the bundle landed — self-contained wherever it deploys to.
+    expect(await readlink(join(moved, "node_modules", "dep"))).toBe(
+      "./.store/dep"
+    );
+    expect(
+      await readFile(join(moved, "node_modules", "dep", "index.js"), "utf-8")
+    ).toBe("export default 1;");
   });
 
   it("replaces a stale destination bundle", async () => {
