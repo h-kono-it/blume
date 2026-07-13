@@ -56,6 +56,15 @@ const okJson = (data: unknown): Response =>
   ({ json: () => Promise.resolve(data), ok: true, status: 200 }) as Response;
 const notOk = (status: number): Response => ({ ok: false, status }) as Response;
 
+/**
+ * Whether a mocked request is the repo tree listing (rather than a raw file
+ * fetch from `raw.githubusercontent.com`). Compares the host, not a substring:
+ * `api.github.com` can appear anywhere in a URL an attacker controls, so the
+ * substring form is the wrong shape to teach here even in a fixture.
+ */
+const isTreeApi = (url: string): boolean =>
+  URL.parse(url)?.hostname === "api.github.com";
+
 describe("cache: entriesDigest", () => {
   it("is stable per content and sensitive to the entry set", () => {
     const entries: SourceEntry[] = [
@@ -274,7 +283,7 @@ describe("mdxRemoteSource", () => {
     };
     const fetchImpl = ((input: string | URL) => {
       const url = String(input);
-      if (url.includes("api.github.com")) {
+      if (isTreeApi(url)) {
         return Promise.resolve(okJson(tree));
       }
       if (url.endsWith("guide.md")) {

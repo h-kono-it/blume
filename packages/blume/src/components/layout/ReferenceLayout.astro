@@ -7,6 +7,7 @@ import Analytics from "./Analytics.astro";
 import Banner from "./Banner.astro";
 import Favicon from "./Favicon.astro";
 import Fonts from "./Fonts.astro";
+import { BANNER_INIT_SCRIPT, THEME_INIT_SCRIPT } from "./head-scripts.ts";
 import Header from "./Header.astro";
 
 // A minimal shell for the Scalar API/AsyncAPI reference: Blume's banner + navbar
@@ -80,14 +81,7 @@ const {
 
 const strings = ui ?? EN_UI;
 
-// Set the theme before paint so the navbar never flashes the wrong colors
-// (mirrors RootLayout's pre-paint script).
-const initialThemeScript = `(()=>{const m=${JSON.stringify(themeMode)};const s=localStorage.getItem("blume-theme");const sys=matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light";document.documentElement.dataset.theme=s??(m==="system"?sys:m);})();`;
-
-// Pre-paint: hide a previously-dismissed banner before it flashes in.
-const bannerScript = banner?.dismissible
-  ? `(()=>{if(localStorage.getItem("blume-banner:"+${JSON.stringify(banner.key)}))document.documentElement.setAttribute("data-blume-banner-hidden","");})();`
-  : null;
+const bannerKey = banner?.dismissible ? banner.key : null;
 ---
 
 <!doctype html>
@@ -98,8 +92,12 @@ const bannerScript = banner?.dismissible
     <title>{pageTitle}</title>
     <Favicon favicon={favicon} appleIcon={appleIcon} />
     <Fonts cssVars={fontCssVars ?? []} />
-    {bannerScript && <script is:inline set:html={bannerScript} />}
-    <script is:inline set:html={initialThemeScript} />
+    {
+      bannerKey && (
+        <script data-key={bannerKey} is:inline set:html={BANNER_INIT_SCRIPT} />
+      )
+    }
+    <script data-mode={themeMode} is:inline set:html={THEME_INIT_SCRIPT} />
     <Analytics analytics={analytics} />
   </head>
   <body class="bg-background font-sans text-foreground antialiased">

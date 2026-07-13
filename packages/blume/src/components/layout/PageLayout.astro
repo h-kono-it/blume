@@ -37,7 +37,7 @@ import Analytics from "./Analytics.astro";
 import Banner from "./Banner.astro";
 import Favicon from "./Favicon.astro";
 import Fonts from "./Fonts.astro";
-import { bannerInitScript, themeInitScript } from "./head-scripts.ts";
+import { BANNER_INIT_SCRIPT, THEME_INIT_SCRIPT } from "./head-scripts.ts";
 import Header from "./Header.astro";
 import { isUnderPath } from "./nav-utils.ts";
 
@@ -169,10 +169,7 @@ const twitterCard = resolvedOgImage ? "summary_large_image" : "summary";
 const xSite = normalizeXHandle(x?.handle);
 const xCreator = normalizeXHandle(x?.creator);
 
-const initialThemeScript = themeInitScript(themeMode);
-const bannerScript = banner?.dismissible
-  ? bannerInitScript(banner.key)
-  : null;
+const bannerKey = banner?.dismissible ? banner.key : null;
 ---
 
 <!doctype html>
@@ -216,8 +213,12 @@ const bannerScript = banner?.dismissible
     {description && <meta content={description} name="twitter:description" />}
     {xSite && <meta content={xSite} name="twitter:site" />}
     {xCreator && <meta content={xCreator} name="twitter:creator" />}
-    {bannerScript && <script is:inline set:html={bannerScript} />}
-    <script is:inline set:html={initialThemeScript} />
+    {
+      bannerKey && (
+        <script data-key={bannerKey} is:inline set:html={BANNER_INIT_SCRIPT} />
+      )
+    }
+    <script data-mode={themeMode} is:inline set:html={THEME_INIT_SCRIPT} />
     <Analytics analytics={analytics} />
   </head>
   <body class="bg-background font-sans text-foreground antialiased">

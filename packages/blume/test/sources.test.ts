@@ -67,6 +67,15 @@ const notFound = (): Response =>
     text: () => Promise.resolve(""),
   }) as unknown as Response;
 
+/**
+ * Whether a mocked request is the repo tree listing (rather than a raw file
+ * fetch from `raw.githubusercontent.com`). Compares the host, not a substring:
+ * `api.github.com` can appear anywhere in a URL an attacker controls, so the
+ * substring form is the wrong shape to teach here even in a fixture.
+ */
+const isTreeApi = (url: string): boolean =>
+  URL.parse(url)?.hostname === "api.github.com";
+
 const ctxFor = (cacheDir: string): SourceContext => ({
   cacheDir,
   mode: "build",
@@ -495,7 +504,7 @@ describe("mdxRemoteSource (github mode)", () => {
     };
     const fetchImpl = ((input: string | URL): Promise<Response> => {
       const url = typeof input === "string" ? input : input.toString();
-      if (url.includes("api.github.com")) {
+      if (isTreeApi(url)) {
         return Promise.resolve(okJson(tree));
       }
       return Promise.resolve(
@@ -530,7 +539,7 @@ describe("mdxRemoteSource (github mode)", () => {
     };
     const fetchImpl = ((input: string | URL): Promise<Response> => {
       const url = typeof input === "string" ? input : input.toString();
-      return url.includes("api.github.com")
+      return isTreeApi(url)
         ? Promise.resolve(okJson(tree))
         : Promise.resolve(ok("---\ntitle: A\n---\nbody\n"));
     }) as unknown as typeof fetch;

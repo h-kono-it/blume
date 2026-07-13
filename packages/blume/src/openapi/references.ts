@@ -1,5 +1,6 @@
 import { withBasePath } from "../core/base-path.ts";
 import type { ResolvedConfig } from "../core/schema.ts";
+import { trimChar, trimEnd } from "../core/trim.ts";
 import type { NavTab } from "../core/types.ts";
 
 /**
@@ -52,24 +53,21 @@ export interface ReferenceSource {
 }
 
 const NON_SLUG = /[^a-z0-9]+/gu;
-const SLUG_EDGES = /^-+|-+$/gu;
-const ROUTE_EDGES = /^\/+|\/+$/gu;
-const TRAILING_SLASH = /\/+$/u;
 
 export const slugify = (text: string): string =>
-  text.toLowerCase().replace(NON_SLUG, "-").replace(SLUG_EDGES, "");
+  trimChar(text.toLowerCase().replace(NON_SLUG, "-"), "-");
 
 /** Normalize a configured route to a single leading slash, no trailing slash. */
 export const normalizeRoute = (route: string): string => {
   const trimmed = route.trim();
   const withSlash = trimmed.startsWith("/") ? trimmed : `/${trimmed}`;
-  const noTrailing = withSlash.replace(TRAILING_SLASH, "");
+  const noTrailing = trimEnd(withSlash, "/");
   return noTrailing === "" ? "/" : noTrailing;
 };
 
 /** A stable per-reference token from its route: `/api/events` -> `api-events`. */
 const routeSlug = (route: string): string =>
-  slugify(route.replace(ROUTE_EDGES, "")) || "reference";
+  slugify(trimChar(route, "/")) || "reference";
 
 type Block = ResolvedConfig["openapi"] | ResolvedConfig["asyncapi"];
 

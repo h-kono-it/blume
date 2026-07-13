@@ -23,7 +23,7 @@ import Breadcrumbs from "./Breadcrumbs.astro";
 import Empty from "./Empty.astro";
 import Favicon from "./Favicon.astro";
 import Fonts from "./Fonts.astro";
-import { bannerInitScript, themeInitScript } from "./head-scripts.ts";
+import { BANNER_INIT_SCRIPT, THEME_INIT_SCRIPT } from "./head-scripts.ts";
 import Header from "./Header.astro";
 import Icon from "../Icon.astro";
 import {
@@ -329,10 +329,7 @@ const structuredDataJson = structuredData
   ? JSON.stringify(structuredData).replaceAll("<", "\\u003c")
   : null;
 
-const initialThemeScript = themeInitScript(themeMode);
-const bannerScript = banner?.dismissible
-  ? bannerInitScript(banner.key)
-  : null;
+const bannerKey = banner?.dismissible ? banner.key : null;
 ---
 
 <!doctype html>
@@ -411,8 +408,12 @@ const bannerScript = banner?.dismissible
         />
       )
     }
-    {bannerScript && <script is:inline set:html={bannerScript} />}
-    <script is:inline set:html={initialThemeScript} />
+    {
+      bannerKey && (
+        <script data-key={bannerKey} is:inline set:html={BANNER_INIT_SCRIPT} />
+      )
+    }
+    <script data-mode={themeMode} is:inline set:html={THEME_INIT_SCRIPT} />
     <Analytics analytics={analytics} />
   </head>
   <body

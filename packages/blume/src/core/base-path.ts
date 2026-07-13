@@ -21,10 +21,10 @@ export const normalizeBasePath = (input?: string): string => {
   if (!input) {
     return "";
   }
-  const trimmed = input
-    .trim()
-    .replaceAll(/^\/+|\/+$/gu, "")
-    .replaceAll(/\/{2,}/gu, "/");
+  // Splitting on "/" and dropping the empty parts trims the edges and collapses
+  // inner runs in one linear pass; the regex spellings of both are quadratic on
+  // a long run of slashes (see `core/trim.ts`).
+  const trimmed = input.trim().split("/").filter(Boolean).join("/");
   return trimmed === "" ? "" : `/${trimmed}`;
 };
 
