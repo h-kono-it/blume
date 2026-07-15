@@ -275,14 +275,7 @@ npm i blume
 
 ## Diagrams
 
-A `mermaid` block renders a [Mermaid](https://mermaid.js.org) diagram — flowcharts, sequence diagrams, and more — straight from text. Diagrams follow the active color theme and re-render when it changes.
-
-```mermaid
-flowchart LR
-  A[Markdown] --> B{blume build}
-  B --> C[Static HTML]
-  B --> D[llms.txt]
-```
+A `mermaid` block renders a [Mermaid](https://mermaid.js.org) diagram straight from text. The fence contents are passed to Mermaid verbatim, so every diagram type Mermaid supports works here. Diagrams follow the active color theme and re-render when it changes. Author one by fencing the source with `mermaid`:
 
 ````md
 ```mermaid
@@ -293,7 +286,126 @@ flowchart LR
 ```
 ````
 
-Diagrams render on the client, so this is an MDX-only feature, and the Mermaid library loads only on pages that include one.
+Diagrams render on the client, so this is an MDX-only feature, and the Mermaid library loads only on pages that include one. The rest of this section is a gallery of common types — see the [Mermaid docs](https://mermaid.js.org/intro/) for the full list.
+
+### Flowchart
+
+```mermaid
+flowchart LR
+  A[Markdown] --> B{blume build}
+  B --> C[Static HTML]
+  B --> D[llms.txt]
+```
+
+### Sequence diagram
+
+```mermaid
+sequenceDiagram
+  participant R as Reader
+  participant B as Blume
+  R->>B: Request /docs
+  B-->>R: Prerendered HTML
+```
+
+### Class diagram
+
+```mermaid
+classDiagram
+  class Page {
+    +string title
+    +string route
+    +render()
+  }
+  Page <|-- Doc
+  Page <|-- Changelog
+```
+
+### State diagram
+
+```mermaid
+stateDiagram-v2
+  [*] --> Draft
+  Draft --> Published: build
+  Published --> [*]
+```
+
+### Entity relationship
+
+```mermaid
+erDiagram
+  PAGE ||--o{ HEADING : contains
+  PAGE {
+    string title
+    string route
+  }
+```
+
+### User journey
+
+```mermaid
+journey
+  title Publishing a page
+  section Write
+    Draft MDX: 5: Author
+  section Ship
+    blume build: 4: Author
+    Deploy: 3: Author
+```
+
+### Gantt
+
+```mermaid
+gantt
+  title Release plan
+  dateFormat YYYY-MM-DD
+  section Docs
+    Draft   :a1, 2026-01-01, 7d
+    Review  :after a1, 3d
+```
+
+### Git graph
+
+```mermaid
+gitGraph
+  commit
+  branch develop
+  checkout develop
+  commit
+  checkout main
+  merge develop
+  commit
+```
+
+### Pie chart
+
+```mermaid
+pie title Content types
+  "Docs" : 70
+  "Blog" : 20
+  "Changelog" : 10
+```
+
+### Mindmap
+
+```mermaid
+mindmap
+  root((Blume))
+    Content
+      MDX
+      Markdown
+    Build
+      Static HTML
+      llms.txt
+```
+
+### Timeline
+
+```mermaid
+timeline
+  title Blume milestones
+  2025 : Prototype
+  2026 : 1.0 release
+```
 
 ## Callouts
 
