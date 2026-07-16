@@ -119,6 +119,10 @@ redirects: [{ from: "/old", to: "/new", status: 301 }];
 `from` is matched as an exact path — wildcards and pattern matching (e.g. `/blog/:slug` or `/old/*`) aren't supported. If you need pattern-based rules, handle them in an infrastructure file like `vercel.json` (which supports wildcard `source` patterns) or your host's redirect config instead. A `vercel.json` you ship in `public/` is preserved as-is.
 :::
 
+:::note
+Under [`deployment.base`](#subpath-deploys), write `from` as if mounted at root but include the base in `to` — with `base: "/docs"`, a redirect to `/new` needs `to: "/docs/new"`. `from` is matched against the based route, but Astro reads the right-hand side as the final destination and won't prepend the base, so a root-relative `to` points outside the site and the build won't flag it. Under [`basePath`](#mount-the-docs-under-a-path) both sides stay root-relative, since Blume rewrites them itself.
+:::
+
 ## Environment variables
 
 When a feature needs a runtime secret, Blume warns at `blume dev`/`build` if it's missing — so the problem surfaces early instead of at the first request:
