@@ -126,17 +126,19 @@ const locatePath = (
   return { column: found - lastNewline, line: before.split("\n").length };
 };
 
-/** Convert a ZodError into Blume diagnostics, anchored to a file. */
-export const diagnosticsFromZod = (
-  error: ZodError,
+/**
+ * Convert generic validation issues (message + path, the shape shared by Zod
+ * and Standard Schema issues) into Blume diagnostics, anchored to a file.
+ */
+export const diagnosticsFromIssues = (
+  issues: readonly {
+    message: string;
+    path: readonly (string | number)[];
+  }[],
   options: { code: string; file?: string; source?: string }
 ): Diagnostic[] =>
-  error.issues.map((issue) => {
+  issues.map((issue) => {
     const schemaPath = issue.path.join(".");
-    const received =
-      "received" in issue
-        ? ` (received: ${JSON.stringify(issue.received)})`
-        : "";
     const position = options.source
       ? locatePath(options.source, issue.path)
       : undefined;
@@ -145,13 +147,27 @@ export const diagnosticsFromZod = (
       column: position?.column,
       file: options.file,
       line: position?.line,
-      message: schemaPath
-        ? `${schemaPath}: ${issue.message}${received}`
-        : `${issue.message}${received}`,
+      message: schemaPath ? `${schemaPath}: ${issue.message}` : issue.message,
       schemaPath: schemaPath || undefined,
       severity: "error",
     } satisfies Diagnostic;
   });
+
+/** Convert a ZodError into Blume diagnostics, anchored to a file. */
+export const diagnosticsFromZod = (
+  error: ZodError,
+  options: { code: string; file?: string; source?: string }
+): Diagnostic[] =>
+  diagnosticsFromIssues(
+    error.issues.map((issue) => ({
+      message:
+        "received" in issue
+          ? `${issue.message} (received: ${JSON.stringify(issue.received)})`
+          : issue.message,
+      path: issue.path,
+    })),
+    options
+  );
 
 const ESC = String.fromCodePoint(27);
 const COLORS = {

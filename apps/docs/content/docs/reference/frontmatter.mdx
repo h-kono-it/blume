@@ -81,4 +81,32 @@ changelog:
 
 `date` may live here or at the top level — both feed the [changelog RSS feed](/docs/content#feeds). See [Changelog](/docs/advanced/changelog) for the generated timeline page and feed.
 
+## Custom keys
+
+Any key outside this reference fails the build, so typos are caught early. Projects that carry their own metadata can opt extra keys in via [`frontmatter.extend`](/docs/configuration#frontmatter) in `blume.config.ts`, each validated by a schema the project supplies:
+
+```ts blume.config.ts lineNumbers
+import { defineConfig } from "blume";
+import { z } from "zod";
+
+export default defineConfig({
+  frontmatter: {
+    extend: {
+      owner: z.string(),
+      reviewedAt: z.coerce.date().optional(),
+    },
+  },
+});
+```
+
+```yaml page.mdx
+---
+title: Install
+owner: "@sam"
+reviewedAt: 2026-06-20
+---
+```
+
+Schemas are accepted through the [Standard Schema](https://standardschema.dev) interface, so Zod (whichever version your project installs), Valibot, and ArkType all work. Every declared key is validated on every page — absent ones included — so a required schema enforces the key site-wide; mark it `.optional()` to validate only where present. All other keys stay strictly validated, and built-in fields can't be redeclared.
+
 Schemas are exported from `blume/schema` for editor and migration tooling.

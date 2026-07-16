@@ -87,6 +87,48 @@ describe("loadConfig", () => {
     expect(error.diagnostic.message).toContain("more config issue");
   });
 
+  // A dependency-free Standard Schema, so the temp config needs no imports.
+  const OWNER_SCHEMA = `const owner = {
+    "~standard": {
+      version: 1,
+      vendor: "test",
+      validate: (value) =>
+        typeof value === "string"
+          ? { value }
+          : { issues: [{ message: "must be a string" }] },
+    },
+  };`;
+
+  it("accepts frontmatter.extend schemas via the ~standard contract", async () => {
+    const dir = await makeDir(
+      `${OWNER_SCHEMA}
+export default { frontmatter: { extend: { owner } } };`
+    );
+    const result = await loadConfig(dir);
+    expect(Object.keys(result.config.frontmatter.extend)).toStrictEqual([
+      "owner",
+    ]);
+  });
+
+  it("rejects a frontmatter.extend value that is not a schema", async () => {
+    const dir = await makeDir(
+      'export default { frontmatter: { extend: { owner: "string" } } };'
+    );
+    const error = await loadError(dir);
+    expect(error.diagnostic.code).toBe("BLUME_CONFIG_INVALID");
+    expect(error.diagnostic.message).toContain("Standard Schema");
+  });
+
+  it("rejects redeclaring a built-in frontmatter field via extend", async () => {
+    const dir = await makeDir(
+      `${OWNER_SCHEMA}
+export default { frontmatter: { extend: { title: owner } } };`
+    );
+    const error = await loadError(dir);
+    expect(error.diagnostic.code).toBe("BLUME_CONFIG_INVALID");
+    expect(error.diagnostic.message).toContain("built-in frontmatter field");
+  });
+
   it("throws a BlumeError when the config module fails to load", async () => {
     const dir = await makeDir('throw new Error("boom");');
     const error = await loadError(dir);

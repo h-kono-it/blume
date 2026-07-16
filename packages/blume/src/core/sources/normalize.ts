@@ -4,10 +4,10 @@ import GithubSlugger from "github-slugger";
 import { extname } from "pathe";
 
 import { withBasePath } from "../base-path.ts";
-import { diagnosticsFromZod } from "../diagnostics.ts";
+import { diagnosticsFromIssues, diagnosticsFromZod } from "../diagnostics.ts";
 import { localePlacement, localizeRoute } from "../i18n.ts";
 import { pageMetaSchema } from "../schema.ts";
-import type { PageMeta } from "../schema.ts";
+import type { FrontmatterExtend, PageMeta } from "../schema.ts";
 import type { Diagnostic, Heading, PageLink, PageRecord } from "../types.ts";
 import type { NormalizeContext, SourceEntry } from "./types.ts";
 
@@ -439,6 +439,118 @@ const withPrefix = (prefix: string | undefined, path: string): string => {
   return clean ? `${clean}/${path}` : path;
 };
 
+/** A custom-key validation failure, lowered to a joinable diagnostic path. */
+interface CustomKeyIssue {
+  message: string;
+  path: (string | number)[];
+}
+
+/** Lower a Standard Schema path segment (`key` or `{ key }`) for joining. */
+const segmentKey = (
+  segment: PropertyKey | { readonly key: PropertyKey }
+): string | number => {
+  const key =
+    typeof segment === "object" && segment !== null ? segment.key : segment;
+  return typeof key === "symbol" ? String(key) : key;
+};
+
+/**
+ * Validate the opt-in custom frontmatter keys (`frontmatter.extend`) through
+ * the Standard Schema contract — the consumer's own Zod (any version),
+ * Valibot, or ArkType, never Blume's bundled zod (see `standard-schema.ts`).
+ * Every declared key is checked, absent ones included, so a required schema
+ * enforces its key on every page. Async schemas are rejected with a
+ * diagnostic: this funnel is synchronous, and frontmatter validation has no
+ * business awaiting I/O.
+ */
+const validateCustomKeys = (
+  data: Record<string, unknown>,
+  extend: FrontmatterExtend
+): { custom?: Record<string, unknown>; issues: CustomKeyIssue[] } => {
+  const custom: Record<string, unknown> = {};
+  const issues: CustomKeyIssue[] = [];
+  for (const [key, schema] of Object.entries(extend)) {
+    const outcome = schema["~standard"].validate(data[key]);
+    if (outcome instanceof Promise) {
+      issues.push({
+        message: "Async schemas are not supported in frontmatter.extend.",
+        path: [key],
+      });
+      continue;
+    }
+    if (outcome.issues !== undefined) {
+      issues.push(
+        ...outcome.issues.map((issue) => ({
+          message: issue.message,
+          path: [key, ...(issue.path ?? []).map(segmentKey)],
+        }))
+      );
+      continue;
+    }
+    // Preserve the validated (schema-output) value; skip keys that are absent
+    // and stay absent, so `.optional()` extras don't materialize as undefined.
+    if (outcome.value !== undefined || Object.hasOwn(data, key)) {
+      custom[key] = outcome.value;
+    }
+  }
+  return {
+    custom: Object.keys(custom).length > 0 ? custom : undefined,
+    issues,
+  };
+};
+
+/**
+ * Parse an entry's frontmatter: built-in keys through the strict page schema,
+ * custom keys (`frontmatter.extend`) through their user-supplied schemas. The
+ * custom keys are carved out before the strict parse, so the page schema stays
+ * strict for everything else and unknown-key typo catching is unchanged.
+ * Returns diagnostics instead of meta when either side rejects.
+ */
+const parseEntryMeta = (
+  entry: SourceEntry,
+  ctx: NormalizeContext
+):
+  | { meta: PageMeta; custom?: Record<string, unknown>; diagnostics?: never }
+  | { meta?: never; diagnostics: Diagnostic[] } => {
+  const extend = ctx.frontmatterExtend;
+  const known = extend
+    ? Object.fromEntries(
+        Object.entries(entry.data).filter(
+          ([key]) => !Object.hasOwn(extend, key)
+        )
+      )
+    : entry.data;
+
+  const result = pageMetaSchema.safeParse(known);
+  const customResult = extend ? validateCustomKeys(entry.data, extend) : null;
+
+  if (result.success && (customResult?.issues.length ?? 0) === 0) {
+    return { custom: customResult?.custom, meta: result.data };
+  }
+
+  // Source text lets the error carry a line/column into the frontmatter block:
+  // `entry.raw` for non-filesystem sources, else the file itself (read only on
+  // this rare error path, so filesystem entries stay cheap in the happy path).
+  const source =
+    entry.raw ??
+    (entry.sourcePath && existsSync(entry.sourcePath)
+      ? readFileSync(entry.sourcePath, "utf-8")
+      : undefined);
+  const location = {
+    code: "BLUME_FRONTMATTER_INVALID",
+    file: entry.sourcePath ?? `${ctx.source.name}:${entry.ref}`,
+    source,
+  };
+  return {
+    diagnostics: [
+      ...(result.success ? [] : diagnosticsFromZod(result.error, location)),
+      ...(customResult
+        ? diagnosticsFromIssues(customResult.issues, location)
+        : []),
+    ],
+  };
+};
+
 /**
  * Normalize one source entry into per-locale `PageRecord`s. This is the single
  * funnel every adapter's entries pass through, so route mapping, heading/link
@@ -451,27 +563,12 @@ export const normalizeEntry = (
   const { format } = entry.body;
   const ext = format === "mdx" ? ".mdx" : ".md";
 
-  const result = pageMetaSchema.safeParse(entry.data);
-  if (!result.success) {
-    // Source text lets the error carry a line/column into the frontmatter block:
-    // `entry.raw` for non-filesystem sources, else the file itself (read only on
-    // this rare error path, so filesystem entries stay cheap in the happy path).
-    const source =
-      entry.raw ??
-      (entry.sourcePath && existsSync(entry.sourcePath)
-        ? readFileSync(entry.sourcePath, "utf-8")
-        : undefined);
-    return {
-      diagnostics: diagnosticsFromZod(result.error, {
-        code: "BLUME_FRONTMATTER_INVALID",
-        file: entry.sourcePath ?? `${ctx.source.name}:${entry.ref}`,
-        source,
-      }),
-      pages: [],
-    };
+  const parsed = parseEntryMeta(entry, ctx);
+  if (parsed.diagnostics) {
+    return { diagnostics: parsed.diagnostics, pages: [] };
   }
 
-  const meta = result.data;
+  const { meta } = parsed;
 
   // Top-level `hidden`/`noindex` are accepted as shorthands for their nested
   // equivalents — the schema declares them, so silently ignoring them would
@@ -514,6 +611,7 @@ export const normalizeEntry = (
     componentsUsed:
       format === "mdx" ? extractComponentTags(entry.body.text) : undefined,
     contentType: meta.type ?? ctx.defaultType,
+    custom: parsed.custom,
     description: meta.description,
     editUrl: entry.editUrl,
     entryId: staged ? `${ctx.source.name}/${entry.ref}` : undefined,

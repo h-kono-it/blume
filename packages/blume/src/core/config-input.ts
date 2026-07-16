@@ -10,6 +10,7 @@ import type {
   SidebarItemConfig,
 } from "./schema.ts";
 import type { ContentSource } from "./sources/types.ts";
+import type { StandardSchema } from "./standard-schema.ts";
 
 /**
  * The public, hand-documented authoring type for `blume.config.ts`.
@@ -919,6 +920,38 @@ export type ExportConfig =
     };
 
 /**
+ * Opt-in custom frontmatter keys. Page frontmatter is strictly validated —
+ * an unknown key fails the build so typos are caught — and `extend` carves
+ * out project-specific keys from that rule, each validated by a schema you
+ * supply.
+ */
+export interface FrontmatterConfig {
+  /**
+   * Extra frontmatter keys pages may carry, mapped to their validation
+   * schemas — any library implementing Standard Schema works (Zod — the
+   * version your project installs, 3.24+ or 4 — Valibot, ArkType):
+   *
+   * ```ts
+   * import { z } from "zod";
+   *
+   * frontmatter: {
+   *   extend: {
+   *     owner: z.string(),
+   *     reviewedAt: z.coerce.date().optional(),
+   *   },
+   * },
+   * ```
+   *
+   * Every declared key is validated on every page — absent ones included —
+   * so a required schema enforces the key site-wide; mark it `.optional()`
+   * to validate only when present. Validated values are preserved on each
+   * page record's `custom` field. Built-in frontmatter fields cannot be
+   * redeclared.
+   */
+  extend?: Record<string, StandardSchema>;
+}
+
+/**
  * "Last updated" timestamps. `false` (default) disables them; `true` derives
  * each date from git history; the object form selects the source. A page's
  * `lastModified` frontmatter always wins.
@@ -991,6 +1024,8 @@ export interface BlumeConfig {
   export?: ExportConfig;
   /** Show the per-page "Was this helpful?" widget. Defaults to `true`. */
   feedback?: boolean;
+  /** Opt-in custom frontmatter keys, validated by schemas you supply. */
+  frontmatter?: FrontmatterConfig;
   /** Source repository (Edit-this-page links and the header repo link). */
   github?: GithubConfig;
   /** Internationalization (opt-in multi-locale). */

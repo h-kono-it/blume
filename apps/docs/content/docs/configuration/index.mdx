@@ -188,6 +188,26 @@ content: {
 
 Static assets live in `public/` — a file at `public/logo.png` is served at `/logo.png`, so a reference like `![](/images/create.png)` resolves against `public/images/create.png`.
 
+## Frontmatter
+
+Page frontmatter is strictly validated — an unknown key fails the build, so typos are caught early. To carry project-specific metadata (an owner, a review date), declare the extra keys under `frontmatter.extend`, each mapped to a schema you supply:
+
+```ts blume.config.ts lineNumbers
+import { defineConfig } from "blume";
+import { z } from "zod";
+
+export default defineConfig({
+  frontmatter: {
+    extend: {
+      owner: z.string(),
+      reviewedAt: z.coerce.date().optional(),
+    },
+  },
+});
+```
+
+Any [Standard Schema](https://standardschema.dev) library works — Zod (whichever version your project installs), Valibot, ArkType. Keys outside the extension stay strictly validated, so typo-catching is unchanged. See [Custom keys](/docs/reference/frontmatter#custom-keys) for the validation semantics.
+
 ## GitHub
 
 Point Blume at your repository with `github`. It powers the header [repository link](/docs/content/navigation#repository-link) and the **Edit on GitHub** and **Give feedback** [page actions](/docs/content/navigation#page-actions):

@@ -7,6 +7,8 @@ import { FONT_SLUGS, isFontSlug } from "../theme/fonts.ts";
 import { normalizeBasePath } from "./base-path.ts";
 import { uiLocaleOverridesSchema } from "./i18n-ui.ts";
 import type { ContentSource } from "./sources/types.ts";
+import { isStandardSchema } from "./standard-schema.ts";
+import type { StandardSchema } from "./standard-schema.ts";
 
 /**
  * Public Blume schemas.
@@ -1041,6 +1043,41 @@ const asyncapiConfigSchema = z.strictObject({
   theme: z.string().optional(),
 });
 
+/**
+ * Opt-in custom frontmatter keys. `extend` maps each extra key a project's
+ * pages may carry (e.g. `owner`, `reviewedAt`) to a validation schema; the
+ * page schema stays strict for everything else, so typo-catching is preserved.
+ * Schemas are consumed through the Standard Schema `~standard` contract —
+ * never Zod's own API — so the consumer's zod (any version), Valibot, or
+ * ArkType all work (see `standard-schema.ts`). Every declared key is validated
+ * on every page, absent ones included, so a required schema enforces the key
+ * site-wide; mark it `.optional()` to validate only when present. Built-in
+ * frontmatter fields can't be redeclared — they're load-bearing (routing,
+ * sidebar, SEO), and shadowing one would silently change its semantics.
+ */
+const frontmatterConfigSchema = z.strictObject({
+  extend: z
+    .record(
+      z.string(),
+      z.custom<StandardSchema>(isStandardSchema, {
+        message:
+          "Expected a Standard Schema (e.g. a Zod schema — any Zod version works).",
+      })
+    )
+    .default({})
+    .superRefine((value, ctx) => {
+      for (const key of Object.keys(value)) {
+        if (Object.hasOwn(pageMetaBaseSchema.shape, key)) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: `"${key}" is a built-in frontmatter field and cannot be redeclared via frontmatter.extend.`,
+            path: [key],
+          });
+        }
+      }
+    }),
+});
+
 /** Full user-facing config schema. All fields optional with defaults. */
 /**
  * Table-of-contents config. `true`/`false` toggles it; an object narrows the
@@ -1101,6 +1138,8 @@ export const blumeConfigSchema = z.strictObject({
   examples: examplesConfigSchema.default("examples"),
   export: exportConfigSchema.default(false),
   feedback: z.boolean().default(true),
+  /** Opt-in custom frontmatter keys, validated by user-supplied schemas. */
+  frontmatter: frontmatterConfigSchema.default({}),
   github: githubConfigSchema.optional(),
   i18n: i18nConfigSchema.optional(),
   lastModified: lastModifiedConfigSchema.default(false),
@@ -1119,6 +1158,8 @@ export const blumeConfigSchema = z.strictObject({
 
 /** Resolved config: every field present after defaults are applied. */
 export type ResolvedConfig = z.infer<typeof blumeConfigSchema>;
+/** Resolved `frontmatter.extend`: custom key → user-supplied schema. */
+export type FrontmatterExtend = Record<string, StandardSchema>;
 /** Resolved i18n block (present only when the project opts into i18n). */
 export type ResolvedI18nConfig = z.infer<typeof i18nConfigSchema>;
 /** A configured locale with display metadata. */

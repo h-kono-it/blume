@@ -4,15 +4,21 @@ import { tmpdir } from "node:os";
 import { pathToFileURL } from "node:url";
 
 import { dirname, join, relative } from "pathe";
+import { z } from "zod";
 
 import { generateRuntime } from "../src/astro/generate.ts";
 import { contentConfigTemplate } from "../src/astro/templates.ts";
 import { scanProject } from "../src/core/project-graph.ts";
+import type { FrontmatterExtend } from "../src/core/schema.ts";
 import { entriesDigest } from "../src/core/sources/cache.ts";
 import { filesystemSource } from "../src/core/sources/filesystem.ts";
 import { mdxRemoteSource } from "../src/core/sources/mdx-remote.ts";
 import { normalizeEntry } from "../src/core/sources/normalize.ts";
-import type { SourceContext, SourceEntry } from "../src/core/sources/types.ts";
+import type {
+  NormalizeContext,
+  SourceContext,
+  SourceEntry,
+} from "../src/core/sources/types.ts";
 import type { NavNode, ProjectContext } from "../src/core/types.ts";
 import { eject } from "../src/registry/eject.ts";
 
@@ -321,6 +327,122 @@ describe("normalizeEntry", () => {
     expect(diagnostics.map((d) => d.code)).toContain(
       "BLUME_FRONTMATTER_INVALID"
     );
+  });
+});
+
+const entryWith = (data: Record<string, unknown>): SourceEntry => ({
+  body: { format: "md", text: "# Page\n" },
+  data,
+  ref: "page.md",
+});
+
+const ctxWith = (extend: FrontmatterExtend): NormalizeContext => ({
+  defaultType: "doc",
+  frontmatterExtend: extend,
+  source: { name: "filesystem", staged: false },
+});
+
+describe("normalizeEntry with frontmatter.extend", () => {
+  it("rejects unknown keys when no extension is configured", () => {
+    const { pages, diagnostics } = normalizeEntry(
+      entryWith({ owner: "@sam", title: "Page" }),
+      { defaultType: "doc", source: { name: "filesystem", staged: false } }
+    );
+    expect(pages).toHaveLength(0);
+    expect(diagnostics[0]?.code).toBe("BLUME_FRONTMATTER_INVALID");
+  });
+
+  it("accepts declared keys and preserves their validated values", () => {
+    const { pages, diagnostics } = normalizeEntry(
+      entryWith({ owner: "@sam", reviewed: "2026-01-01", title: "Page" }),
+      ctxWith({
+        owner: z.string(),
+        // Transforms apply: `custom` holds the schema output, not the input.
+        reviewed: z.string().transform((value) => `on ${value}`),
+      })
+    );
+    expect(diagnostics).toStrictEqual([]);
+    expect(pages[0]?.custom).toStrictEqual({
+      owner: "@sam",
+      reviewed: "on 2026-01-01",
+    });
+    // Built-in keys still parse through the strict page schema.
+    expect(pages[0]?.meta.title).toBe("Page");
+  });
+
+  it("reports custom-key failures under the key's path", () => {
+    const { pages, diagnostics } = normalizeEntry(
+      entryWith({ owner: 5 }),
+      ctxWith({ owner: z.string() })
+    );
+    expect(pages).toHaveLength(0);
+    expect(diagnostics[0]?.code).toBe("BLUME_FRONTMATTER_INVALID");
+    expect(diagnostics[0]?.schemaPath).toBe("owner");
+  });
+
+  it("enforces a required key on every page; optional keys relax it", () => {
+    // Absent keys are validated too, so `owner: z.string()` is site-wide.
+    const required = normalizeEntry(
+      entryWith({}),
+      ctxWith({ owner: z.string() })
+    );
+    expect(required.pages).toHaveLength(0);
+    expect(required.diagnostics[0]?.schemaPath).toBe("owner");
+
+    const optional = normalizeEntry(
+      entryWith({}),
+      ctxWith({ owner: z.string().optional() })
+    );
+    expect(optional.diagnostics).toStrictEqual([]);
+    expect(optional.pages[0]?.custom).toBeUndefined();
+  });
+
+  it("keeps strict typo-catching for keys outside the extension", () => {
+    const { pages, diagnostics } = normalizeEntry(
+      entryWith({ onwer: "@sam" }),
+      ctxWith({ owner: z.string().optional() })
+    );
+    expect(pages).toHaveLength(0);
+    expect(diagnostics[0]?.code).toBe("BLUME_FRONTMATTER_INVALID");
+    expect(diagnostics[0]?.message).toContain("onwer");
+  });
+
+  it("lowers standard-schema issue paths, including { key } segments", () => {
+    // The spec allows path segments as raw PropertyKeys or `{ key }` objects;
+    // both must join into the diagnostic's dotted schemaPath.
+    const nested: FrontmatterExtend[string] = {
+      "~standard": {
+        validate: () => ({
+          issues: [
+            { message: "bad", path: [{ key: "meta" }, Symbol("sym"), 0] },
+          ],
+        }),
+        vendor: "test",
+        version: 1,
+      },
+    };
+    const { diagnostics } = normalizeEntry(
+      entryWith({ owner: {} }),
+      ctxWith({ owner: nested })
+    );
+    expect(diagnostics[0]?.schemaPath).toBe("owner.meta.Symbol(sym).0");
+    expect(diagnostics[0]?.message).toContain("bad");
+  });
+
+  it("rejects async schemas with a diagnostic instead of hanging", () => {
+    const asyncSchema: FrontmatterExtend[string] = {
+      "~standard": {
+        validate: (value) => Promise.resolve({ value }),
+        vendor: "test",
+        version: 1,
+      },
+    };
+    const { pages, diagnostics } = normalizeEntry(
+      entryWith({ owner: "@sam" }),
+      ctxWith({ owner: asyncSchema })
+    );
+    expect(pages).toHaveLength(0);
+    expect(diagnostics[0]?.message).toContain("Async schemas");
   });
 });
 

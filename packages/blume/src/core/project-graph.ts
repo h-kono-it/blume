@@ -190,6 +190,13 @@ export const scanProject = async (
     discoverFolderMeta(metaSources, { localeDirs }),
   ]);
 
+  // Only thread `frontmatter.extend` through when a project opts in, so the
+  // known-key split in `normalizeEntry` stays off the default path.
+  const frontmatterExtend =
+    Object.keys(config.frontmatter.extend).length > 0
+      ? config.frontmatter.extend
+      : undefined;
+
   const allPages: PageRecord[] = [];
   const contentDiagnostics: Diagnostic[] = [];
   for (const { source, entries, diagnostics } of loaded) {
@@ -198,6 +205,7 @@ export const scanProject = async (
       const normalized = normalizeEntry(entry, {
         basePath: config.basePath,
         defaultType: config.content.defaultType,
+        frontmatterExtend,
         i18n: config.i18n,
         source: {
           name: source.name,

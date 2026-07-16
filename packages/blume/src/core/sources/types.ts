@@ -1,4 +1,4 @@
-import type { ResolvedI18nConfig } from "../schema.ts";
+import type { FrontmatterExtend, ResolvedI18nConfig } from "../schema.ts";
 import type { Diagnostic } from "../types.ts";
 
 /**
@@ -109,5 +109,7 @@ export interface NormalizeContext {
   /** Site-wide route mount point (`""` or `/seg`), prepended to every route. */
   basePath?: string;
   defaultType: string;
+  /** Opt-in custom frontmatter keys (`frontmatter.extend`), schema per key. */
+  frontmatterExtend?: FrontmatterExtend;
   i18n?: ResolvedI18nConfig;
 }
