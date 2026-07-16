@@ -131,6 +131,21 @@ const PARAGRAPH_INTERRUPT = /^ {0,3}(?:[-+*][ \t]|\d{1,9}[.)][ \t]|>)/u;
 const THEMATIC_BREAK =
   /^ {0,3}(?:(?:-[ \t]*){3,}|(?:\*[ \t]*){3,}|(?:_[ \t]*){3,})$/u;
 const FRONT_MATTER_CLOSE = /^(?:-{3}|\.{3})\s*$/u;
+// `<Prompt>` renders its children into a permanently `hidden` DOM node (see
+// `Prompt.astro`) — the agent-facing prompt text is never visible page
+// content, only read by client JS for the copy button. Any `##` inside it
+// must not surface in the page's heading-derived table of contents. Tracked
+// as an open/close depth, the same way fenced code blocks are tracked above.
+// The opening tag is matched only at the start of a trimmed line: block-level
+// JSX in MDX starts its own line, so a mention mid-prose or mid-heading —
+// "the `<Prompt>` component", `## Using <Prompt>` — never opens a hidden
+// region (an unanchored match here silently ate every heading after the
+// mention). The lookahead rejects longer tag names that share the prefix,
+// like `<PromptCard>` or `<Prompt-Custom>`.
+const PROMPT_OPEN = /^<Prompt(?![\w-])/u;
+// Unanchored: while inside a prompt the close tag may trail the hidden
+// children text (`...copy this.</Prompt>`), not just sit on its own line.
+const PROMPT_CLOSE = /<\/Prompt>/u;
 
 /**
  * The body lines, minus a leading front matter block. Bodies from the
@@ -155,13 +170,46 @@ interface HeadingScanState {
   fence: FenceState;
   /** Consecutive paragraph lines — the candidate text for a setext underline. */
   paragraph: string[];
+  /** Nesting depth inside `<Prompt>...</Prompt>` — 0 when outside one. */
+  promptDepth: number;
+  /** True inside a multi-line `<Prompt` opening tag, awaiting its `>`. */
+  promptTag: boolean;
 }
 
 /**
+ * Consume the rest of a `<Prompt` opening tag, scanning a trimmed line from
+ * `start`. The tag's attributes may spread over several lines
+ * (`state.promptTag` carries the search onto the next one), and until the
+ * terminating `>` arrives it isn't known whether the tag even has children —
+ * so the depth only rises once that `>` is found, and not when it turns out
+ * to be `/>` or when the element also closes on the same line
+ * (`<Prompt ...>copy this</Prompt>`). Attribute values containing `>` are not
+ * parsed: the first `>` ends the tag, which errs toward opening a region a
+ * real close tag will still exit.
+ */
+const finishPromptTag = (
+  line: string,
+  start: number,
+  state: HeadingScanState
+): void => {
+  const end = line.indexOf(">", start);
+  if (end === -1) {
+    state.promptTag = true;
+    return;
+  }
+  state.promptTag = false;
+  if (line[end - 1] === "/" || line.includes("</Prompt>", end)) {
+    return;
+  }
+  state.promptDepth += 1;
+};
+
+/**
  * Extract ATX and setext headings from a markdown body, skipping fenced code
- * blocks, exactly as the renderer sees them: ATX headings may be indented up
- * to 3 spaces, and a paragraph underlined with `=`/`-` is a level 1/2 setext
- * heading. Each heading's anchor slug comes from a per-document
+ * blocks and `<Prompt>` children, exactly as the renderer sees them: ATX
+ * headings may be indented up to 3 spaces, and a paragraph underlined with
+ * `=`/`-` is a level 1/2 setext heading. Each heading's anchor slug comes
+ * from a per-document
  * `github-slugger` — the exact slugger the renderer uses
  * (`markdown/heading-anchors`) — advanced over every heading in document
  * order. Matching it (rather than a hand-rolled slugify) keeps the manifest's
@@ -182,6 +230,28 @@ const scanHeadingLine = (
   // also ends any open paragraph, so no underline can reach across it.
   if (state.fence !== null || next !== null) {
     state.fence = next;
+    state.paragraph = [];
+    return;
+  }
+  // Prompt tags may be indented arbitrarily (MDX has no indented code
+  // blocks), so they match against the trimmed line. A tag line can't also
+  // be a heading, so each just updates the state and moves on, same as a
+  // fence delimiter line. Outside a prompt, a `</Prompt>` line is plain text.
+  const trimmed = line.trimStart();
+  if (state.promptTag) {
+    finishPromptTag(trimmed, 0, state);
+    state.paragraph = [];
+    return;
+  }
+  if (PROMPT_OPEN.test(trimmed)) {
+    finishPromptTag(trimmed, "<Prompt".length, state);
+    state.paragraph = [];
+    return;
+  }
+  if (state.promptDepth > 0) {
+    if (PROMPT_CLOSE.test(line)) {
+      state.promptDepth -= 1;
+    }
     state.paragraph = [];
     return;
   }
@@ -220,7 +290,12 @@ const scanHeadingLine = (
 export const extractHeadings = (body: string): Heading[] => {
   const headings: Heading[] = [];
   const slugger = new GithubSlugger();
-  const state: HeadingScanState = { fence: null, paragraph: [] };
+  const state: HeadingScanState = {
+    fence: null,
+    paragraph: [],
+    promptDepth: 0,
+    promptTag: false,
+  };
 
   for (const line of linesWithoutFrontMatter(body)) {
     scanHeadingLine(line, state, slugger, headings);

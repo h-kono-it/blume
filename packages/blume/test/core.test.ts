@@ -406,6 +406,74 @@ describe(extractHeadings, () => {
       "setup-1",
     ]);
   });
+
+  it("skips headings inside <Prompt> — its children render into a hidden node", () => {
+    const body = [
+      "# Title",
+      "<Prompt",
+      '  description="Copy this"',
+      '  actions={["copy"]}',
+      ">",
+      "## Setup",
+      "## Never do",
+      "</Prompt>",
+      "## Real",
+    ].join("\n");
+    expect(extractHeadings(body).map((h) => h.text)).toStrictEqual([
+      "Title",
+      "Real",
+    ]);
+  });
+
+  it("does not treat a self-closing <Prompt /> as opening a hidden region", () => {
+    const body = ['<Prompt description="x" />', "## Real"].join("\n");
+    expect(extractHeadings(body).map((h) => h.text)).toStrictEqual(["Real"]);
+  });
+
+  it("does not match <PromptCard> as the Prompt component", () => {
+    const body = ["<PromptCard>", "## Still a heading", "</PromptCard>"].join(
+      "\n"
+    );
+    expect(extractHeadings(body).map((h) => h.text)).toStrictEqual([
+      "Still a heading",
+    ]);
+  });
+
+  it("does not treat a multi-line self-closing <Prompt /> as opening a hidden region", () => {
+    const body = ["<Prompt", '  description="x"', "/>", "## Real"].join("\n");
+    expect(extractHeadings(body).map((h) => h.text)).toStrictEqual(["Real"]);
+  });
+
+  it("ignores a `<Prompt>` mention in prose — only a tag starting a line opens a hidden region", () => {
+    const body = ["Use the `<Prompt>` component.", "", "## Real"].join("\n");
+    expect(extractHeadings(body).map((h) => h.text)).toStrictEqual(["Real"]);
+  });
+
+  it("keeps a heading whose text mentions <Prompt>", () => {
+    const body = ["## The <Prompt> component", "## After"].join("\n");
+    expect(extractHeadings(body).map((h) => h.text)).toStrictEqual([
+      "The <Prompt> component",
+      "After",
+    ]);
+  });
+
+  it("handles a <Prompt> that opens and closes on one line", () => {
+    const body = [
+      '<Prompt description="x">Copy this.</Prompt>',
+      "## Real",
+    ].join("\n");
+    expect(extractHeadings(body).map((h) => h.text)).toStrictEqual(["Real"]);
+  });
+
+  it("handles a close tag trailing the prompt's children text", () => {
+    const body = [
+      "<Prompt>",
+      "## Hidden",
+      "Copy this.</Prompt>",
+      "## Real",
+    ].join("\n");
+    expect(extractHeadings(body).map((h) => h.text)).toStrictEqual(["Real"]);
+  });
 });
 
 describe("content graph", () => {
