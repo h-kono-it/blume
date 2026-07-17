@@ -1477,6 +1477,18 @@ const toTime = (value: string | null | undefined) => {
   return Number.isNaN(date.getTime()) ? 0 : date.getTime();
 };
 
+// The changelog is an unlocalized route, so its chrome renders in the default
+// locale's dictionary and direction (\`data.ui\` is the default locale's resolved
+// dictionary), mirroring the catch-all's locale wiring.
+const i18n = data.config.i18n;
+const localeMeta = i18n
+  ? i18n.locales.find((l) => l.code === i18n.defaultLocale)
+  : null;
+const dir = localeMeta?.dir ?? "ltr";
+const htmlLang = i18n ? i18n.defaultLocale : "en";
+
+// Formatted in the same locale as the chrome, and in UTC, to match the
+// per-page "last updated" stamp.
 const formatDate = (value: string | null | undefined) => {
   if (!value) {
     return;
@@ -1484,7 +1496,7 @@ const formatDate = (value: string | null | undefined) => {
   const date = new Date(value);
   return Number.isNaN(date.getTime())
     ? undefined
-    : new Intl.DateTimeFormat("en", {
+    : new Intl.DateTimeFormat(htmlLang, {
         dateStyle: "long",
         timeZone: "UTC",
       }).format(date);
@@ -1580,16 +1592,6 @@ const base = data.config.site ? data.config.site.replace(/\\/$/, "") : null;
 // matching how the catch-all canonicalizes via \`withBase(route)\`.
 const basedRoute = withBase("/changelog");
 const canonical = base ? base + basedRoute : null;
-
-// The changelog is an unlocalized route, so its chrome renders in the default
-// locale's dictionary and direction (\`data.ui\` is the default locale's resolved
-// dictionary), mirroring the catch-all's locale wiring.
-const i18n = data.config.i18n;
-const localeMeta = i18n
-  ? i18n.locales.find((l) => l.code === i18n.defaultLocale)
-  : null;
-const dir = localeMeta?.dir ?? "ltr";
-const htmlLang = i18n ? i18n.defaultLocale : "en";
 
 // The page chrome (h1, title, description) comes from the same translatable
 // \`changelog\` group as the reveal button; optional chaining tolerates a
