@@ -1,15 +1,9 @@
-import { Renderer } from "@takumi-rs/core";
-import { container, image, text } from "@takumi-rs/helpers";
-import type { Node } from "@takumi-rs/helpers";
+import { render } from "takumi-js";
+import type { RenderOptions } from "takumi-js";
+import { container, image, text } from "takumi-js/helpers";
+import type { Node } from "takumi-js/helpers";
 
 import { OG_IMAGE_HEIGHT, OG_IMAGE_WIDTH } from "./dimensions.ts";
-
-// Reuse one renderer (and its loaded default fonts) across all images.
-let renderer: Renderer | null = null;
-const getRenderer = (): Renderer => {
-  renderer ??= new Renderer();
-  return renderer;
-};
 
 const ACCENT_HEX: Record<string, string> = {
   blue: "#3b82f6",
@@ -21,22 +15,13 @@ const ACCENT_HEX: Record<string, string> = {
   teal: "#14b8a6",
 };
 
-const HEX_COLOR = /^#(?:[0-9a-f]{3,4}|[0-9a-f]{6}|[0-9a-f]{8})$/iu;
-
-// OG rendering uses hex (Takumi's color parser does not accept oklch); named
-// presets map to hex, well-formed hex passes through, anything else falls
-// back — a malformed hex (`#12345` typo) would throw inside Takumi and fail
-// the build at OG prerender with an opaque native error. `hasOwn` keeps a
-// preset name like "constructor" from resolving up the prototype chain.
-const resolveAccent = (accent: string): string => {
-  if (Object.hasOwn(ACCENT_HEX, accent)) {
-    return ACCENT_HEX[accent] as string;
-  }
-  return HEX_COLOR.test(accent) ? accent : "#3b82f6";
-};
-
-const resolveColor = (color: string | undefined, fallback: string): string =>
-  color && HEX_COLOR.test(color) ? color : fallback;
+// Named presets map to Blume's palette hex (the preset "blue" is not CSS
+// blue); anything else is handed to Takumi as-is — it parses the full CSS
+// color grammar, and a genuinely malformed value fails the build with a
+// parse error naming it. `hasOwn` keeps a preset name like "constructor"
+// from resolving up the prototype chain.
+const resolveAccent = (accent: string): string =>
+  Object.hasOwn(ACCENT_HEX, accent) ? (ACCENT_HEX[accent] as string) : accent;
 
 export interface OgCardPalette {
   accent?: string;
@@ -49,7 +34,7 @@ export interface OgCardPalette {
 export interface OgCardOptions {
   /** Large headline — the page title. */
   title: string;
-  /** Accent color (named preset or hex) for the fallback brand mark. */
+  /** Accent color (named preset or any CSS color) for the fallback brand mark. */
   accent?: string;
   /** Brand/site name shown in the top-left lockup. */
   brand?: string;
@@ -66,10 +51,35 @@ export interface OgCardOptions {
   repo?: string;
   /** Footer-right site host, e.g. `docs.acme.com`. */
   site?: string;
+  /**
+   * Pre-fetched image entries, or a group controlling how remote images (and
+   * emoji glyphs) are fetched. Blume merges in a shared glyph cache; see
+   * {@link resolveImages}.
+   */
+  images?: RenderOptions["images"];
 }
 
 const WIDTH = OG_IMAGE_WIDTH;
 const HEIGHT = OG_IMAGE_HEIGHT;
+
+// Emoji in a title render as Twemoji glyphs Takumi fetches from a CDN, once per
+// render. A build prerenders one card per page, so an emoji in the site title
+// would otherwise refetch the same glyph for every page. This cache is keyed by
+// URL and holds the in-flight promise, so concurrent renders share one request
+// and a build fetches each glyph once. Unbounded on purpose: it is scoped to the
+// glyphs a site's own titles reference, which is a handful.
+const imageFetchCache = new Map<string, Promise<ArrayBuffer>>();
+
+/**
+ * Merge the shared glyph cache into the caller's `images`. An explicit
+ * `fetchCache` wins, so a caller can scope or opt out of the cache.
+ */
+const resolveImages = (
+  images: OgCardOptions["images"]
+): OgCardOptions["images"] =>
+  Array.isArray(images)
+    ? { fetchCache: imageFetchCache, sources: images }
+    : { fetchCache: imageFetchCache, ...images };
 
 // Light neutral scale mirrored from the docs homepage theme tokens:
 // FOREGROUND = --foreground, MUTED = --muted-foreground, FAINT = that lighter,
@@ -84,11 +94,11 @@ const resolvePalette = (
   options: OgCardOptions
 ): Required<OgCardPalette> & { faint: string } => ({
   accent: resolveAccent(options.palette?.accent ?? options.accent ?? "blue"),
-  background: resolveColor(options.palette?.background, BG),
-  border: resolveColor(options.palette?.border, BORDER),
-  faint: resolveColor(options.palette?.muted, FAINT),
-  foreground: resolveColor(options.palette?.foreground, FOREGROUND),
-  muted: resolveColor(options.palette?.muted, MUTED),
+  background: options.palette?.background ?? BG,
+  border: options.palette?.border ?? BORDER,
+  faint: options.palette?.muted ?? FAINT,
+  foreground: options.palette?.foreground ?? FOREGROUND,
+  muted: options.palette?.muted ?? MUTED,
 });
 
 /**
@@ -174,7 +184,7 @@ const titleSize = (title: string): number => {
 };
 
 /** Render a 1200x630 Open Graph card to a PNG buffer. */
-export const renderOgImage = (options: OgCardOptions): Promise<Buffer> => {
+export const renderOgImage = (options: OgCardOptions): Promise<Uint8Array> => {
   const { accent, background, border, faint, foreground, muted } =
     resolvePalette(options);
   const brand = options.brand?.trim();
@@ -265,9 +275,10 @@ export const renderOgImage = (options: OgCardOptions): Promise<Buffer> => {
     },
   });
 
-  return getRenderer().render(node, {
+  return render(node, {
     format: "png",
     height: HEIGHT,
+    images: resolveImages(options.images),
     width: WIDTH,
   });
 };
