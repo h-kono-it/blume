@@ -668,6 +668,34 @@ describe("astroConfigTemplate", () => {
     expect(out).toContain("svelte()");
   });
 
+  it("writes deployment.base into a redirect destination, not into `from`", () => {
+    const basedConfig = blumeConfigSchema.parse({
+      basePath: "/manual",
+      deployment: { base: "/docs" },
+      redirects: [{ from: "/old", to: "/new" }],
+    });
+    const out = astroConfigTemplate({
+      askPath: ASK_PATH,
+      config: basedConfig,
+      contentRoutes: [],
+      context: context(),
+      dataPath: DATA_PATH,
+      examplesPath: EXAMPLES_PATH,
+      examplesThemePath: EXAMPLES_THEME_PATH,
+      needsReact: false,
+      openapiPath: OPENAPI_PATH,
+      pages: [],
+      searchClientPath: SEARCH_CLIENT_PATH,
+      themePath: THEME_PATH,
+    });
+    // Astro builds the `from` pattern with `base` applied, so `from` carries
+    // only `basePath` — but it never prepends `base` to a destination, so `to`
+    // carries the full stack or the redirect lands outside the site.
+    expect(out).toContain(
+      '"/manual/old":{"destination":"/docs/manual/new","status":301}'
+    );
+  });
+
   it("threads basePath into the markdown processors and bases redirects", () => {
     const basedConfig = blumeConfigSchema.parse({
       basePath: "/manual",

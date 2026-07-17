@@ -1,7 +1,8 @@
 import { describe, expect, it } from "bun:test";
 
 import {
-  applyBaseToRedirects,
+  applyBaseToAstroRedirects,
+  applyBaseToPlatformRedirects,
   buildNetlifyRedirects,
   buildRedirectManifest,
   buildVercelConfig,
@@ -32,12 +33,70 @@ describe("redirect emitters", () => {
   });
 
   it("prepends the base path to internal from/to routes", () => {
-    expect(applyBaseToRedirects(redirects, "/docs")).toStrictEqual([
+    expect(applyBaseToAstroRedirects(redirects, "/docs", "")).toStrictEqual([
       { from: "/docs/old", status: 301, to: "/docs/new" },
       { from: "/docs/tmp", status: 302, to: "/docs/temp" },
     ]);
-    // No base path: the redirects pass through untouched.
-    expect(applyBaseToRedirects(redirects, "")).toBe(redirects);
+    expect(applyBaseToPlatformRedirects(redirects, "/docs", "")).toStrictEqual([
+      { from: "/docs/old", status: 301, to: "/docs/new" },
+      { from: "/docs/tmp", status: 302, to: "/docs/temp" },
+    ]);
+    // No base of either kind: the redirects pass through untouched.
+    expect(applyBaseToAstroRedirects(redirects, "", "")).toBe(redirects);
+    expect(applyBaseToPlatformRedirects(redirects, "", "")).toBe(redirects);
+  });
+
+  it("bases only `to` for Astro, which applies `base` to `from` itself", () => {
+    // Astro matches `from` against a pattern it builds with `base` applied, but
+    // passes `to` through without it — so only `to` carries the deploy base.
+    expect(applyBaseToAstroRedirects(redirects, "", "/base")).toStrictEqual([
+      { from: "/old", status: 301, to: "/base/new" },
+      { from: "/tmp", status: 302, to: "/base/temp" },
+    ]);
+  });
+
+  it("stacks deployment.base and basePath as {base}/{basePath} for Astro", () => {
+    expect(
+      applyBaseToAstroRedirects(redirects, "/docs", "/base")
+    ).toStrictEqual([
+      { from: "/docs/old", status: 301, to: "/base/docs/new" },
+      { from: "/docs/tmp", status: 302, to: "/base/docs/temp" },
+    ]);
+  });
+
+  it("bases both sides of a platform redirect against the served URL", () => {
+    // The host matches these against the real URL, so `from` needs the deploy
+    // base that Astro would otherwise add on its own.
+    expect(
+      applyBaseToPlatformRedirects(redirects, "/docs", "/base")
+    ).toStrictEqual([
+      { from: "/base/docs/old", status: 301, to: "/base/docs/new" },
+      { from: "/base/docs/tmp", status: 302, to: "/base/docs/temp" },
+    ]);
+    expect(applyBaseToPlatformRedirects(redirects, "", "/base")).toStrictEqual([
+      { from: "/base/old", status: 301, to: "/base/new" },
+      { from: "/base/tmp", status: 302, to: "/base/temp" },
+    ]);
+  });
+
+  it("leaves a hand-written base and external destinations alone", () => {
+    const authored = [
+      { from: "/old", status: 301 as const, to: "/base/docs/new" },
+      { from: "/away", status: 301 as const, to: "https://example.com/new" },
+    ];
+    expect(applyBaseToAstroRedirects(authored, "/docs", "/base")).toStrictEqual(
+      [
+        // Already under the full stack: kept as-is rather than doubled.
+        { from: "/docs/old", status: 301, to: "/base/docs/new" },
+        { from: "/docs/away", status: 301, to: "https://example.com/new" },
+      ]
+    );
+    expect(
+      applyBaseToPlatformRedirects(authored, "/docs", "/base")
+    ).toStrictEqual([
+      { from: "/base/docs/old", status: 301, to: "/base/docs/new" },
+      { from: "/base/docs/away", status: 301, to: "https://example.com/new" },
+    ]);
   });
 
   it("emits a structured manifest", () => {

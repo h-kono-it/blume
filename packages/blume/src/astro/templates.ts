@@ -10,7 +10,7 @@ import type { ResolvedConfig } from "../core/schema.ts";
 import { BLUME_IGNORE_DIRS } from "../core/sources/watch.ts";
 import { trimChar } from "../core/trim.ts";
 import type { ProjectContext } from "../core/types.ts";
-import { applyBaseToRedirects } from "../deploy/redirects.ts";
+import { applyBaseToAstroRedirects } from "../deploy/redirects.ts";
 import { hasScalarReferences } from "../openapi/references.ts";
 import { searchProviderMeta } from "../search/providers.ts";
 import { buildFontEntries } from "../theme/fonts.ts";
@@ -320,10 +320,12 @@ export const astroConfigTemplate = (options: {
     : "";
 
   // Base the redirect paths the same way routes are based, so a redirect lands
-  // under `basePath` too. Astro layers its own `base` (deployment.base) on top.
-  const basedRedirects = applyBaseToRedirects(
+  // under `basePath` too. Astro layers its own `base` (deployment.base) onto
+  // `from` when matching, but never onto `to` — see applyBaseToAstroRedirects.
+  const basedRedirects = applyBaseToAstroRedirects(
     config.redirects,
-    config.basePath
+    config.basePath,
+    deployment.base ?? ""
   );
   const redirectsOption =
     basedRedirects.length > 0

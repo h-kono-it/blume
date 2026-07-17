@@ -119,6 +119,10 @@ redirects: [{ from: "/old", to: "/new", status: 301 }];
 `from` is matched as an exact path — wildcards and pattern matching (e.g. `/blog/:slug` or `/old/*`) aren't supported. If you need pattern-based rules, handle them in an infrastructure file like `vercel.json` (which supports wildcard `source` patterns) or your host's redirect config instead. A `vercel.json` you ship in `public/` is preserved as-is.
 :::
 
+:::note
+Write both `from` and `to` as if mounted at root — under [`deployment.base`](#subpath-deploys) and [`basePath`](#mount-the-docs-under-a-path) alike, Blume rewrites both sides for you, so a redirect lands inside the base. A base you've already written into `to` by hand is preserved rather than doubled.
+:::
+
 ## Environment variables
 
 When a feature needs a runtime secret, Blume warns at `blume dev`/`build` if it's missing — so the problem surfaces early instead of at the first request:

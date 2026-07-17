@@ -1,4 +1,4 @@
-import { withBasePath } from "../core/base-path.ts";
+import { withBasePath, withComposedBasePath } from "../core/base-path.ts";
 import type { ResolvedConfig } from "../core/schema.ts";
 
 /**
@@ -12,19 +12,49 @@ import type { ResolvedConfig } from "../core/schema.ts";
 type Redirect = ResolvedConfig["redirects"][number];
 
 /**
- * Prepend the site-wide `basePath` to each redirect's internal `from`/`to`
- * (both are authored as if mounted at root); external `to` URLs pass through.
- * Idempotent, so re-basing an already-based redirect is safe.
+ * Base a redirect for Astro's `redirects` config, where the two sides are not
+ * symmetric:
+ *
+ * - `from` gains only `basePath`. Astro builds the match pattern with
+ *   `deployment.base` already applied (`getPattern(segments, config.base)`), so
+ *   adding it here would serve the redirect at `{base}{base}/from`.
+ * - `to` gains the full `{deployment.base}{basePath}` stack. Astro resolves a
+ *   destination that matches a known route by regenerating it from that route's
+ *   segments, which carry no base — and passes an unmatched destination through
+ *   verbatim. Neither path prepends `base`, so a root-relative `to` escapes the
+ *   base entirely (withastro/astro#7774, still the behavior in Astro 7).
+ *
+ * Both sides are authored as if mounted at root; external `to` URLs pass
+ * through. Idempotent, so a hand-written base isn't doubled.
  */
-export const applyBaseToRedirects = (
+export const applyBaseToAstroRedirects = (
   redirects: Redirect[],
-  basePath: string
+  basePath: string,
+  deployBase: string
 ): Redirect[] =>
-  basePath
+  basePath || deployBase
     ? redirects.map((redirect) => ({
         ...redirect,
         from: withBasePath(basePath, redirect.from),
-        to: withBasePath(basePath, redirect.to),
+        to: withComposedBasePath(deployBase, basePath, redirect.to),
+      }))
+    : redirects;
+
+/**
+ * Base a redirect for the host platform files below. Unlike Astro's config,
+ * these are matched against the real served URL, so both sides carry the full
+ * `{deployment.base}{basePath}` stack.
+ */
+export const applyBaseToPlatformRedirects = (
+  redirects: Redirect[],
+  basePath: string,
+  deployBase: string
+): Redirect[] =>
+  basePath || deployBase
+    ? redirects.map((redirect) => ({
+        ...redirect,
+        from: withComposedBasePath(deployBase, basePath, redirect.from),
+        to: withComposedBasePath(deployBase, basePath, redirect.to),
       }))
     : redirects;
 
