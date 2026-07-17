@@ -120,7 +120,7 @@ redirects: [{ from: "/old", to: "/new", status: 301 }];
 :::
 
 :::note
-Under [`deployment.base`](#subpath-deploys), write `from` as if mounted at root but include the base in `to` — with `base: "/docs"`, a redirect to `/new` needs `to: "/docs/new"`. `from` is matched against the based route, but Astro reads the right-hand side as the final destination and won't prepend the base, so a root-relative `to` points outside the site and the build won't flag it. Under [`basePath`](#mount-the-docs-under-a-path) both sides stay root-relative, since Blume rewrites them itself.
+Write both `from` and `to` as if mounted at root — under [`deployment.base`](#subpath-deploys) and [`basePath`](#mount-the-docs-under-a-path) alike, Blume rewrites both sides for you, so a redirect lands inside the base. A base you've already written into `to` by hand is preserved rather than doubled.
 :::
 
 ## Environment variables
