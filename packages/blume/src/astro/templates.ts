@@ -171,7 +171,11 @@ export const runtimeDependencies = (options: {
  *     `createRequire(import.meta.url)`. Bundling it relocates `import.meta.url`
  *     and breaks the binding lookup ("Cannot find native binding") on other
  *     platforms (e.g. the Linux CI runner), so it must resolve from
- *     `node_modules` at runtime instead.
+ *     `node_modules` at runtime instead. The prerender env matches these by
+ *     exact specifier, so every entry point Blume imports has to be listed:
+ *     the bare `takumi-js` (render) plus `takumi-js/helpers` (the `googleFonts`
+ *     OG-font loader). The `@takumi-rs/*` packages are listed too so the native
+ *     backend is never pulled into a chunk down any transitive path.
  *   - The rest are pure-JS packages kept external so an isolated linker (Bun's
  *     `isolated` mode, pnpm) doesn't bundle their symlinked store copies. When
  *     Vite bundles such a package but leaves its own `node_modules` child
@@ -189,11 +193,15 @@ const RENDER_EXTERNAL_DEPS = [
   "@astrojs/markdown-satteri",
   "@pierre/diffs",
   "@shikijs/transformers",
+  "@takumi-rs/core",
+  "@takumi-rs/helpers",
+  "@takumi-rs/wasm",
   "github-slugger",
   "katex",
   "shiki",
   "simple-icons",
   "takumi-js",
+  "takumi-js/helpers",
   "zod",
 ];
 

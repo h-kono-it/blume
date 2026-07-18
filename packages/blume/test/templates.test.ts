@@ -596,6 +596,12 @@ describe("astroConfigTemplate", () => {
     // native bindings load at runtime and isolated linkers don't bundle (and
     // strand the children of) symlinked store copies.
     expect(out).toContain('"takumi-js"');
+    // The `takumi-js/helpers` subpath (OG `googleFonts` loader) and the native
+    // `@takumi-rs/core` backend must be external too: the prerender env matches
+    // by exact specifier, so a bare `takumi-js` alone lets the subpath — and the
+    // native binding it drags in — get bundled, breaking OG on Linux/Vercel.
+    expect(out).toContain('"takumi-js/helpers"');
+    expect(out).toContain('"@takumi-rs/core"');
     expect(out).toContain('"@astrojs/markdown-satteri"');
     expect(out).toMatch(/prerender: \{ resolve: \{ external: \[/u);
     // SSR externals use the legacy `ssr.external` key, not `environments.ssr`: a
