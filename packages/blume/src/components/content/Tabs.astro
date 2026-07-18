@@ -4,6 +4,20 @@ interface Props {
   defaultTabIndex?: number;
   dropdown?: boolean;
   hash?: boolean | "false" | "true";
+  /**
+   * Render borderless — a tab strip on a full-width rule with the content
+   * flowing beneath as prose — instead of the default bordered box. Reads as
+   * page-level navigation rather than an isolated widget; pair with `param` for
+   * shareable, multiple-per-page tabs.
+   */
+  inline?: boolean;
+  /**
+   * Sync the active tab to this URL query-param key instead of the hash. Each
+   * group owns its own param, so several `Tabs` can share a page and every
+   * selection is deep-linkable (`?install=windows`). Give each group a unique
+   * `param`; it takes precedence over `hash`.
+   */
+  param?: string;
   sync?: boolean;
 }
 
@@ -12,34 +26,53 @@ const {
   defaultTabIndex = 0,
   dropdown = false,
   hash = true,
+  inline = false,
+  param,
   sync = true,
 } = Astro.props;
 
 // MDX string attributes (`hash="false"` from generated markup) must read as
 // their boolean meaning — the string "false" is truthy.
 const hashEnabled = String(hash) !== "false";
+// The dropdown (select) affordance belongs to the boxed layout; inline always
+// renders a tab strip.
+const useDropdown = dropdown && !inline;
 ---
 
 <blume-tabs
-  class="not-prose my-6 block overflow-hidden rounded-blume border border-border bg-background"
+  class:list={[
+    "my-6 block",
+    inline
+      ? ""
+      : "not-prose overflow-hidden rounded-blume border border-border bg-background",
+  ]}
   data-border-bottom={borderBottom ? "true" : "false"}
   data-default-tab-index={defaultTabIndex}
-  data-dropdown={dropdown ? "true" : "false"}
+  data-dropdown={useDropdown ? "true" : "false"}
   data-hash={hashEnabled ? "true" : "false"}
+  data-param={param}
   data-sync={sync ? "true" : "false"}
 >
-  <div class:list={[dropdown ? "" : "overflow-x-auto"]}>
+  <div
+    class:list={[
+      inline ? "not-prose" : "",
+      useDropdown ? "" : "overflow-x-auto",
+    ]}
+  >
     <div
       class:list={[
-        dropdown || borderBottom ? "border-border border-b" : "",
-        dropdown ? "p-3" : "flex gap-4 px-3",
+        useDropdown || borderBottom ? "border-border border-b" : "",
+        useDropdown ? "p-3" : inline ? "flex gap-4" : "flex gap-4 px-3",
       ]}
       data-blume-tablist
-      role={dropdown ? undefined : "tablist"}
+      role={useDropdown ? undefined : "tablist"}
     >
     </div>
   </div>
-  <div data-blume-tab-content>
+  <div
+    class:list={[inline ? "pt-4 [&>[data-blume-tab-panel]]:p-0!" : ""]}
+    data-blume-tab-content
+  >
     <slot />
   </div>
 </blume-tabs>
@@ -114,7 +147,7 @@ const hashEnabled = String(hash) !== "false";
         if (this.#syncEnabled()) {
           document.addEventListener(SYNC_EVENT, this.#sync);
         }
-        window.addEventListener("hashchange", this.#hashChange);
+        this.#addUrlListener();
         return;
       }
       this.dataset.blumeTabsReady = "true";
@@ -173,12 +206,13 @@ const hashEnabled = String(hash) !== "false";
       if (this.#syncEnabled()) {
         document.addEventListener(SYNC_EVENT, this.#sync);
       }
-      window.addEventListener("hashchange", this.#hashChange);
+      this.#addUrlListener();
     }
 
     disconnectedCallback() {
       document.removeEventListener(SYNC_EVENT, this.#sync);
-      window.removeEventListener("hashchange", this.#hashChange);
+      window.removeEventListener("hashchange", this.#urlChange);
+      window.removeEventListener("popstate", this.#urlChange);
     }
 
     activate(index: number, sync: boolean, updateHash: boolean) {
@@ -201,8 +235,18 @@ const hashEnabled = String(hash) !== "false";
         this.#select.value = String(index);
       }
       const id = panelId(activePanel);
-      if (updateHash && id && this.#hashEnabled()) {
-        history.replaceState(null, "", `#${encodeURIComponent(id)}`);
+      if (updateHash && id) {
+        const param = this.#paramName();
+        if (param) {
+          // Query-param mode: write only this group's key, so several groups on
+          // one page each deep-link independently. replaceState (not push) keeps
+          // the shareable URL current without stacking a history entry per click.
+          const url = new URL(window.location.href);
+          url.searchParams.set(param, id);
+          history.replaceState(history.state, "", url);
+        } else if (this.#hashEnabled()) {
+          history.replaceState(null, "", `#${encodeURIComponent(id)}`);
+        }
       }
       if (sync && this.#syncEnabled()) {
         document.dispatchEvent(
@@ -239,8 +283,29 @@ const hashEnabled = String(hash) !== "false";
       return true;
     }
 
+    #activateByParam() {
+      const param = this.#paramName();
+      if (!param) {
+        return false;
+      }
+      const value = new URL(window.location.href).searchParams.get(param);
+      if (!value) {
+        return false;
+      }
+      const index = this.#panels.findIndex((panel) => panelId(panel) === value);
+      if (index === -1) {
+        return false;
+      }
+
+      this.activate(index, false, false);
+      return true;
+    }
+
     #initialIndex() {
-      if (this.#activateByHash()) {
+      const activated = this.#paramName()
+        ? this.#activateByParam()
+        : this.#activateByHash();
+      if (activated) {
         return this.#panels.findIndex((panel) => !panel.classList.contains("hidden"));
       }
       return boundedIndex(
@@ -278,6 +343,20 @@ const hashEnabled = String(hash) !== "false";
       return this.dataset.hash !== "false";
     }
 
+    #paramName() {
+      return this.dataset.param || null;
+    }
+
+    // Query-param changes don't fire `hashchange`; they surface through history
+    // navigation (`popstate`). Listen to whichever channel this group syncs on.
+    #addUrlListener() {
+      if (this.#paramName()) {
+        window.addEventListener("popstate", this.#urlChange);
+      } else {
+        window.addEventListener("hashchange", this.#urlChange);
+      }
+    }
+
     #sync = (event: Event) => {
       const title = (event as CustomEvent<{ title?: string }>).detail?.title;
       if (title) {
@@ -285,8 +364,12 @@ const hashEnabled = String(hash) !== "false";
       }
     };
 
-    #hashChange = () => {
-      this.#activateByHash();
+    #urlChange = () => {
+      if (this.#paramName()) {
+        this.#activateByParam();
+      } else {
+        this.#activateByHash();
+      }
     };
   }
 
