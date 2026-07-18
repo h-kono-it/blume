@@ -213,6 +213,21 @@ const astroOutDir = (context: ProjectContext): string =>
   context.distDir ?? `${context.root}/dist`;
 
 /**
+ * The root a deploy adapter is shown, in place of the `.blume` runtime Astro
+ * actually roots at. Adapters assume `outDir` is `<root>/dist` and resolve their
+ * own output (and Vercel's dependency trace) against `root`, so the root implied
+ * by Blume's `outDir` is the one that keeps that assumption true. See
+ * {@link withAdapterRoot}.
+ *
+ * For a normal build that is the project root (`<project>/dist` -> `<project>`).
+ * For a relocated runtime (`blume build --isolated`) it is the runtime dir
+ * itself (`<runtime>/dist` -> `<runtime>`), keeping a verify build's adapter
+ * output self-contained instead of overwriting the real `.vercel/output`.
+ */
+const adapterRoot = (context: ProjectContext): string =>
+  dirname(astroOutDir(context));
+
+/**
  * Excludes Vite's pre-bundled dep cache from @vitejs/plugin-react. Astro's
  * react() replaces the plugin's default `/node_modules/` exclude with just
  * `/\.astro$/`, so without this Babel re-parses every optimized dep chunk
@@ -296,8 +311,17 @@ export const astroConfigTemplate = (options: {
     }
     return ADAPTER_OPTIONS[deployment.adapter] ?? "";
   })();
+  // Vercel resolves its Build Output tree and its `@vercel/nft` dependency
+  // trace against the Astro root, which for Blume is the hidden `.blume`
+  // runtime — leaving the traced function without its chunks or node_modules.
+  // The other adapters emit into `outDir` (cloudflare, node) or are surfaced
+  // afterwards (netlify), so none of them read `root` this way.
+  const adapterExpr =
+    deployment.adapter === "vercel"
+      ? `withAdapterRoot(adapter(${adapterArgs}), ${JSON.stringify(adapterRoot(context))})`
+      : `adapter(${adapterArgs})`;
   const adapterOption =
-    server && deployment.adapter ? `\n  adapter: adapter(${adapterArgs}),` : "";
+    server && deployment.adapter ? `\n  adapter: ${adapterExpr},` : "";
 
   const siteOption = deployment.site
     ? `\n  site: ${JSON.stringify(deployment.site)},`
@@ -367,7 +391,13 @@ export const astroConfigTemplate = (options: {
   const svelteImport = needsSvelte
     ? `import svelte from "@astrojs/svelte";\n`
     : "";
-  const blumeImport = `import { blumeIntegration, prerenderDepsPlugin, serverAppResolvePlugin } from "blume/astro";\n`;
+  const blumeImports = [
+    "blumeIntegration",
+    "prerenderDepsPlugin",
+    "serverAppResolvePlugin",
+    ...(adapterOption.includes("withAdapterRoot") ? ["withAdapterRoot"] : []),
+  ];
+  const blumeImport = `import { ${blumeImports.join(", ")} } from "blume/astro";\n`;
 
   // Twoslash runs first, before the always-on transformers, but only on fences
   // with the `twoslash` meta (explicitTrigger) — so it's opt-in per block with

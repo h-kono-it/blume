@@ -847,8 +847,88 @@ describe("astroConfigTemplate", () => {
       themePath: THEME_PATH,
     });
     expect(out).toContain('import adapter from "@astrojs/vercel"');
-    expect(out).toContain("adapter: adapter(),");
+    expect(out).toContain('adapter: withAdapterRoot(adapter(), "/p"),');
     expect(out).not.toContain("configPath");
+  });
+
+  it("shows the Vercel adapter the project root, not the .blume runtime", () => {
+    // The adapter resolves its Build Output tree *and* its `@vercel/nft`
+    // dependency trace against `root`. Rooted at `.blume`, nft's base excludes
+    // `<outDir>/server`, so the traced function ships without its chunks or
+    // node_modules and 500s with ERR_MODULE_NOT_FOUND on first request.
+    const out = astroConfigTemplate({
+      askPath: ASK_PATH,
+      config: blumeConfigSchema.parse({
+        deployment: { adapter: "vercel", output: "server" },
+      }),
+      contentRoutes: [],
+      context: context(),
+      dataPath: DATA_PATH,
+      examplesPath: EXAMPLES_PATH,
+      examplesThemePath: EXAMPLES_THEME_PATH,
+      needsReact: false,
+      openapiPath: OPENAPI_PATH,
+      pages: [],
+      searchClientPath: SEARCH_CLIENT_PATH,
+      themePath: THEME_PATH,
+    });
+    // The root handed to the adapter is the one `outDir` implies (`/p/dist` ->
+    // `/p`), never Astro's real root.
+    expect(out).toContain('adapter: withAdapterRoot(adapter(), "/p"),');
+    expect(out).toContain('outDir: "/p/dist"');
+    expect(out).not.toContain('withAdapterRoot(adapter(), "/p/.blume")');
+    expect(out).toContain('withAdapterRoot } from "blume/astro"');
+  });
+
+  it("keeps an isolated build's Vercel output inside the relocated runtime", () => {
+    // `blume build --isolated` relocates the runtime and its dist; the adapter
+    // root must follow, so a verify build never overwrites the real
+    // `<root>/.vercel/output`.
+    const out = astroConfigTemplate({
+      askPath: ASK_PATH,
+      config: blumeConfigSchema.parse({
+        deployment: { adapter: "vercel", output: "server" },
+      }),
+      contentRoutes: [],
+      context: context({
+        distDir: "/p/.blume-verify/dist",
+        outDir: "/p/.blume-verify",
+      }),
+      dataPath: DATA_PATH,
+      examplesPath: EXAMPLES_PATH,
+      examplesThemePath: EXAMPLES_THEME_PATH,
+      needsReact: false,
+      openapiPath: OPENAPI_PATH,
+      pages: [],
+      searchClientPath: SEARCH_CLIENT_PATH,
+      themePath: THEME_PATH,
+    });
+    expect(out).toContain(
+      'adapter: withAdapterRoot(adapter(), "/p/.blume-verify"),'
+    );
+  });
+
+  it("leaves non-Vercel adapters unwrapped", () => {
+    // Only Vercel resolves a dependency trace against `root`; node is standalone
+    // and cloudflare emits into `outDir`, so neither needs the override.
+    const out = astroConfigTemplate({
+      askPath: ASK_PATH,
+      config: blumeConfigSchema.parse({
+        deployment: { adapter: "node", output: "server" },
+      }),
+      contentRoutes: [],
+      context: context(),
+      dataPath: DATA_PATH,
+      examplesPath: EXAMPLES_PATH,
+      examplesThemePath: EXAMPLES_THEME_PATH,
+      needsReact: false,
+      openapiPath: OPENAPI_PATH,
+      pages: [],
+      searchClientPath: SEARCH_CLIENT_PATH,
+      themePath: THEME_PATH,
+    });
+    expect(out).toContain('adapter: adapter({ mode: "standalone" }),');
+    expect(out).not.toContain("withAdapterRoot");
   });
 
   it("wires project tsconfig aliases into vite resolve.alias, longest first", () => {

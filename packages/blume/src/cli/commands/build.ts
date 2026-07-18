@@ -13,6 +13,7 @@ import type { ResolvedConfig } from "../../core/schema.ts";
 import { serverFeatures } from "../../core/server-features.ts";
 import type { ProjectContext } from "../../core/types.ts";
 import {
+  ADAPTER_IGNORE_DIRS,
   deployStaticDir,
   surfaceAdapterOutput,
 } from "../../deploy/adapter-output.ts";
@@ -483,21 +484,26 @@ export const buildCommand = defineCommand({
       return;
     }
 
-    // A server adapter (Vercel/Netlify) writes its deploy bundle relative to the
-    // Astro root — which Blume points at the hidden `.blume` runtime — so the
-    // bundle lands where the deploy platform never looks. Surface it up to the
-    // project root before publishing artifacts into the served static dir.
+    // A server adapter's deploy bundle is a build artifact — keep it out of
+    // version control (Vercel's own CLI ignores `.vercel/` for the same reason).
+    // Ignoring it is independent of whether the bundle had to be moved below:
+    // Vercel writes straight to the project root, Netlify does not.
+    const { adapter } = project.config.deployment;
+    const ignoreDir = adapter ? ADAPTER_IGNORE_DIRS[adapter] : undefined;
+    if (project.config.deployment.output === "server" && ignoreDir) {
+      await ensureGitignore(root, [ignoreDir]);
+    }
+
+    // Netlify writes its deploy bundle relative to the Astro root — which Blume
+    // points at the hidden `.blume` runtime — so the bundle lands where the
+    // deploy platform never looks. Surface it up to the project root before
+    // publishing artifacts into the served static dir.
     const surfaced = await surfaceAdapterOutput(
       project.config,
       project.context
     );
     if (surfaced.moved) {
-      logger.success(
-        `Surfaced ${project.config.deployment.adapter} output to ${surfaced.to}`
-      );
-      // The surfaced bundle is a build artifact — keep it out of version control
-      // (Vercel's own CLI ignores `.vercel/` for the same reason).
-      await ensureGitignore(root, [surfaced.ignore]);
+      logger.success(`Surfaced ${adapter} output to ${surfaced.to}`);
     }
 
     await publishBuildArtifacts(

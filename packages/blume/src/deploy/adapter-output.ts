@@ -9,24 +9,39 @@ import type { ProjectContext } from "../core/types.ts";
 type Adapter = NonNullable<ResolvedConfig["deployment"]["adapter"]>;
 
 /**
+ * Top-level directory each server adapter writes its deploy bundle into, for
+ * `.gitignore` — the bundle is a build artifact, and the platform's own state
+ * lives alongside it (`.vercel/project.json`, `.netlify/state.json`), so the
+ * whole directory is ignored. `node` and `cloudflare` emit into `dist/`, which
+ * `blume init` already ignores.
+ */
+export const ADAPTER_IGNORE_DIRS: Partial<Record<Adapter, string>> = {
+  netlify: ".netlify/",
+  vercel: ".vercel/",
+};
+
+/**
  * Server adapters whose deploy bundle lands *outside* Astro's `outDir`, at a
  * path relative to the Astro project root. Blume points the Astro root at the
  * hidden `<root>/.blume` runtime, so these adapters write their bundle to
  * `<root>/.blume/<path>` — where the deploy platform never looks. Each value is
  * the sub-path to surface up to the real project root.
  *
- * `vercel` writes a Build Output API v3 tree at `.vercel/output`; only that
- * subtree is moved, so a `vercel pull`-ed `.vercel/project.json` sitting at the
- * project root survives the relocation. `netlify` writes a Frameworks API tree
- * at `.netlify/v1` (its `.netlify/build` sibling is only the intermediate SSR
- * bundle, already traced into `v1/functions`); only `v1` is moved, so the
- * `.netlify/state.json` written by `netlify link` survives too. `node` and
- * `cloudflare` emit into `dist/` (already at the project root), so they are
- * absent here and need no relocation.
+ * `netlify` writes a Frameworks API tree at `.netlify/v1` (its `.netlify/build`
+ * sibling is only the intermediate SSR bundle, already traced into
+ * `v1/functions`); only `v1` is moved, so the `.netlify/state.json` written by
+ * `netlify link` survives too. `node` and `cloudflare` emit into `dist/`
+ * (already at the project root), so they are absent here and need no
+ * relocation.
+ *
+ * `vercel` is absent for a different reason: it is shown the real project root
+ * up front (see `withAdapterRoot`), because its `@vercel/nft` dependency trace
+ * is rooted there too and tracing from `.blume` silently drops the function's
+ * chunks and `node_modules`. Given the right root it writes its Build Output
+ * tree straight to `<root>/.vercel/output`, so there is nothing left to move.
  */
 export const ADAPTER_OUTPUT_PATHS: Partial<Record<Adapter, string>> = {
   netlify: ".netlify/v1",
-  vercel: ".vercel/output",
 };
 
 /**
@@ -53,10 +68,10 @@ export const deployStaticDir = (
   return dist;
 };
 
-/** Outcome of {@link surfaceAdapterOutput}, for logging and `.gitignore`. */
+/** Outcome of {@link surfaceAdapterOutput}, for logging. */
 export type SurfaceResult =
   | { moved: false }
-  | { from: string; ignore: string; moved: true; to: string };
+  | { from: string; moved: true; to: string };
 
 /**
  * Move a server adapter's deploy bundle out of the hidden `.blume` runtime and
@@ -95,8 +110,5 @@ export const surfaceAdapterOutput = async (
   // bundle at `/var/task`).
   await cp(from, to, { recursive: true, verbatimSymlinks: true });
   await rm(from, { force: true, recursive: true });
-  // The `.gitignore` entry is the surfaced top-level dir (`.vercel`/`.netlify`),
-  // never the moved sub-path — the platform's own state (`.vercel/project.json`,
-  // `.netlify/state.json`) lives there too and must also be ignored.
-  return { from, ignore: `${rel.split("/")[0]}/`, moved: true, to };
+  return { from, moved: true, to };
 };

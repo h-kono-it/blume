@@ -1,3 +1,4 @@
+export { withAdapterRoot } from "./adapter-root.ts";
 export {
   generateRuntime,
   prerenderDepsPlugin,

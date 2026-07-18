@@ -35,15 +35,18 @@ const context = (root: string): ProjectContext => ({
   themeFile: null,
 });
 
-/** Write a fake Vercel Build Output bundle under `<root>/.blume/.vercel/output`. */
+/**
+ * Write a fake Netlify Frameworks API bundle under `<root>/.blume/.netlify/v1`.
+ * Netlify is the surfacing machinery's only remaining caller — Vercel is handed
+ * the real project root and writes straight there (see `withAdapterRoot`).
+ */
 const seed = async (root: string): Promise<void> => {
-  const src = join(root, ".blume", ".vercel", "output");
-  await mkdir(join(src, "static"), { recursive: true });
-  await writeFile(join(src, "config.json"), '{"version":3}', "utf-8");
-  await writeFile(join(src, "static", "index.html"), "<h1>hi</h1>", "utf-8");
+  const src = join(root, ".blume", ".netlify", "v1");
+  await mkdir(join(src, "functions"), { recursive: true });
+  await writeFile(join(src, "config.json"), '{"version":1}', "utf-8");
 };
 
-/** Surface a Vercel bundle in a Node process, the runtime `blume build` runs in. */
+/** Surface a bundle in a Node process, the runtime `blume build` runs in. */
 const surfaceUnderNode = async (root: string): Promise<void> => {
   const source = new URL("../src/deploy/adapter-output.ts", import.meta.url)
     .href;
@@ -57,7 +60,7 @@ const surfaceUnderNode = async (root: string): Promise<void> => {
       "--eval",
       `const { surfaceAdapterOutput } = await import(${JSON.stringify(source)});
        await surfaceAdapterOutput(
-         { deployment: { adapter: "vercel", output: "server" } },
+         { deployment: { adapter: "netlify", output: "server" } },
          { outDir: ${JSON.stringify(join(root, ".blume"))}, root: ${JSON.stringify(root)} }
        );`,
     ],
@@ -111,30 +114,21 @@ describe("deployStaticDir", () => {
 });
 
 describe("surfaceAdapterOutput", () => {
-  it("moves the Vercel bundle from .blume up to the project root", async () => {
+  it("never moves a Vercel bundle — the adapter writes to the project root", async () => {
+    // Vercel is shown the real project root up front (`withAdapterRoot`), because
+    // its `@vercel/nft` trace is rooted there too and tracing from `.blume` drops
+    // the function's chunks and node_modules. So its Build Output tree is already
+    // at `<root>/.vercel/output` and there is nothing to surface.
     const root = await mkdtemp(join(tmpdir(), "blume-surface-"));
-    await seed(root);
-    // A `vercel pull`-ed sibling must survive the move.
-    await mkdir(join(root, ".vercel"), { recursive: true });
-    await writeFile(join(root, ".vercel", "project.json"), "{}", "utf-8");
+    await mkdir(join(root, ".blume", ".vercel", "output"), { recursive: true });
 
-    const result = await surfaceAdapterOutput(
-      config({ adapter: "vercel", output: "server" }),
-      context(root)
-    );
-
-    expect(result).toEqual({
-      from: join(root, ".blume", ".vercel", "output"),
-      ignore: ".vercel/",
-      moved: true,
-      to: join(root, ".vercel", "output"),
-    });
-    expect(existsSync(join(root, ".blume", ".vercel", "output"))).toBe(false);
     expect(
-      await readFile(join(root, ".vercel", "output", "config.json"), "utf-8")
-    ).toBe('{"version":3}');
-    // The pulled project.json is untouched — only `.vercel/output` moved.
-    expect(existsSync(join(root, ".vercel", "project.json"))).toBe(true);
+      await surfaceAdapterOutput(
+        config({ adapter: "vercel", output: "server" }),
+        context(root)
+      )
+    ).toEqual({ moved: false });
+    expect(ADAPTER_OUTPUT_PATHS.vercel).toBeUndefined();
   });
 
   it("moves only .netlify/v1, preserving netlify link state", async () => {
@@ -160,7 +154,6 @@ describe("surfaceAdapterOutput", () => {
 
     expect(result).toEqual({
       from: join(root, ".blume", ".netlify", "v1"),
-      ignore: ".netlify/",
       moved: true,
       to: join(root, ".netlify", "v1"),
     });
@@ -183,7 +176,7 @@ describe("surfaceAdapterOutput", () => {
     // this suite) is verbatim either way, so an in-process call proves nothing.
     const root = await mkdtemp(join(tmpdir(), "blume-surface-"));
     await seed(root);
-    const fn = join(root, ".blume", ".vercel", "output", "functions", "f.func");
+    const fn = join(root, ".blume", ".netlify", "v1", "functions", "f");
     const store = join(fn, "node_modules", ".store", "dep");
     await mkdir(store, { recursive: true });
     await writeFile(join(store, "index.js"), "export default 1;", "utf-8");
@@ -191,7 +184,7 @@ describe("surfaceAdapterOutput", () => {
 
     await surfaceUnderNode(root);
 
-    const moved = join(root, ".vercel", "output", "functions", "f.func");
+    const moved = join(root, ".netlify", "v1", "functions", "f");
     // The link still names its target relatively, and resolves through to the
     // package where the bundle landed — self-contained wherever it deploys to.
     expect(await readlink(join(moved, "node_modules", "dep"))).toBe(
@@ -205,24 +198,16 @@ describe("surfaceAdapterOutput", () => {
   it("replaces a stale destination bundle", async () => {
     const root = await mkdtemp(join(tmpdir(), "blume-surface-"));
     await seed(root);
-    await mkdir(join(root, ".vercel", "output"), { recursive: true });
-    await writeFile(
-      join(root, ".vercel", "output", "stale.txt"),
-      "old",
-      "utf-8"
-    );
+    await mkdir(join(root, ".netlify", "v1"), { recursive: true });
+    await writeFile(join(root, ".netlify", "v1", "stale.txt"), "old", "utf-8");
 
     await surfaceAdapterOutput(
-      config({ adapter: "vercel", output: "server" }),
+      config({ adapter: "netlify", output: "server" }),
       context(root)
     );
 
-    expect(existsSync(join(root, ".vercel", "output", "stale.txt"))).toBe(
-      false
-    );
-    expect(existsSync(join(root, ".vercel", "output", "config.json"))).toBe(
-      true
-    );
+    expect(existsSync(join(root, ".netlify", "v1", "stale.txt"))).toBe(false);
+    expect(existsSync(join(root, ".netlify", "v1", "config.json"))).toBe(true);
   });
 
   it("is a no-op for a static build", async () => {
@@ -231,7 +216,7 @@ describe("surfaceAdapterOutput", () => {
     expect(await surfaceAdapterOutput(config(), context(root))).toEqual({
       moved: false,
     });
-    expect(existsSync(join(root, ".vercel", "output"))).toBe(false);
+    expect(existsSync(join(root, ".netlify", "v1"))).toBe(false);
   });
 
   it("is a no-op for adapters that emit into dist/", async () => {
@@ -249,7 +234,7 @@ describe("surfaceAdapterOutput", () => {
     const root = await mkdtemp(join(tmpdir(), "blume-surface-"));
     expect(
       await surfaceAdapterOutput(
-        config({ adapter: "vercel", output: "server" }),
+        config({ adapter: "netlify", output: "server" }),
         context(root)
       )
     ).toEqual({ moved: false });
