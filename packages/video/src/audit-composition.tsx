@@ -99,7 +99,7 @@ const SceneTagline = () => (
 );
 
 // ─── Scene 2 · The money shot ───────────────────────────────────────────────
-// One frosted terminal: audit → findings → hand to Claude Code → clean rerun.
+// One frosted terminal: audit → findings → hand to Codex → clean rerun.
 const SceneMoneyShot = () => <AuditTerminal />;
 
 // ─── Scene 3 · The feature run ──────────────────────────────────────────────

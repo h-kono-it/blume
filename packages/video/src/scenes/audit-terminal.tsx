@@ -10,8 +10,8 @@ import {
 
 // Audit money shot: a single frosted terminal card telling the whole 1.1 story
 // in three beats — `blume audit` dumps a findings report (grouped by check,
-// exactly the shape the real CLI prints), `blume audit --claude` hands the
-// findings to Claude Code, and a rerun comes back green.
+// exactly the shape the real CLI prints), `blume audit --codex` hands the
+// findings to Codex, and a rerun comes back green.
 
 const SANS =
   "var(--font-geist-sans), -apple-system, BlinkMacSystemFont, sans-serif";
@@ -143,13 +143,13 @@ const LINES: TermLine[] = [
     text: "fix: Fix the link target, or create the page it points at.",
   },
   { delay: 8, kind: "blank" },
-  { delay: 0, kind: "cmd", text: "blume audit --claude" },
+  { delay: 0, kind: "cmd", text: "blume audit --codex" },
   {
     delay: 14,
     kind: "hand",
-    // The beat where Claude Code works, elided between prompts.
+    // The beat where Codex works, elided between prompts.
     pause: 36,
-    text: "Handing 5 findings to Claude Code…",
+    text: "Handing 5 findings to Codex…",
   },
   { delay: 10, kind: "blank" },
   { delay: 0, kind: "cmd", text: "blume audit" },
