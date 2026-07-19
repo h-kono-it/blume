@@ -142,7 +142,8 @@ const findingLine = (diagnostic: Diagnostic, root: string): string => {
         diagnostic.line === undefined ? "" : `:${diagnostic.line}`
       }${COLORS.reset}`
     : "";
-  return `      ${url.padEnd(34)}${source}`;
+  // padEnd alone yields no gap once the URL reaches the column width.
+  return `      ${url.padEnd(34)} ${source}`.trimEnd();
 };
 
 /**

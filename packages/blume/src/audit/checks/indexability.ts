@@ -157,8 +157,10 @@ export const indexabilityChecks: CheckModule = {
       found.push(...canonicalChecks(context, page));
 
       // Error routes are *meant* to carry noindex, so reporting them would be a
-      // guaranteed finding on every site that has a 404 page.
-      if (page.robots && !ERROR_ROUTES.has(page.url)) {
+      // guaranteed finding on every site that has a 404 page. A robots meta
+      // that doesn't noindex (an ejected layout emitting `index, follow`)
+      // leaves the page indexable and isn't this finding.
+      if (page.robots && !page.indexable && !ERROR_ROUTES.has(page.url)) {
         found.push(
           finding(
             "BLUME_AUDIT_ROBOTS_META_UNEXPECTED",

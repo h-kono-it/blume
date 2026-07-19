@@ -66,6 +66,24 @@ describe("resolveHref", () => {
     });
   });
 
+  it("strips the deployment base from emitted hrefs", () => {
+    // Hrefs carry `deployment.base`; the built file tree (and page URLs) don't.
+    expect(resolveHref("/docs/a", "/base/docs/b", SITE, "/base")).toEqual({
+      hash: "",
+      kind: "internal",
+      path: "/docs/b",
+    });
+    expect(resolveHref("/", `${SITE}/base/docs/a`, SITE, "/base")).toEqual({
+      hash: "",
+      kind: "self-origin",
+      path: "/docs/a",
+    });
+    // A path not under the base is untouched.
+    expect(resolveHref("/", "/other/x", SITE, "/base")).toMatchObject({
+      path: "/other/x",
+    });
+  });
+
   it("normalizes a trailing slash away", () => {
     expect(normalizePath("/docs/a/")).toBe("/docs/a");
     expect(normalizePath("/")).toBe("/");
@@ -120,6 +138,11 @@ describe("buildGraph", () => {
     ];
     expect(orphanPages(pages, buildGraph(pages, SITE))).toEqual([]);
   });
+
+  it("exempts a basePath home page from the orphan check", () => {
+    const pages = [snapshot({ url: "/docs" })];
+    expect(orphanPages(pages, buildGraph(pages, SITE), "/docs")).toEqual([]);
+  });
 });
 
 describe("resolveRedirects", () => {
@@ -129,6 +152,14 @@ describe("resolveRedirects", () => {
     const [result] = resolveRedirects(
       [{ from: "/old", status: 301, to: "/new" }],
       pages
+    );
+    expect(result?.outcome).toBe("ok");
+  });
+
+  it("accepts a redirect to a served static file", () => {
+    const [result] = resolveRedirects(
+      [{ from: "/old-whitepaper", status: 301, to: "/files/whitepaper.pdf" }],
+      new Set([...pages, "/files/whitepaper.pdf"])
     );
     expect(result?.outcome).toBe("ok");
   });

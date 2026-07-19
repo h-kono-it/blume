@@ -24,7 +24,8 @@ const add = (
  */
 export const buildGraph = (
   pages: PageSnapshot[],
-  origin: string | null
+  origin: string | null,
+  deployBase = ""
 ): LinkGraph => {
   const graph: LinkGraph = {
     chromeIn: new Map(),
@@ -35,7 +36,7 @@ export const buildGraph = (
 
   for (const page of pages) {
     for (const link of page.links) {
-      const resolved = resolveHref(page.url, link.href, origin);
+      const resolved = resolveHref(page.url, link.href, origin, deployBase);
       if (resolved.kind !== "internal" && resolved.kind !== "self-origin") {
         continue;
       }
@@ -55,15 +56,19 @@ export const buildGraph = (
  * This is what an SEO means by "orphan": the page ships, but no other page's
  * body ever points a reader (or a crawler following editorial links) at it.
  * Non-indexable pages are excluded — a `noindex` page is *meant* to be
- * unreachable — as is the home page, which is nobody's job to link to.
+ * unreachable — as is the home page, which is nobody's job to link to. Under a
+ * `basePath` the home page's built URL is the base itself, so the caller names
+ * it via `homeUrl`.
  */
 export const orphanPages = (
   pages: PageSnapshot[],
-  graph: LinkGraph
+  graph: LinkGraph,
+  homeUrl = "/"
 ): PageSnapshot[] =>
   pages.filter(
     (page) =>
       page.indexable &&
       page.url !== "/" &&
+      page.url !== homeUrl &&
       (graph.contentIn.get(page.url)?.size ?? 0) === 0
   );

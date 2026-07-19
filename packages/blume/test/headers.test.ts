@@ -32,7 +32,9 @@ describe("buildNetlifyHeaders", () => {
     );
     expect(out).toContain("/base/docs/*.md");
     expect(out).toContain("/base/docs/*.mdx");
-    expect(out).toContain("/base/docs/*.txt");
+    // llms.txt / llms-full.txt live at the dist root, not under basePath.
+    expect(out).toContain("/base/*.txt");
+    expect(out).not.toContain("/base/docs/*.txt");
   });
 
   it("normalizes a trailing slash on deployment.base", () => {
@@ -41,9 +43,10 @@ describe("buildNetlifyHeaders", () => {
     );
   });
 
-  it("applies basePath alone when no deployment.base is set", () => {
-    expect(buildNetlifyHeaders(configWith({ basePath: "/docs" }))).toContain(
-      "/docs/*.txt"
-    );
+  it("keeps the .txt rule at the root when only basePath is set", () => {
+    const out = buildNetlifyHeaders(configWith({ basePath: "/docs" }));
+    expect(out).toContain("/docs/*.md");
+    expect(out).toContain("/*.txt");
+    expect(out).not.toContain("/docs/*.txt");
   });
 });

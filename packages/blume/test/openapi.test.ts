@@ -1585,6 +1585,28 @@ describe("security", () => {
     );
   });
 
+  it("lets an explicit query parameter override the auth placeholder", () => {
+    const security = resolveSecurity([{ apiQuery: [] }], SCHEMES);
+    const sample = buildRequestSample(
+      {
+        parameters: [
+          {
+            example: "from-the-spec",
+            in: "query",
+            name: "api_key",
+            required: true,
+          },
+        ],
+      },
+      "get",
+      "/pet",
+      [{ url: "https://api.test/v1" }],
+      {},
+      sampleAuth(security)
+    );
+    expect(sample.url).toBe("https://api.test/v1/pet?api_key=from-the-spec");
+  });
+
   it("lets an explicit header parameter override the auth placeholder", () => {
     const security = resolveSecurity([{ bearerAuth: [] }], SCHEMES);
     const sample = buildRequestSample(

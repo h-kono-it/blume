@@ -320,16 +320,28 @@ describe("indexability checks", () => {
 
   it("reports a noindex page but not a 404", () => {
     const noindex = context({
-      pages: [snapshot({ robots: "noindex", url: "/secret" })],
+      pages: [
+        snapshot({ indexable: false, robots: "noindex", url: "/secret" }),
+      ],
     });
     expect(run(indexabilityChecks, noindex)).toContain(
       "ROBOTS_META_UNEXPECTED"
     );
     // A 404 is *meant* to be noindex, so flagging it would fire on every site.
     const error = context({
-      pages: [snapshot({ robots: "noindex", url: "/404" })],
+      pages: [snapshot({ indexable: false, robots: "noindex", url: "/404" })],
     });
     expect(run(indexabilityChecks, error)).not.toContain(
+      "ROBOTS_META_UNEXPECTED"
+    );
+  });
+
+  it("accepts a robots meta that leaves the page indexable", () => {
+    // An ejected layout emitting `index, follow` is not "will not be indexed".
+    const ctx = context({
+      pages: [snapshot({ robots: "index, follow", url: "/open" })],
+    });
+    expect(run(indexabilityChecks, ctx)).not.toContain(
       "ROBOTS_META_UNEXPECTED"
     );
   });
@@ -641,6 +653,47 @@ describe("url checks", () => {
     expect(run(urlChecks, ctx)).toContain("DOUBLE_SLASH_URL");
   });
 
+  it("reports a doubled slash in an href, once per target", () => {
+    // `//docs/x` is what a trailing-slash base produces — a browser reads it
+    // as a protocol-relative URL, so every link checker skips it as external.
+    const links = [
+      { content: true, href: "//docs/x", rel: null, text: "x" },
+      { content: true, href: "/docs//y", rel: null, text: "y" },
+    ];
+    const ctx = context({
+      pages: [snapshot({ links, url: "/a" }), snapshot({ links, url: "/b" })],
+    });
+    const reported = run(urlChecks, ctx);
+    expect(reported.filter((code) => code === "DOUBLE_SLASH_URL")).toHaveLength(
+      2
+    );
+  });
+
+  it("leaves genuine protocol-relative and query-borne slashes alone", () => {
+    const ctx = context({
+      pages: [
+        snapshot({
+          links: [
+            {
+              content: true,
+              href: "//cdn.example.com/x",
+              rel: null,
+              text: "c",
+            },
+            {
+              content: true,
+              href: "/out?next=https://x.dev/y",
+              rel: null,
+              text: "q",
+            },
+          ],
+          url: "/a",
+        }),
+      ],
+    });
+    expect(run(urlChecks, ctx)).toEqual([]);
+  });
+
   it("is silent on a normal URL", () => {
     expect(run(urlChecks, context())).toEqual([]);
   });
@@ -913,6 +966,22 @@ describe("robots checks", () => {
     });
     expect(run(robotsChecks, ctx)).toContain("ROBOTS_DISALLOWS_INDEXABLE");
   });
+
+  it("matches a trailing-slash rule against the loc as served", () => {
+    // `Disallow: /page/` is a literal prefix — normalizing the slash away
+    // before matching would silently miss it.
+    const ctx = context({
+      pages: [snapshot({ url: "/page" })],
+      robots: doc({ disallow: ["/page/"] }),
+      site: SITE,
+      sitemap: {
+        bytes: 100,
+        file: "/dist/sitemap.xml",
+        urls: [`${SITE}/page/`],
+      },
+    });
+    expect(run(robotsChecks, ctx)).toContain("ROBOTS_DISALLOWS_INDEXABLE");
+  });
 });
 
 describe("disallowMatches", () => {
@@ -929,6 +998,12 @@ describe("disallowMatches", () => {
   it("honors an end anchor", () => {
     expect(disallowMatches("/docs$", "/docs")).toBe(true);
     expect(disallowMatches("/docs$", "/docs/x")).toBe(false);
+  });
+
+  it("treats a wildcard before the anchor as a plain prefix", () => {
+    // `/docs*$` — the `*` absorbs the rest, so the anchor is always satisfied.
+    expect(disallowMatches("/docs*$", "/docs/api")).toBe(true);
+    expect(disallowMatches("/docs*$", "/blog")).toBe(false);
   });
 });
 

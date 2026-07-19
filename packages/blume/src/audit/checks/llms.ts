@@ -1,3 +1,4 @@
+import { normalizeBasePath, stripBasePath } from "../../core/base-path.ts";
 import type { Diagnostic } from "../../core/types.ts";
 import { finding } from "../catalog.ts";
 import { pageSite } from "../locate.ts";
@@ -16,15 +17,24 @@ const llmsConfig = (
   return { enabled: value !== false, openapi: true };
 };
 
-/** An llms.txt link target reduced to a site path, or null when it's off-site. */
-const entryPath = (url: string, origin: string | null): string | null => {
+/**
+ * An llms.txt link target reduced to a site path, or null when it's off-site.
+ * Entry URLs carry the deployment base; page URLs (from the file tree) don't.
+ */
+const entryPath = (
+  url: string,
+  origin: string | null,
+  deployBase: string
+): string | null => {
   if (/^https?:\/\//iu.test(url)) {
     try {
       const parsed = new URL(url);
       if (origin && parsed.origin !== origin) {
         return null;
       }
-      return normalizePath(decodeURI(parsed.pathname));
+      return normalizePath(
+        stripBasePath(deployBase, decodeURI(parsed.pathname))
+      );
     } catch {
       return null;
     }
@@ -33,9 +43,9 @@ const entryPath = (url: string, origin: string | null): string | null => {
     return null;
   }
   try {
-    return normalizePath(decodeURI(url));
+    return normalizePath(stripBasePath(deployBase, decodeURI(url)));
   } catch {
-    return normalizePath(url);
+    return normalizePath(stripBasePath(deployBase, url));
   }
 };
 
@@ -68,10 +78,13 @@ export const llmsChecks: CheckModule = {
 
     const found: Diagnostic[] = [];
     const origin = siteOrigin(context.project.config.deployment.site);
+    const deployBase = normalizeBasePath(
+      context.project.config.deployment.base
+    );
 
     const listed = new Set<string>();
     for (const entry of llms.entries) {
-      const path = entryPath(entry.url, origin);
+      const path = entryPath(entry.url, origin, deployBase);
       if (path === null) {
         // Off-site or unparseable targets aren't pages this build can vouch
         // for; external link health is the `--external` tier's job.

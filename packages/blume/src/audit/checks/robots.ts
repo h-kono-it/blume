@@ -31,7 +31,9 @@ export const disallowMatches = (rule: string, path: string): boolean => {
     }
     cursor = at + part.length;
   }
-  return anchored ? cursor === path.length : true;
+  // A wildcard just before `$` (`/docs*$`) absorbs the rest of the path, so
+  // the anchor is already satisfied by any prefix match.
+  return anchored && !pattern.endsWith("*") ? cursor === path.length : true;
 };
 
 /**
@@ -83,14 +85,17 @@ export const robotsChecks: CheckModule = {
     // Checking the disallow rules against the sitemap (rather than against every
     // built file) keeps this to the pages the site actually wants indexed.
     for (const loc of context.sitemap?.urls ?? []) {
-      let path: string;
+      let pathname: string;
       try {
-        path = normalizePath(new URL(loc).pathname);
+        ({ pathname } = new URL(loc));
       } catch {
         continue;
       }
+      // Match the pathname as served: robots.txt rules are literal prefixes,
+      // so `Disallow: /page/` must see the trailing slash to match.
+      const path = normalizePath(pathname);
       const rule = robots.disallow.find((entry) =>
-        disallowMatches(entry, path)
+        disallowMatches(entry, pathname)
       );
       if (rule) {
         found.push(

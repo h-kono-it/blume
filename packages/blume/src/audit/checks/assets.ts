@@ -1,3 +1,4 @@
+import { normalizeBasePath } from "../../core/base-path.ts";
 import type { Diagnostic } from "../../core/types.ts";
 import { finding } from "../catalog.ts";
 import type { CheckId } from "../catalog.ts";
@@ -43,7 +44,12 @@ const resolveAsset = (
   }
 
   const origin = siteOrigin(context.project.config.deployment.site);
-  const resolved = resolveHref(page.url, asset.src, origin);
+  const resolved = resolveHref(
+    page.url,
+    asset.src,
+    origin,
+    normalizeBasePath(context.project.config.deployment.base)
+  );
   // A subresource on another origin (a CDN, an analytics script) is outside the
   // build; we can't check whether it exists without the network.
   if (resolved.kind === "external" || resolved.kind === "ignored") {

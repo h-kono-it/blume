@@ -138,14 +138,24 @@ export const runAudit = async (options: AuditOptions): Promise<AuditResult> => {
   const context: AuditContext = {
     byUrl,
     files: crawl.files,
-    graph: buildGraph(crawl.pages, siteOrigin(project.config.deployment.site)),
+    graph: buildGraph(
+      crawl.pages,
+      siteOrigin(project.config.deployment.site),
+      normalizeBasePath(project.config.deployment.base)
+    ),
     llms: crawl.llms,
     origin,
     pages: crawl.pages,
     project,
     redirects: resolveRedirects(
       project.config.redirects,
-      new Set([...byUrl.keys()].map(normalizePath))
+      // Pages and static files both: a redirect may legitimately land on a
+      // served asset (`/old-whitepaper` -> `/files/whitepaper.pdf`).
+      new Set(
+        [...byUrl.keys(), ...crawl.files.keys()].map((path) =>
+          normalizePath(path)
+        )
+      )
     ),
     robots: crawl.robots,
     sitemap: crawl.sitemap,

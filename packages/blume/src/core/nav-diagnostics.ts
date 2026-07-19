@@ -91,15 +91,32 @@ export const validateNavIcons = (navigation: Navigation): Diagnostic[] =>
  */
 export const validateSearchPopularIcons = (
   popular: { icon?: string; label: string }[]
-): Diagnostic[] =>
-  unknownIconDiagnostics(
-    popular.flatMap((link) =>
-      link.icon
-        ? [{ icon: link.icon, where: `popular link "${link.label}"` }]
-        : []
-    ),
-    "Use a built-in icon name."
+): Diagnostic[] => {
+  const icons = popular.flatMap((link) =>
+    link.icon
+      ? [{ icon: link.icon, where: `popular link "${link.label}"` }]
+      : []
   );
+  // Asset icons are valid in the nav, so the shared helper skips them — but
+  // here they are exactly the silent failure this validator exists to catch.
+  const diagnostics: Diagnostic[] = [];
+  const seen = new Set<string>();
+  for (const { icon, where } of icons) {
+    if (isAssetIcon(icon) && !seen.has(icon)) {
+      seen.add(icon);
+      diagnostics.push({
+        code: "BLUME_UNKNOWN_ICON",
+        message: `Icon "${icon}" (${where}) is an image or inline SVG — popular links render in the client search island, where only built-in icon names resolve, so it falls back to the file glyph.`,
+        severity: "warning",
+        suggestion: "Use a built-in icon name.",
+      });
+    }
+  }
+  return [
+    ...diagnostics,
+    ...unknownIconDiagnostics(icons, "Use a built-in icon name."),
+  ];
+};
 
 /** Whether an internal path resolves to a page or a section that has pages. */
 const resolvesToPages = (routes: Set<string>, path: string): boolean =>

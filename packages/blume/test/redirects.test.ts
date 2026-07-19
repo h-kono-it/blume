@@ -79,6 +79,19 @@ describe("redirect emitters", () => {
     ]);
   });
 
+  it("normalizes a raw deployment.base before composing", () => {
+    // Astro accepts `/base/` and even `base` for its `base` option; a verbatim
+    // concatenation would emit `/base//new` or a relative `base/new`.
+    expect(applyBaseToAstroRedirects(redirects, "", "/base/")).toStrictEqual([
+      { from: "/old", status: 301, to: "/base/new" },
+      { from: "/tmp", status: 302, to: "/base/temp" },
+    ]);
+    expect(applyBaseToPlatformRedirects(redirects, "", "base")).toStrictEqual([
+      { from: "/base/old", status: 301, to: "/base/new" },
+      { from: "/base/tmp", status: 302, to: "/base/temp" },
+    ]);
+  });
+
   it("leaves a hand-written base and external destinations alone", () => {
     const authored = [
       { from: "/old", status: 301 as const, to: "/base/docs/new" },

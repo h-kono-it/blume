@@ -1,3 +1,4 @@
+import { normalizeBasePath } from "../../core/base-path.ts";
 import type { Diagnostic } from "../../core/types.ts";
 import { finding } from "../catalog.ts";
 import { orphanPages } from "../graph.ts";
@@ -52,6 +53,9 @@ export const linkChecks: CheckModule = {
   run(context) {
     const found: Diagnostic[] = [];
     const origin = siteOrigin(context.project.config.deployment.site);
+    const deployBase = normalizeBasePath(
+      context.project.config.deployment.base
+    );
     /** Broken chrome targets, and the first page each was seen on. */
     const brokenChrome = new Map<string, PageSnapshot>();
     const redirectedChrome = new Map<string, PageSnapshot>();
@@ -99,7 +103,7 @@ export const linkChecks: CheckModule = {
         return;
       }
 
-      const resolved = resolveHref(page.url, link.href, origin);
+      const resolved = resolveHref(page.url, link.href, origin, deployBase);
       if (resolved.kind === "external" || resolved.kind === "ignored") {
         return;
       }
@@ -202,7 +206,8 @@ export const linkChecks: CheckModule = {
       );
     }
 
-    for (const page of orphanPages(context.pages, context.graph)) {
+    const homeUrl = normalizeBasePath(context.project.config.basePath) || "/";
+    for (const page of orphanPages(context.pages, context.graph, homeUrl)) {
       found.push(
         finding(
           "BLUME_AUDIT_ORPHAN_PAGE",

@@ -2,6 +2,7 @@ import { readFile } from "node:fs/promises";
 
 import { join } from "pathe";
 
+import { normalizeBasePath } from "../../core/base-path.ts";
 import type { Diagnostic } from "../../core/types.ts";
 import { finding } from "../catalog.ts";
 import { imageSize } from "../image-size.ts";
@@ -53,6 +54,9 @@ export const ogImageChecks: CheckModule = {
     };
 
     const origin = siteOrigin(context.project.config.deployment.site);
+    const deployBase = normalizeBasePath(
+      context.project.config.deployment.base
+    );
     const candidates: { page: PageSnapshot; path: string }[] = [];
 
     for (const page of context.pages) {
@@ -63,7 +67,7 @@ export const ogImageChecks: CheckModule = {
       // An og:image on another origin (a CDN, an external host) is outside the
       // build — its existence can't be proven without the network, so it's the
       // network tier's business, not this check's.
-      const resolved = resolveHref(page.url, src, origin);
+      const resolved = resolveHref(page.url, src, origin, deployBase);
       if (resolved.kind === "external" || resolved.kind === "ignored") {
         continue;
       }

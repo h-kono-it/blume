@@ -1,3 +1,5 @@
+import { stripBasePath } from "../core/base-path.ts";
+
 /** What an `href` in built HTML turned out to point at. */
 export type ResolvedHref =
   /** A path on this site. */
@@ -38,11 +40,17 @@ export const siteOrigin = (site?: string): string | null => {
  * An absolute URL pointing back at our own origin is reported separately from a
  * genuine external link: it's an internal link that hardcoded the production
  * domain, which silently breaks on preview deploys and under `basePath`.
+ *
+ * `deployBase` is the normalized `deployment.base`: emitted hrefs carry it, but
+ * the built file tree (and so every page URL and file-index key) does not, so it
+ * is stripped here to keep resolved paths comparable. `basePath` is different —
+ * Blume mounts it as a real directory in the build, so it stays.
  */
 export const resolveHref = (
   pageUrl: string,
   href: string,
-  origin: string | null
+  origin: string | null,
+  deployBase = ""
 ): ResolvedHref => {
   const target = href.trim();
   if (target === "" || target.startsWith("#")) {
@@ -65,7 +73,7 @@ export const resolveHref = (
       return {
         hash: parsed.hash.slice(1),
         kind: "self-origin",
-        path: normalizePath(parsed.pathname),
+        path: normalizePath(stripBasePath(deployBase, parsed.pathname)),
       };
     }
     return { kind: "external", url: parsed.toString() };
@@ -90,6 +98,6 @@ export const resolveHref = (
   return {
     hash: resolved.hash.slice(1),
     kind: "internal",
-    path: normalizePath(resolved.pathname),
+    path: normalizePath(stripBasePath(deployBase, resolved.pathname)),
   };
 };

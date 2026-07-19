@@ -116,7 +116,7 @@ export interface BlumeDataConfig {
   /** Open Graph image generation. */
   og: {
     enabled: boolean;
-    /** Extra fonts for the card renderer, resolved to absolute file paths. */
+    /** Extra Google Font family specs for the card renderer, fetched at build. */
     fonts?: OgFont[];
     logo?: string;
     palette?: ResolvedConfig["seo"]["og"]["palette"];

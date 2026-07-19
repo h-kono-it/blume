@@ -1,8 +1,13 @@
+import { normalizeBasePath, stripBasePath } from "../../core/base-path.ts";
 import type { Diagnostic } from "../../core/types.ts";
 import { finding } from "../catalog.ts";
 import { pageSite } from "../locate.ts";
 import type { AuditContext, CheckModule, PageSnapshot } from "../types.ts";
 import { normalizePath } from "../url.ts";
+
+/** The normalized `deployment.base` — hreflang hrefs carry it, page URLs don't. */
+const deployBaseOf = (context: AuditContext): string =>
+  normalizeBasePath(context.project.config.deployment.base);
 
 /** The hreflang value meaning "use this when nothing else matches". Not a locale. */
 const X_DEFAULT = "x-default";
@@ -17,9 +22,9 @@ const isValidBcp47 = (tag: string): boolean => {
 };
 
 /** The site path an hreflang `href` points at, or null when it isn't parseable. */
-const alternatePath = (href: string): string | null => {
+const alternatePath = (href: string, deployBase: string): string | null => {
   try {
-    return normalizePath(new URL(href).pathname);
+    return normalizePath(stripBasePath(deployBase, new URL(href).pathname));
   } catch {
     return null;
   }
@@ -60,6 +65,7 @@ const hreflangChecks = (
 ): Diagnostic[] => {
   const found: Diagnostic[] = [];
   const seen = new Map<string, string[]>();
+  const deployBase = deployBaseOf(context);
 
   for (const alternate of page.hreflang) {
     if (alternate.lang !== X_DEFAULT && !isValidBcp47(alternate.lang)) {
@@ -77,7 +83,7 @@ const hreflangChecks = (
     hrefs.push(alternate.href);
     seen.set(alternate.lang, hrefs);
 
-    const path = alternatePath(alternate.href);
+    const path = alternatePath(alternate.href, deployBase);
     if (path === null) {
       found.push(
         finding(
@@ -111,7 +117,7 @@ const hreflangChecks = (
       );
     } else if (
       target.canonical &&
-      alternatePath(target.canonical) !== normalizePath(target.url)
+      alternatePath(target.canonical, deployBase) !== normalizePath(target.url)
     ) {
       found.push(
         finding(
@@ -137,7 +143,8 @@ const hreflangChecks = (
   }
 
   const self = page.hreflang.find(
-    (alternate) => alternatePath(alternate.href) === normalizePath(page.url)
+    (alternate) =>
+      alternatePath(alternate.href, deployBase) === normalizePath(page.url)
   );
   if (self) {
     if (page.lang && self.lang !== X_DEFAULT && self.lang !== page.lang) {
@@ -181,12 +188,13 @@ const hreflangChecks = (
  */
 const returnTagChecks = (context: AuditContext): Diagnostic[] => {
   const found: Diagnostic[] = [];
+  const deployBase = deployBaseOf(context);
   for (const page of context.pages) {
     for (const alternate of page.hreflang) {
       if (alternate.lang === X_DEFAULT) {
         continue;
       }
-      const path = alternatePath(alternate.href);
+      const path = alternatePath(alternate.href, deployBase);
       if (path === null || path === normalizePath(page.url)) {
         continue;
       }
@@ -196,7 +204,8 @@ const returnTagChecks = (context: AuditContext): Diagnostic[] => {
         continue;
       }
       const returns = target.hreflang.some(
-        (back) => alternatePath(back.href) === normalizePath(page.url)
+        (back) =>
+          alternatePath(back.href, deployBase) === normalizePath(page.url)
       );
       if (!returns) {
         found.push(

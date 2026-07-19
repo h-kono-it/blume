@@ -1,3 +1,4 @@
+import { normalizeBasePath, stripBasePath } from "../../core/base-path.ts";
 import type { Diagnostic } from "../../core/types.ts";
 import { finding } from "../catalog.ts";
 import { pageSite } from "../locate.ts";
@@ -69,7 +70,13 @@ const checkListedUrl = (
     ];
   }
 
-  const path = normalizePath(parsed.pathname);
+  // `<loc>`s carry the deployment base; page URLs (from the file tree) don't.
+  const path = normalizePath(
+    stripBasePath(
+      normalizeBasePath(context.project.config.deployment.base),
+      parsed.pathname
+    )
+  );
   const page = context.byUrl.get(path);
   if (!page) {
     const redirect = context.redirects.find(

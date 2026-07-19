@@ -1,4 +1,8 @@
-import { withBasePath, withComposedBasePath } from "../core/base-path.ts";
+import {
+  normalizeBasePath,
+  withBasePath,
+  withComposedBasePath,
+} from "../core/base-path.ts";
 import type { ResolvedConfig } from "../core/schema.ts";
 
 /**
@@ -31,14 +35,18 @@ export const applyBaseToAstroRedirects = (
   redirects: Redirect[],
   basePath: string,
   deployBase: string
-): Redirect[] =>
-  basePath || deployBase
+): Redirect[] => {
+  // `deployment.base` arrives as the user wrote it (Astro accepts `/base/`,
+  // even `base`); normalizing here keeps the composed paths well-formed.
+  const base = normalizeBasePath(deployBase);
+  return basePath || base
     ? redirects.map((redirect) => ({
         ...redirect,
         from: withBasePath(basePath, redirect.from),
-        to: withComposedBasePath(deployBase, basePath, redirect.to),
+        to: withComposedBasePath(base, basePath, redirect.to),
       }))
     : redirects;
+};
 
 /**
  * Base a redirect for the host platform files below. Unlike Astro's config,
@@ -49,14 +57,16 @@ export const applyBaseToPlatformRedirects = (
   redirects: Redirect[],
   basePath: string,
   deployBase: string
-): Redirect[] =>
-  basePath || deployBase
+): Redirect[] => {
+  const base = normalizeBasePath(deployBase);
+  return basePath || base
     ? redirects.map((redirect) => ({
         ...redirect,
-        from: withComposedBasePath(deployBase, basePath, redirect.from),
-        to: withComposedBasePath(deployBase, basePath, redirect.to),
+        from: withComposedBasePath(base, basePath, redirect.from),
+        to: withComposedBasePath(base, basePath, redirect.to),
       }))
     : redirects;
+};
 
 /** `_redirects` text (Netlify + Cloudflare Pages): `from to status` per line. */
 export const buildNetlifyRedirects = (redirects: Redirect[]): string =>

@@ -54,10 +54,12 @@ const queryString = (
   extra: Record<string, string>
 ): string => {
   const query: string[] = [];
+  const seen = new Set<string>();
   for (const param of params) {
     if (!(param.in === "query" && param.required && param.name)) {
       continue;
     }
+    seen.add(param.name);
     const value = param.example ?? exampleValue(param.schema, schemas);
     query.push(
       `${encodeURIComponent(param.name)}=${encodeURIComponent(
@@ -66,6 +68,11 @@ const queryString = (
     );
   }
   for (const [name, value] of Object.entries(extra)) {
+    // A spec may declare the credential as an explicit query parameter too;
+    // its (better) example wins over the auth placeholder, as in headers.
+    if (seen.has(name)) {
+      continue;
+    }
     query.push(`${encodeURIComponent(name)}=${encodeURIComponent(value)}`);
   }
   return query.length > 0 ? `?${query.join("&")}` : "";

@@ -277,7 +277,8 @@ const remapIcons = (fm) => {
       continue;
     }
     if (lucide !== raw) {
-      fm[i] = `${m.groups.indent}icon: ${lucide}`;
+      const comment = m.groups.comment ? ` ${m.groups.comment}` : "";
+      fm[i] = `${m.groups.indent}icon: ${lucide}${comment}`;
       changes.push({ detail: `${raw} → ${lucide}`, kind: "icon-remap" });
     }
     i += 1;
@@ -301,11 +302,12 @@ const setNested = (fm, parent, child, value) => {
       return { ok: false, reason: "child-exists" };
     }
     fm.splice(start + 1, 0, `  ${child}: ${value}`);
-    return { ok: true };
+    return { index: start + 1, ok: true };
   }
   // No parent block — append one at the end of the frontmatter.
+  const index = fm.length;
   fm.push(`${parent}:`, `  ${child}: ${value}`);
-  return { ok: true };
+  return { index, ok: true };
 };
 
 // Drop unsupported keys, rename Mintlify-only keys, flag ambiguous ones.
@@ -341,14 +343,24 @@ const rewriteFields = (fm) => {
       });
       continue;
     }
+    // Remove the source line before inserting: setNested splices into the
+    // parent block, and when that block sits above the source key the insert
+    // would otherwise shift `start` onto the wrong line. Failure paths don't
+    // mutate `fm`, so the line can be restored as-is on conflict.
+    const [removed] = fm.splice(start, 1);
     const placed = setNested(fm, parent, child, tk.value);
     if (placed.ok) {
-      fm.splice(start, 1);
+      if (placed.index < start) {
+        // The insert above the cursor pushed the unvisited lines down one
+        // slot; revisit the current index so none of them get skipped.
+        i += 1;
+      }
       changes.push({
         detail: `${tk.key} → ${parent}.${child}`,
         kind: "rename",
       });
     } else {
+      fm.splice(start, 0, removed);
       // Target already set, or parent is a scalar — leave the source in place so
       // no data is lost, and report it for manual resolution.
       changes.push({

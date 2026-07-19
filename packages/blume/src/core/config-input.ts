@@ -727,7 +727,7 @@ export interface RssConfig {
   types?: string[];
 }
 
-/** Colors used by generated Open Graph cards. Values must be hex colors. */
+/** Colors used by generated Open Graph cards. Any CSS color — hex, `oklch(…)`, `rgb(…)`, named. */
 export interface OgPaletteConfig {
   /** Fallback mark color. Defaults to the light theme accent. */
   accent?: string;
@@ -749,6 +749,21 @@ export interface OgConfig {
    * value always wins.
    */
   enabled?: boolean;
+  /**
+   * Google Font families for the generated card, extending Takumi's Latin-only
+   * default so non-Latin titles (CJK, and so on) render instead of tofu.
+   * Fetched from Google Fonts at build. A bare string loads the family's
+   * default weights; the object form pins weights (`700`, `[400, 700]`, or a
+   * `"100..900"` variable range) and styles.
+   */
+  fonts?: (
+    | string
+    | {
+        name: string;
+        style?: "normal" | "italic" | ("normal" | "italic")[];
+        weight?: number | number[] | string;
+      }
+  )[];
   /** Local SVG used in the generated card instead of the site logo. */
   logo?: string;
   /** Optional generated-card colors. */

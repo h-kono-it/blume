@@ -1,7 +1,7 @@
 import type { Diagnostic } from "../../core/types.ts";
 import { finding } from "../catalog.ts";
 import { pageSite } from "../locate.ts";
-import type { CheckModule } from "../types.ts";
+import type { CheckModule, PageSnapshot } from "../types.ts";
 import { normalizePath } from "../url.ts";
 
 /** The Open Graph properties a share card is unusable without. */
@@ -160,7 +160,6 @@ export const structuredDataChecks: CheckModule = {
   tier: "static",
 };
 
-/** Pages whose own URL contains a `//`, which is always a `basePath` mistake. */
 /** What makes a slug untidy, with the human name for each offense. */
 const URL_STYLE: { name: string; test: RegExp }[] = [
   { name: "uppercase letters", test: /[A-Z]/u },
@@ -168,10 +167,34 @@ const URL_STYLE: { name: string; test: RegExp }[] = [
   { name: "spaces", test: /%20| /u },
 ];
 
+/** A protocol-relative URL names a dotted host (`//cdn.example.com/x`). */
+const DOTTED_HOST = /^\/\/[^/]*\./u;
+
+/**
+ * Whether an href carries a doubled slash from a trailing-slash `basePath` /
+ * `deployment.base`. `//docs/x` is the telltale: a browser reads it as a
+ * protocol-relative URL with host `docs`, so the link silently leaves the site
+ * — and every link checker skips it as external. An interior `//` (`/docs//x`)
+ * is the same mistake composed mid-path.
+ */
+const doubledSlash = (href: string): boolean => {
+  if (href.startsWith("//")) {
+    return !DOTTED_HOST.test(href);
+  }
+  if (!href.startsWith("/")) {
+    return false;
+  }
+  // Only the path — a query param may legitimately carry a URL.
+  const [path] = href.split(/[?#]/u);
+  return (path ?? "").includes("//");
+};
+
 export const urlChecks: CheckModule = {
   category: "links",
   run(context) {
     const found: Diagnostic[] = [];
+    /** Doubled hrefs are site-wide (a bad base) — one finding per target. */
+    const doubled = new Map<string, PageSnapshot>();
     for (const page of context.pages) {
       if (page.url.includes("//")) {
         found.push(
@@ -181,6 +204,12 @@ export const urlChecks: CheckModule = {
             `URL ${normalizePath(page.url)} contains a double slash.`
           )
         );
+      }
+      for (const link of page.links) {
+        const href = link.href.trim();
+        if (doubledSlash(href) && !doubled.has(href)) {
+          doubled.set(href, page);
+        }
       }
 
       const untidy = URL_STYLE.filter((style) => style.test.test(page.url));
@@ -193,6 +222,15 @@ export const urlChecks: CheckModule = {
           )
         );
       }
+    }
+    for (const [href, page] of doubled) {
+      found.push(
+        finding(
+          "BLUME_AUDIT_DOUBLE_SLASH_URL",
+          pageSite(context, page),
+          `Link to ${href} contains a double slash.`
+        )
+      );
     }
     return found;
   },

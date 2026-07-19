@@ -1,3 +1,4 @@
+import { normalizeBasePath } from "../../core/base-path.ts";
 import { gradeExternal, probeAll } from "../../core/probe.ts";
 import type { ProbeResult } from "../../core/probe.ts";
 import type { Diagnostic } from "../../core/types.ts";
@@ -203,12 +204,15 @@ export const externalChecks: CheckModule = {
   category: "network",
   async run(context) {
     const origin = siteOrigin(context.project.config.deployment.site);
+    const deployBase = normalizeBasePath(
+      context.project.config.deployment.base
+    );
 
     /** Every outbound URL, and the pages that link to it. */
     const linkers = new Map<string, PageSnapshot[]>();
     for (const page of context.pages) {
       for (const link of page.links) {
-        const resolved = resolveHref(page.url, link.href, origin);
+        const resolved = resolveHref(page.url, link.href, origin, deployBase);
         if (resolved.kind !== "external") {
           continue;
         }
