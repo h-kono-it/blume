@@ -19,7 +19,9 @@ const page = (
   id,
   links: [],
   locale: "",
-  meta: pageMetaSchema.parse({ draft, sidebar }),
+  // Mirrors deriveTitle's real behavior: an explicit frontmatter title always
+  // equals the page's resolved title, which most fixtures want to simulate.
+  meta: pageMetaSchema.parse({ draft, sidebar, title }),
   navPath: id,
   route,
   segments: [],
@@ -488,6 +490,127 @@ describe("buildNavigation — explicit config sidebar", () => {
     const unmatched = asPage(nav.sidebar[1]);
     expect(unmatched.route).toBe("/missing");
     expect(unmatched.pageId).toBe("");
+  });
+});
+
+describe("buildNavigation — index title / folder meta title diagnostics", () => {
+  it("warns when an index page's title diverges from its folder's meta.title", () => {
+    const folderMeta = new Map<string, FolderMeta>([
+      ["guide", { title: "Guides" }],
+    ]);
+    const diagnostics: Diagnostic[] = [];
+    buildNavigation([page("guide/index.md", "/guide", "Guide Home")], {
+      diagnostics,
+      folderMeta,
+    });
+    expect(diagnostics).toHaveLength(1);
+    expect(diagnostics[0]?.code).toBe("BLUME_NAV_INDEX_TITLE_MISMATCH");
+    expect(diagnostics[0]?.message).toContain('"Guide Home"');
+    expect(diagnostics[0]?.message).toContain('"Guides"');
+  });
+
+  it("does not warn when the index page's title already matches", () => {
+    const folderMeta = new Map<string, FolderMeta>([
+      ["guide", { title: "Guides" }],
+    ]);
+    const diagnostics: Diagnostic[] = [];
+    buildNavigation([page("guide/index.md", "/guide", "Guides")], {
+      diagnostics,
+      folderMeta,
+    });
+    expect(diagnostics).toHaveLength(0);
+  });
+
+  it("does not warn when the folder has no explicit meta.title", () => {
+    const diagnostics: Diagnostic[] = [];
+    buildNavigation([page("guide/index.md", "/guide", "Guide Home")], {
+      diagnostics,
+      folderMeta: empty,
+    });
+    expect(diagnostics).toHaveLength(0);
+  });
+
+  it("does not warn about a non-index page's title diverging from the group", () => {
+    const folderMeta = new Map<string, FolderMeta>([
+      ["guide", { title: "Guides" }],
+    ]);
+    const diagnostics: Diagnostic[] = [];
+    buildNavigation([page("guide/setup.md", "/guide/setup", "Setup")], {
+      diagnostics,
+      folderMeta,
+    });
+    expect(diagnostics).toHaveLength(0);
+  });
+
+  it("does not warn when the index page has no explicit frontmatter title", () => {
+    // No frontmatter `title` — `title` here simulates a derived value (from an
+    // H1 or the filename), which almost never coincidentally matches a custom
+    // folder title. Flagging that would be noise on exactly the plain-landing
+    // -page case least worth warning about.
+    const folderMeta = new Map<string, FolderMeta>([
+      ["guide", { title: "Guides" }],
+    ]);
+    const diagnostics: Diagnostic[] = [];
+    buildNavigation(
+      [
+        {
+          contentType: "doc",
+          format: "mdx",
+          groups: [],
+          headings: [],
+          id: "guide/index.md",
+          links: [],
+          locale: "",
+          meta: pageMetaSchema.parse({}),
+          navPath: "guide/index.md",
+          route: "/guide",
+          segments: [],
+          source: { name: "filesystem", ref: "guide/index.md" },
+          sourcePath: "/abs/guide/index.md",
+          title: "Index",
+          translationKey: "/guide",
+        },
+      ],
+      { diagnostics, folderMeta }
+    );
+    expect(diagnostics).toHaveLength(0);
+  });
+
+  it("does not warn about the root group's meta.title (never rendered as a label)", () => {
+    const folderMeta = new Map<string, FolderMeta>([["", { title: "Home" }]]);
+    const diagnostics: Diagnostic[] = [];
+    buildNavigation([page("index.md", "/", "Welcome")], {
+      diagnostics,
+      folderMeta,
+    });
+    expect(diagnostics).toHaveLength(0);
+  });
+
+  it("warns for a sidebar-hidden index page, which still renders its own <title>", () => {
+    const folderMeta = new Map<string, FolderMeta>([
+      ["guide", { title: "Guides" }],
+    ]);
+    const diagnostics: Diagnostic[] = [];
+    const nav = buildNavigation(
+      [page("guide/index.md", "/guide", "Guide Home", { hidden: true })],
+      { diagnostics, folderMeta }
+    );
+    expect(diagnostics).toHaveLength(1);
+    expect(diagnostics[0]?.code).toBe("BLUME_NAV_INDEX_TITLE_MISMATCH");
+    // Hidden means hidden: the diagnostic must not leak the page into the tree.
+    expect(nav.sidebar).toHaveLength(0);
+  });
+
+  it("does not warn about a fallback-filled index page (its title belongs to another locale)", () => {
+    const folderMeta = new Map<string, FolderMeta>([
+      ["guide", { title: "Guides" }],
+    ]);
+    const diagnostics: Diagnostic[] = [];
+    buildNavigation(
+      [{ ...page("guide/index.md", "/guide", "Guide Home"), fallback: true }],
+      { diagnostics, folderMeta }
+    );
+    expect(diagnostics).toHaveLength(0);
   });
 });
 
