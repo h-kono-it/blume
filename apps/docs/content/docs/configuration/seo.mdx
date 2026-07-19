@@ -166,6 +166,22 @@ seo: {
 
 Each entry is a family name, or an object pinning its `weight` (a number, a list, or a variable range like `"100..900"`) and `style` (`"normal"`, `"italic"`, or both). The families are fetched from Google Fonts at build — so a build that uses them needs network access — and the renderer only pulls the glyph subsets each title actually uses. Fallback is per-glyph, so adding a family only affects glyphs the built-in font can't draw; Latin text renders exactly as before.
 
+### Custom page titles
+
+A custom [`.astro` page](/docs/advanced/custom-pages) has no frontmatter to read, so its generated card is titled by humanizing the last URL segment of its route — `/getting-started` becomes "Getting Started", but `/cli` becomes "Cli". Name those cards explicitly with `og.titles`, keyed by route (`"/"` addresses the home, whose card otherwise carries the site title):
+
+```ts blume.config.ts lineNumbers
+seo: {
+  og: {
+    titles: {
+      "/cli": "CLI",
+    },
+  },
+}
+```
+
+Entries only apply to custom pages — a content page's card always takes its headline from the page title, so retitle those in frontmatter instead.
+
 `seo.image` is frontmatter, so it only covers Markdown and MDX content. To give a custom [`.astro` page](/docs/advanced/custom-pages) its own social image — a marketing home or landing page, and the way to give the home page alone a bespoke share image — pass the `ogImage` prop to `PageLayout`.
 
 ## RSS feeds

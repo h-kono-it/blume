@@ -870,6 +870,13 @@ const ogConfigSchema = z.strictObject({
   logo: z.string().optional(),
   /** Optional generated-card colors. */
   palette: ogPaletteSchema.optional(),
+  /**
+   * Card headlines for custom `.astro` pages, keyed by route (`"/"`, `"/cli"`).
+   * A custom page has no frontmatter to read, so its card is otherwise titled
+   * by humanizing its last URL segment (`/cli` → "Cli"); an entry here wins.
+   * Content pages always take their card headline from the page title.
+   */
+  titles: z.record(z.string(), z.string()).optional(),
 });
 
 const rssConfigSchema = z.strictObject({

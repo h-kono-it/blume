@@ -42,6 +42,35 @@ describe("customOgRoutes", () => {
       customOgRoutes([page("/pricing"), page("/pricing")], "Acme")
     ).toHaveLength(1);
   });
+
+  it("prefers a seo.og.titles entry over the humanized segment", () => {
+    expect(
+      customOgRoutes([page("/cli"), page("/pricing")], "Acme", {
+        "/cli": "CLI",
+      })
+    ).toEqual([
+      { slug: "cli", title: "CLI" },
+      { slug: "pricing", title: "Pricing" },
+    ]);
+  });
+
+  it("overrides the home title via the / key", () => {
+    expect(customOgRoutes([page("/")], "Acme", { "/": "Acme Docs" })).toEqual([
+      { slug: "index", title: "Acme Docs" },
+    ]);
+  });
+
+  it("normalizes title keys missing or trailing a slash", () => {
+    expect(
+      customOgRoutes([page("/cli"), page("/pricing")], "Acme", {
+        "/pricing/": "Plans",
+        cli: "CLI",
+      })
+    ).toEqual([
+      { slug: "cli", title: "CLI" },
+      { slug: "pricing", title: "Plans" },
+    ]);
+  });
 });
 
 describe("truncate", () => {

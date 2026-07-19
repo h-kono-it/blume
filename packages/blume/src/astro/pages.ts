@@ -149,14 +149,25 @@ const humanizeSegment = (segment: string): string =>
  * — most importantly the landing `/`, the most-shared URL — would have no card.
  *
  * Dynamic (`[param]`) routes and private segments (`_partials`, `.well-known`)
- * are skipped: they aren't shareable pages. The home is titled with the site
- * title; a deeper page is titled from its last path segment. The card's brand
- * lockup, description, and footer come from the resolved config at render time.
+ * are skipped: they aren't shareable pages. A `titles` entry (`seo.og.titles`,
+ * keyed by route) names a card outright — the only way to say "CLI" when the
+ * segment humanizes to "Cli". Otherwise the home is titled with the site title
+ * and a deeper page from its last path segment. The card's brand lockup,
+ * description, and footer come from the resolved config at render time.
  */
 export const customOgRoutes = (
   pages: BlumePageRoute[],
-  siteTitle: string
+  siteTitle: string,
+  titles: Record<string, string> = {}
 ): OgCustomRoute[] => {
+  // Keys normalized to `/`-joined segments so `cli`, `/cli`, and `/cli/` all
+  // address the page served at `/cli` (and `/` addresses the home).
+  const overrides = new Map(
+    Object.entries(titles).map(([route, title]) => [
+      `/${route.split("/").filter(Boolean).join("/")}`,
+      title,
+    ])
+  );
   const seen = new Set<string>();
   const routes: OgCustomRoute[] = [];
   // Extracted so the skip paths become early `return`s (one `continue` budget
@@ -172,7 +183,12 @@ export const customOgRoutes = (
     }
     seen.add(slug);
     const last = segments.at(-1);
-    routes.push({ slug, title: last ? humanizeSegment(last) : siteTitle });
+    routes.push({
+      slug,
+      title:
+        overrides.get(`/${segments.join("/")}`) ??
+        (last ? humanizeSegment(last) : siteTitle),
+    });
   };
   for (const { pattern } of pages) {
     collectRoute(pattern);

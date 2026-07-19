@@ -42,6 +42,7 @@ export default defineConfig({
     ],
   },
   seo: {
+    og: { titles: { "/cli": "CLI" } },
     x: { creator: "@haydenbleasel", handle: "@haydenbleasel" },
   },
   theme: {
