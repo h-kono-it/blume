@@ -85,7 +85,8 @@ const buildLocaleNavigation = (
   fallback: FallbackLocale,
   fallbackByKey: Map<string, PageRecord>,
   options: BuildContentGraphOptions,
-  i18n: ResolvedI18nConfig
+  i18n: ResolvedI18nConfig,
+  diagnostics: Diagnostic[]
 ): Navigation => {
   // Localize internal tab paths — the tab's own and its dropdown items' — so a
   // header tab points to its in-locale route (e.g. `/docs` -> `/fr/docs`);
@@ -112,6 +113,7 @@ const buildLocaleNavigation = (
   );
   return buildNavigation(localePages, {
     basePath: options.basePath ?? "",
+    diagnostics,
     display: options.navigation.sidebar.display,
     featured: options.navigation.featured,
     folderMeta: options.folderMeta,
@@ -137,7 +139,8 @@ const buildLocaleNavigation = (
 const buildI18nNavigation = (
   pages: PageRecord[],
   options: BuildContentGraphOptions,
-  i18n: ResolvedI18nConfig
+  i18n: ResolvedI18nConfig,
+  diagnostics: Diagnostic[]
 ): {
   navigation: Navigation;
   navigationByLocale: Record<string, Navigation>;
@@ -155,16 +158,30 @@ const buildI18nNavigation = (
   }
 
   // Each locale gets an independent tree, so navigation may diverge per language.
+  // Untranslated pages are padded into every locale from the fallback, so a tie
+  // in shared content would otherwise be re-reported once per locale — dedupe on
+  // code + file + message, which are all locale-stable for padded pages. A
+  // locale-specific tie names its own translated files/labels and survives.
   const navigationByLocale: Record<string, Navigation> = {};
+  const seen = new Set<string>();
   for (const { code } of i18n.locales) {
+    const localeDiagnostics: Diagnostic[] = [];
     navigationByLocale[code] = buildLocaleNavigation(
       code,
       pages,
       fallback,
       fallbackByKey,
       options,
-      i18n
+      i18n,
+      localeDiagnostics
     );
+    for (const diagnostic of localeDiagnostics) {
+      const key = `${diagnostic.code}\n${diagnostic.file ?? ""}\n${diagnostic.message}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        diagnostics.push(diagnostic);
+      }
+    }
   }
   const navigation = navigationByLocale[i18n.defaultLocale] ?? {
     featured: [],
@@ -184,10 +201,11 @@ export const buildContentGraph = (
   const { i18n } = options;
 
   const { navigation, navigationByLocale } = i18n
-    ? buildI18nNavigation(pages, options, i18n)
+    ? buildI18nNavigation(pages, options, i18n, diagnostics)
     : {
         navigation: buildNavigation(pages, {
           basePath: options.basePath ?? "",
+          diagnostics,
           display: options.navigation.sidebar.display,
           featured: options.navigation.featured,
           folderMeta: options.folderMeta,
