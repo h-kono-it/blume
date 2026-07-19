@@ -61,16 +61,54 @@ Work through every finding:
 
 When you are done, run \`blume build\` and then \`blume audit\` to verify, and repeat until the audit reports no issues.`;
 
+const spawnAgent = (
+  command: string,
+  args: string[],
+  shell: boolean
+): Promise<number> =>
+  // oxlint-disable-next-line promise/avoid-new -- adapt spawn's event callbacks
+  new Promise((resolve, reject) => {
+    const child = spawn(command, args, { shell, stdio: "inherit" });
+    child.once("error", reject);
+    child.once("close", (code) => resolve(code ?? 1));
+  });
+
+/**
+ * cmd.exe reports a missing executable through this exit code instead of a
+ * spawn error, so a shell launch can't rely on the `error` event for the
+ * "not installed" diagnosis.
+ */
+export const WINDOWS_COMMAND_NOT_FOUND = 9009;
+
 /**
  * Run the agent CLI interactively with the handoff prompt, inheriting the
  * terminal so the user watches and steers the fixes rather than granting a
  * headless process blanket write access. Resolves with the agent's exit code;
  * rejects when the executable isn't on PATH.
+ *
+ * On Windows, npm installs agent CLIs as `.cmd` shims, which Node refuses to
+ * spawn without a shell — and cmd.exe cannot carry the multi-line prompt as an
+ * argument (a newline ends the command). So there the prompt is written to a
+ * file next to the report and handed over via a one-line pointer that survives
+ * cmd.exe quoting; a missing executable surfaces as
+ * {@link WINDOWS_COMMAND_NOT_FOUND} rather than a rejection.
  */
-export const launchAgent = (bin: string, prompt: string): Promise<number> =>
-  // oxlint-disable-next-line promise/avoid-new -- adapt spawn's event callbacks
-  new Promise((resolve, reject) => {
-    const child = spawn(bin, [prompt], { stdio: "inherit" });
-    child.once("error", reject);
-    child.once("close", (code) => resolve(code ?? 1));
-  });
+export const launchAgent = async (
+  bin: string,
+  prompt: string,
+  platform: NodeJS.Platform = process.platform
+): Promise<number> => {
+  if (platform !== "win32") {
+    return await spawnAgent(bin, [prompt], false);
+  }
+  const dir = await mkdtemp(join(tmpdir(), "blume-audit-"));
+  const promptPath = join(dir, "prompt.md");
+  await writeFile(promptPath, prompt);
+  // Double quotes are the one grouping cmd.exe respects; neither the temp
+  // path nor the fixed pointer text can contain one.
+  return await spawnAgent(
+    `"${bin}" "Read ${promptPath} and follow its instructions exactly."`,
+    [],
+    true
+  );
+};

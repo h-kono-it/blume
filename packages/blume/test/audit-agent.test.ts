@@ -114,4 +114,29 @@ describe("launchAgent", () => {
       launchAgent("blume-agent-that-does-not-exist", "prompt")
     ).rejects.toThrow();
   });
+
+  it("hands the prompt over as a file on Windows", async () => {
+    // npm installs the agent CLIs as `.cmd` shims there, which only run
+    // through a shell — and a shell argv can't carry the multi-line prompt.
+    // The launch degrades to a one-line pointer at a prompt file; the shell
+    // quoting is exercised for real here, /bin/sh standing in for cmd.exe.
+    const dir = await mkdtemp(join(tmpdir(), "blume-audit-agent-"));
+    dirs.push(dir);
+    const bin = join(dir, "agent");
+    await writeFile(
+      bin,
+      `#!/bin/sh\nprintf '%s' "$1" > "$(dirname "$0")/prompt.txt"\n`
+    );
+    await chmod(bin, 0o755);
+
+    const prompt = "fix the site\nthen verify with `blume audit`";
+    expect(await launchAgent(bin, prompt, "win32")).toBe(0);
+    const pointer = await readFile(join(dir, "prompt.txt"), "utf-8");
+    expect(pointer).toMatch(
+      /^Read .*prompt\.md and follow its instructions exactly\.$/u
+    );
+    const [promptPath] = pointer.slice("Read ".length).split(" and follow");
+    expect(await readFile(promptPath as string, "utf-8")).toBe(prompt);
+    dirs.push(dirname(promptPath as string));
+  });
 });

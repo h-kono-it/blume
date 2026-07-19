@@ -4,6 +4,7 @@ import {
   AGENTS,
   fixPrompt,
   launchAgent,
+  WINDOWS_COMMAND_NOT_FOUND,
   writeAgentReport,
 } from "../../audit/agent.ts";
 import type { AgentKind } from "../../audit/agent.ts";
@@ -166,6 +167,11 @@ export const auditCommand = defineCommand({
       try {
         code = await launchAgent(cli.bin, fixPrompt(report));
       } catch {
+        code = WINDOWS_COMMAND_NOT_FOUND;
+      }
+      // A POSIX spawn rejects on a missing executable; the Windows shell
+      // launch reports it through cmd.exe's 9009 instead. Same diagnosis.
+      if (code === WINDOWS_COMMAND_NOT_FOUND) {
         logger.error(
           `${cli.name} (\`${cli.bin}\`) was not found on PATH. Install it with \`${cli.install}\`.`
         );
