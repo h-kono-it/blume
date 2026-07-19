@@ -3,6 +3,7 @@ import {
   lstat,
   mkdir,
   readFile,
+  realpath,
   rename,
   rm,
   symlink,
@@ -302,6 +303,47 @@ const astroConflictWarning = (
 };
 
 /**
+ * Drop a `.blume/node_modules` junction that resolves a *different* Blume than
+ * the one running. A restored build cache (e.g. Vercel's) can resurrect the
+ * junction pointing into a superseded store directory — blume@1.1.0's isolated
+ * deps dir after 1.1.1 was installed. Releases rarely bump Astro, so the stale
+ * target still resolves the very same astro and every astro-based probe in
+ * {@link ensureDepsLink} passes through the link — while the `blume/*` imports
+ * in the freshly generated config load the previous release, crashing on any
+ * export added since. Staleness is judged by realpath: the link is stale
+ * exactly when the directory behind it holds a `blume` that isn't `pkgDir`.
+ * A target with no `blume` entry (the workspace layout links
+ * `packages/blume/node_modules`, which holds only the deps) resolves Blume
+ * through the normal ancestor walk and stays. Real directories stay too,
+ * mirroring {@link linkDepsJunction} — we only ever remove a link we own.
+ */
+const dropStaleDepsLink = async (
+  link: string,
+  pkgDir: string
+): Promise<void> => {
+  let existing: Awaited<ReturnType<typeof lstat>>;
+  try {
+    existing = await lstat(link);
+  } catch {
+    return;
+  }
+  if (!existing.isSymbolicLink()) {
+    return;
+  }
+  let linkedBlume: string;
+  let runningBlume: string;
+  try {
+    linkedBlume = await realpath(join(link, "blume"));
+    runningBlume = await realpath(pkgDir);
+  } catch {
+    return;
+  }
+  if (linkedBlume !== runningBlume) {
+    await rm(link, { force: true });
+  }
+};
+
+/**
  * Make the generated runtime resolve Astro and its integrations against Blume's
  * own dependency set. Three failure modes this repairs:
  *
@@ -341,6 +383,10 @@ export const ensureDepsLink = async (
   }
   const mdxDir = candidateHolding(pkgDir, "@astrojs", "mdx");
   const blumeAstro = resolveAstroPackageJson(astroDir);
+  // Before probing what `.blume/` resolves, drop a cache-restored junction
+  // that binds it to a superseded Blume — the probes below would otherwise
+  // pass right through it (same astro, older blume) and leave it in place.
+  await dropStaleDepsLink(join(outDir, "node_modules"), pkgDir);
   const outDirAstro = resolvedAstroPath(outDir);
   // `.blume/` resolves the very same astro Blume's deps provide.
   const astroCorrect = blumeAstro !== null && outDirAstro === blumeAstro;

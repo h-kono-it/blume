@@ -5,6 +5,7 @@ import {
   mkdir,
   mkdtemp,
   readlink,
+  realpath,
   rm,
   symlink,
   writeFile,
@@ -369,6 +370,60 @@ describe("ensureDepsLink", () => {
     // Re-pointed from the stale target to Blume's real store directory.
     expect(await readlink(link)).toBe(store);
     expect(existsSync(join(link, "astro", "package.json"))).toBe(true);
+  });
+
+  it("re-points a cached junction that resolves a superseded Blume", async () => {
+    // A restored build cache (Vercel) resurrects `.blume/node_modules` as a
+    // junction into the *previous* release's store directory. That directory
+    // still holds the same astro — releases rarely bump it — so every
+    // astro-based probe passes through the link, but `blume/*` imports in the
+    // freshly generated config would load the old package and crash on any
+    // export added since (the 1.1.1 `blumeTwoslashTransformer` incident).
+    const { outDir, pkgDir, store } = await isolatedFixture();
+    const staleStore = join(
+      root,
+      "node_modules",
+      ".store",
+      "blume@0",
+      "node_modules"
+    );
+    await fakePackage(staleStore, "astro");
+    await fakePackage(staleStore, "@astrojs/mdx");
+    await fakePackage(staleStore, "blume");
+    const link = join(outDir, "node_modules");
+    await symlink(staleStore, link, "junction");
+    // The trap: astro is perfectly resolvable through the stale link.
+    expect(existsSync(join(link, "astro", "package.json"))).toBe(true);
+
+    await ensureDepsLink(outDir, pkgDir);
+
+    const stats = await lstat(link);
+    expect(stats.isSymbolicLink()).toBe(true);
+    expect(await readlink(link)).toBe(store);
+    // `blume` now resolves to the running package, not the superseded one.
+    expect(await realpath(join(link, "blume"))).toBe(await realpath(pkgDir));
+  });
+
+  it("keeps a junction whose target holds only deps, never Blume itself", async () => {
+    // Workspace source layout: the junction points at Blume's own
+    // `node_modules`, which holds the deps but not `blume` — the package
+    // resolves through the ordinary ancestor walk instead. No `blume` entry
+    // means no staleness verdict, so the link must survive a second pass.
+    const pkgDir = join(root, "packages", "blume");
+    const depsDir = join(pkgDir, "node_modules");
+    await fakePackage(depsDir, "astro");
+    await fakePackage(depsDir, "@astrojs/mdx");
+    const outDir = join(root, "project", ".blume");
+    await mkdir(outDir, { recursive: true });
+    await ensureDepsLink(outDir, pkgDir);
+    const link = join(outDir, "node_modules");
+    expect(await readlink(link)).toBe(depsDir);
+
+    await ensureDepsLink(outDir, pkgDir);
+
+    const stats = await lstat(link);
+    expect(stats.isSymbolicLink()).toBe(true);
+    expect(await readlink(link)).toBe(depsDir);
   });
 
   it("leaves a real node_modules directory untouched", async () => {
