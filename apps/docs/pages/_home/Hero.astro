@@ -14,7 +14,6 @@ const chevronRight = glyph("chevron-right");
 // Latest GitHub release for the hero badge, resolved at build time. Falls back
 // to 0.0.0 when there's no release — or the API is unreachable/rate-limited — so
 // the build never fails on a network hiccup.
-const releasesUrl = repoUrl ? `${repoUrl}/releases` : null;
 const repoMatch = repoUrl?.match(
   /github\.com\/(?<owner>[^/]+)\/(?<repo>[^/]+?)(?:\.git)?\/?$/u
 );
@@ -48,22 +47,12 @@ if (repoMatch?.groups) {
 ---
 
 <section class="text-center">
-  {
-    releasesUrl ? (
-      <a
-        class="inline-flex items-center px-3 py-1 text-muted-foreground text-xs transition-colors hover:text-foreground"
-        href={releasesUrl}
-        rel="noreferrer"
-        target="_blank"
-      >
-        Latest update, v{latestVersion}
-      </a>
-    ) : (
-      <span class="inline-flex items-center px-3 py-1 text-muted-foreground text-xs">
-        Latest update, v{latestVersion}
-      </span>
-    )
-  }
+  <a
+    class="inline-flex items-center px-3 py-1 text-muted-foreground text-xs transition-colors hover:text-foreground"
+    href="/changelog"
+  >
+    Latest update, v{latestVersion}
+  </a>
   <h1
     class="mx-auto mt-6 max-w-3xl text-balance font-medium text-4xl tracking-tight sm:text-5xl lg:text-6xl"
   >
