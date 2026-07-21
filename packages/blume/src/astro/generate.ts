@@ -160,8 +160,9 @@ const resolveAstroPackageJson = (modulesDir: string): string | null => {
 };
 
 /**
- * Realpath of the `astro` package reachable through the normal node_modules
- * ancestor walk from a generated runtime, or null when none resolves.
+ * The `astro` package reachable through the normal node_modules ancestor walk
+ * from a generated runtime — its realpath'd `package.json` plus the
+ * `node_modules` directory the walk found it in — or null when none resolves.
  *
  * This deliberately does not use `createRequire().resolve()`. pnpm's generated
  * bin shim adds Blume's virtual-store dependencies to `NODE_PATH`, which
@@ -170,19 +171,36 @@ const resolveAstroPackageJson = (modulesDir: string): string | null => {
  * reachable skips the dependency link and makes `import "astro/config"` fail.
  * Walking the physical node_modules ancestors mirrors the lookup that config
  * actually gets.
+ *
+ * The containing directory matters as much as the package: under an isolated
+ * linker the walk can find a store-deduped astro in a directory that holds
+ * nothing else of Blume's, so "the right astro resolves" does not imply "the
+ * integrations resolve" — callers must check where the hit came from.
  */
-const resolvedAstroPath = (fromDir: string): string | null => {
+const resolvedAstroHit = (
+  fromDir: string
+): { modulesDir: string; pkg: string } | null => {
   let dir = normalize(fromDir);
   while (true) {
-    const resolved = resolveAstroPackageJson(join(dir, "node_modules"));
-    if (resolved) {
-      return resolved;
+    const modulesDir = join(dir, "node_modules");
+    const pkg = resolveAstroPackageJson(modulesDir);
+    if (pkg) {
+      return { modulesDir, pkg };
     }
     const parent = dirname(dir);
     if (parent === dir) {
       return null;
     }
     dir = parent;
+  }
+};
+
+/** Whether two paths name the same physical directory (realpath equality). */
+const sameRealDir = (a: string, b: string): boolean => {
+  try {
+    return realpathSync(a) === realpathSync(b);
+  } catch {
+    return false;
   }
 };
 
@@ -358,7 +376,11 @@ const dropStaleDepsLink = async (
  *     install. An `overrides` pin plus an incremental `npm install` hoists
  *     astro to the project root (deleting Blume's nested copy) but leaves
  *     `@astrojs/mdx` and friends nested under `blume/node_modules`, where the
- *     upward walk from `.blume/` can't see them.
+ *     upward walk from `.blume/` can't see them. The same shape arises under
+ *     an isolated linker when the workspace itself declares astro at a version
+ *     matching Blume's: the store dedupes both to one copy, so the walk finds
+ *     the "correct" astro through the workspace's own direct-dep symlink — in
+ *     a node_modules holding none of Blume's other deps.
  *
  * The repair is the same symlink: Blume's dependency directory linked in as
  * `.blume/node_modules` so the generated config's bare specifiers (`astro`,
@@ -387,12 +409,22 @@ export const ensureDepsLink = async (
   // that binds it to a superseded Blume — the probes below would otherwise
   // pass right through it (same astro, older blume) and leave it in place.
   await dropStaleDepsLink(join(outDir, "node_modules"), pkgDir);
-  const outDirAstro = resolvedAstroPath(outDir);
+  const outDirHit = resolvedAstroHit(outDir);
   // `.blume/` resolves the very same astro Blume's deps provide.
-  const astroCorrect = blumeAstro !== null && outDirAstro === blumeAstro;
-  // Clean hoisted install: astro is correct and the integrations sit beside
-  // it, so they resolve through the same walk — nothing to do.
-  if (astroCorrect && mdxDir === astroDir) {
+  const astroCorrect = blumeAstro !== null && outDirHit?.pkg === blumeAstro;
+  // Clean hoisted install: astro is correct, found in Blume's own dependency
+  // directory, and the integrations sit beside it — the same walk resolves
+  // them too, so there is nothing to do. Requiring the walk to land in
+  // `astroDir` itself (not merely resolve an identical astro) matters under
+  // isolated linkers: a workspace that declares astro at a version matching
+  // Blume's gets a store-deduped symlink in its own node_modules, so the walk
+  // finds the "correct" astro in a directory holding only the workspace's
+  // direct deps — none of Blume's integrations (issue #103).
+  const walkLandsInDeps =
+    astroCorrect &&
+    outDirHit !== null &&
+    sameRealDir(outDirHit.modulesDir, astroDir);
+  if (walkLandsInDeps && mdxDir === astroDir) {
     return null;
   }
   // Linking the integrations' directory yields a consistent set when it also
@@ -406,7 +438,7 @@ export const ensureDepsLink = async (
   // Split layout: Blume's astro is nested (a conflicting astro took the root
   // spot) but @astrojs/mdx hoisted away from it, binding to the shadow. Only a
   // root pin fixes this — surface it.
-  return astroConflictWarning(blumeAstro, outDirAstro);
+  return astroConflictWarning(blumeAstro, outDirHit?.pkg ?? null);
 };
 
 /**

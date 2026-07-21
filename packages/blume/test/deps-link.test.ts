@@ -183,6 +183,35 @@ describe("ensureDepsLink", () => {
     expect(existsSync(join(link, "astro", "package.json"))).toBe(true);
   });
 
+  it("links when the workspace's own astro dedupes to Blume's copy (issue #103)", async () => {
+    // Bun's isolated linker + the workspace declaring astro at a version
+    // matching Blume's. The workspace's node_modules holds only its direct
+    // deps, but its astro symlink dedupes to the very store entry Blume's set
+    // uses — so the walk from `.blume/` resolves the "correct" astro from a
+    // directory holding none of Blume's integrations. The junction is still
+    // required, or `@astrojs/mdx` is unresolvable and the build dies.
+    const { outDir, pkgDir, store } = await isolatedFixture();
+    const projectModules = join(root, "project", "node_modules");
+    await mkdir(projectModules, { recursive: true });
+    await symlink(
+      join(store, "astro"),
+      join(projectModules, "astro"),
+      "junction"
+    );
+    // The trap: astro already resolves from `.blume/`, and to the right copy.
+    expect(resolvesAstro(outDir)).toBe(true);
+
+    await ensureDepsLink(outDir, pkgDir);
+
+    const link = join(outDir, "node_modules");
+    const stats = await lstat(link);
+    expect(stats.isSymbolicLink()).toBe(true);
+    expect(await readlink(link)).toBe(store);
+    expect(existsSync(join(link, "@astrojs", "mdx", "package.json"))).toBe(
+      true
+    );
+  });
+
   it("links when pnpm's bin shim exposes Astro only through NODE_PATH", async () => {
     const { outDir, pkgDir, store } = await isolatedFixture();
     const generateUrl = pathToFileURL(
