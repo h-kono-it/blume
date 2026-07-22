@@ -247,6 +247,13 @@ ${THEME_MAPPING}
   letter-spacing: 0;
 }
 
+/* A heading can carry one long unbreakable token — an OpenAPI operation's title
+   is \`METHOD /very/long/{path}\` when the spec sets no summary — which would run
+   off the content column. Break it across lines instead of overflowing. */
+.prose :where(h1, h2, h3, h4, h5, h6) {
+  overflow-wrap: break-word;
+}
+
 .prose :where(h1) {
   font-size: 3rem;
   line-height: 1.1;
