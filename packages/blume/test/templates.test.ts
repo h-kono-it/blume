@@ -643,9 +643,33 @@ describe("astroConfigTemplate", () => {
     expect(out).toContain(
       `"blume:examples-theme": ${JSON.stringify(EXAMPLES_THEME_PATH)}`
     );
-    // The dev watcher ignores Astro's cache dir so a migrated (`.`-rooted)
-    // project's docs glob-loader doesn't log noise on every `.blume/.astro`
-    // write. See the `server.watch.ignored` comment in astroConfigTemplate.
+    // The dev watcher must see Astro's cache dir: change events on
+    // `.astro/data-store.json` are the only trigger for Astro's dev-time
+    // content invalidation, and `.md` bodies are rendered into the store at
+    // load time — ignoring it serves stale `.md` HTML until a restart.
+    expect(out).not.toContain(".astro/**");
+  });
+
+  // A migrated (`.`-rooted) project's docs glob-loader watcher fires on every
+  // `.blume/.astro` write ("No entry type found" noise, and a data-store.json
+  // event can re-ingest the store as an entry and loop) — only there is the
+  // cache dir kept out of the watcher. See the watchOption comment.
+  it("ignores Astro's cache dir only when the docs collection watches the runtime dir", () => {
+    const out = astroConfigTemplate({
+      askPath: ASK_PATH,
+      config,
+      contentRoutes: [],
+      contentWatchesRuntimeDir: true,
+      context: context({ contentRoot: "/p" }),
+      dataPath: DATA_PATH,
+      examplesPath: EXAMPLES_PATH,
+      examplesThemePath: EXAMPLES_THEME_PATH,
+      needsReact: false,
+      openapiPath: OPENAPI_PATH,
+      pages: [],
+      searchClientPath: SEARCH_CLIENT_PATH,
+      themePath: THEME_PATH,
+    });
     expect(out).toContain('"/p/.blume/.astro/**"');
   });
 

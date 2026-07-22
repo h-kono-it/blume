@@ -39,7 +39,7 @@ import type { BlumeProject } from "../core/project-graph.ts";
 import type { ResolvedConfig } from "../core/schema.ts";
 import { resolveDocsCollection } from "../core/sources/resolve.ts";
 import { resolveTsconfigAliases } from "../core/tsconfig-aliases.ts";
-import type { Navigation } from "../core/types.ts";
+import type { Navigation, ProjectContext } from "../core/types.ts";
 import { buildRssFeeds, renderRssFeed } from "../deploy/rss.ts";
 import { resolveOgLogo } from "../og/logo.ts";
 import { hasScalarReferences, referenceRoutes } from "../openapi/references.ts";
@@ -87,6 +87,7 @@ import {
   ogEndpointTemplate,
   rawMarkdownEndpointTemplate,
   rssEndpointTemplate,
+  runtimeDirWithin,
   staticJsonEndpointTemplate,
   runtimeDependencies,
   runtimePackageTemplate,
@@ -1305,6 +1306,20 @@ const buildComponentSlots = async (
 };
 
 /**
+ * Whether the docs glob-loader's watcher observes the runtime dir: a
+ * filesystem collection whose base contains it (a migrated, `content.root:
+ * "."` project) — the one layout where the dev watcher must be kept out of
+ * Astro's cache dir. See `devWatchOption` in templates.ts.
+ */
+const contentWatchesRuntimeDir = (
+  hasFilesystemSource: boolean,
+  collectionBase: string,
+  context: ProjectContext
+): boolean =>
+  hasFilesystemSource &&
+  runtimeDirWithin(collectionBase, context.outDir) !== null;
+
+/**
  * Write (or update) the generated `.blume/` Astro runtime for a project.
  * Only files whose content changed are rewritten so Vite HMR stays fast.
  */
@@ -1407,6 +1422,7 @@ export const generateRuntime = async (
   // sources, so the `docs` glob would otherwise scan (and watch) the whole
   // project root for nothing — see contentConfigTemplate.
   const hasFilesystemSource = project.sources.some((source) => !source.staged);
+  const docsCollection = resolveDocsCollection(config, context);
 
   // All of these write to distinct generated paths and never read one another's
   // output, so the structural files, the per-convention hydration wrappers, and
@@ -1421,6 +1437,11 @@ export const generateRuntime = async (
           askPath,
           config,
           contentRoutes: project.manifest.routes.map((route) => route.path),
+          contentWatchesRuntimeDir: contentWatchesRuntimeDir(
+            hasFilesystemSource,
+            docsCollection.base,
+            context
+          ),
           context,
           dataPath,
           examplesPath,
@@ -1446,7 +1467,7 @@ export const generateRuntime = async (
       write(
         join(srcDir, "content.config.ts"),
         contentConfigTemplate({
-          collection: resolveDocsCollection(config, context),
+          collection: docsCollection,
           config,
           context,
           filesystem: hasFilesystemSource,

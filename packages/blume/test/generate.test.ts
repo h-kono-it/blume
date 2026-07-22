@@ -681,12 +681,35 @@ describe("generateRuntime", () => {
     expect(ask).toContain("AskAI.astro");
     const astroConfig = await readFile(join(out, "astro.config.mjs"), "utf-8");
     expect(astroConfig).toContain('"blume:ask"');
+    // Normal layout: the watcher must see `.astro/data-store.json` — Astro's
+    // only dev-time content invalidation trigger, without which `.md` edits
+    // serve stale HTML — so no cache-dir ignore is emitted.
+    expect(astroConfig).not.toContain(".astro/**");
 
     // The default 404 renders through PageLayout and is kept out of search.
     const notFound = await readFile(join(out, "src/pages/404.astro"), "utf-8");
     expect(notFound).toContain("PageLayout");
     expect(notFound).toContain("export const prerender = true;");
     expect(notFound).toContain("noindex={true}");
+  });
+
+  // Only a migrated (`.`-rooted) project keeps the dev watcher out of Astro's
+  // cache dir: its docs glob-loader would otherwise churn on Astro's own
+  // `.blume/.astro` writes. The trade-off (stale `.md` bodies until restart)
+  // is why the ignore must never leak into the normal layout above.
+  it("keeps the dev watcher out of Astro's cache dir for root-rooted content", async () => {
+    const project = await scanProject(
+      await writeProject({
+        "blume.config.ts": 'export default { content: { root: "." } };\n',
+        "index.md": "# Home\n",
+      })
+    );
+    await generateRuntime(project);
+    const astroConfig = await readFile(
+      join(project.context.outDir, "astro.config.mjs"),
+      "utf-8"
+    );
+    expect(astroConfig).toContain(".astro/**");
   });
 
   it("skips the preview route when there are no examples", async () => {
