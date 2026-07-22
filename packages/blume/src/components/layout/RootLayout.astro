@@ -25,7 +25,11 @@ import Breadcrumbs from "./Breadcrumbs.astro";
 import Empty from "./Empty.astro";
 import Favicon from "./Favicon.astro";
 import Fonts from "./Fonts.astro";
-import { BANNER_INIT_SCRIPT, THEME_INIT_SCRIPT } from "./head-scripts.ts";
+import {
+  BANNER_INIT_SCRIPT,
+  SIDEBAR_SCROLL_INIT_SCRIPT,
+  THEME_INIT_SCRIPT,
+} from "./head-scripts.ts";
 import Header from "./Header.astro";
 import Icon from "../Icon.astro";
 import {
@@ -558,7 +562,7 @@ const bannerKey = banner?.dismissible ? banner.key : null;
             </nav>
           )
         }
-        <nav>
+        <nav data-blume-nav-tree>
           {
             MobileNavSlot ? (
               <>
@@ -587,6 +591,7 @@ const bannerKey = banner?.dismissible ? banner.key : null;
           }
         </nav>
       </aside>
+      <script is:inline set:html={SIDEBAR_SCROLL_INIT_SCRIPT} />
       <main class="px-6 pt-6 pb-10 lg:px-8 xl:px-10" id="blume-content">
         <BreadcrumbsSlot
           crumbs={crumbs}
