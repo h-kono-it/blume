@@ -1004,6 +1004,33 @@ export type LastModifiedConfig =
     };
 
 /**
+ * Date presentation for the "last updated" stamp and the changelog timeline —
+ * a curated pass-through to `Intl.DateTimeFormat`, shared by both surfaces.
+ * Defaults to `{ dateStyle: "long" }`. Dates render in UTC unless `timeZone` is
+ * set. `dateStyle` is a preset and can't be combined with the component fields.
+ */
+export interface DateFormatConfig {
+  /** Preset date length; mutually exclusive with the component fields below. */
+  dateStyle?: "full" | "long" | "medium" | "short";
+  /** Weekday representation. */
+  weekday?: "long" | "short" | "narrow";
+  /** Era representation (e.g. the Japanese imperial era). */
+  era?: "long" | "short" | "narrow";
+  /** Year representation. */
+  year?: "numeric" | "2-digit";
+  /** Month representation. */
+  month?: "numeric" | "2-digit" | "long" | "short" | "narrow";
+  /** Day representation. */
+  day?: "numeric" | "2-digit";
+  /** IANA time zone (e.g. `Asia/Tokyo`). Defaults to `UTC`. */
+  timeZone?: string;
+  /** Calendar system (e.g. `japanese`, `buddhist`). */
+  calendar?: string;
+  /** Numbering system (e.g. `latn`, `arab`). */
+  numberingSystem?: string;
+}
+
+/**
  * On-page table of contents. `true`/`false` toggles it; the object form narrows
  * the heading range. Defaults to on, H2–H3.
  */
@@ -1046,6 +1073,11 @@ export interface BlumeConfig {
   basePath?: string;
   /** Where content lives and how it's discovered. */
   content?: ContentConfig;
+  /**
+   * Date presentation for the "last updated" stamp and the changelog timeline.
+   * Pass-through `Intl.DateTimeFormat` options; defaults to `{ dateStyle: "long" }`.
+   */
+  dateFormat?: DateFormatConfig;
   /** Where and how the site deploys (site URL, adapter, output mode). */
   deployment?: DeploymentConfig;
   /** Default meta description, used where a page sets none. */

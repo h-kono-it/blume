@@ -1445,6 +1445,7 @@ const LayoutComponent = resolveSlot(layoutOverrides.Layout, RootLayout);
   page={{ title: seo.title ?? title, description: seo.description ?? frontmatter.description, route }}
   headings={headings}
   toc={data.config.toc}
+  dateFormat={data.config.dateFormat}
   themeMode={data.config.theme.mode}
   fontCssVars={data.fontCssVars}
   searchEnabled={data.config.search.enabled}
@@ -1502,6 +1503,7 @@ import RootLayout from "blume/components/layout/RootLayout.astro";
 import Update from "blume/components/content/Update.astro";
 import { withBase } from "blume/components/islands/base-path.ts";
 import { resolveSlot } from "blume/components/layout/overrides.ts";
+import { resolveDateFormatOptions } from "blume/core/date-format.ts";
 import { layoutOverrides } from "../generated/components.ts";
 import data from "blume:data";
 
@@ -1529,8 +1531,9 @@ const localeMeta = i18n
 const dir = localeMeta?.dir ?? "ltr";
 const htmlLang = i18n ? i18n.defaultLocale : "en";
 
-// Formatted in the same locale as the chrome, and in UTC, to match the
-// per-page "last updated" stamp.
+// Formatted in the same locale as the chrome, and with the configured
+// \`dateFormat\` (UTC by default), to match the per-page "last updated" stamp.
+const dateFormatOptions = resolveDateFormatOptions(data.config.dateFormat);
 const formatDate = (value: string | null | undefined) => {
   if (!value) {
     return;
@@ -1538,10 +1541,7 @@ const formatDate = (value: string | null | undefined) => {
   const date = new Date(value);
   return Number.isNaN(date.getTime())
     ? undefined
-    : new Intl.DateTimeFormat(htmlLang, {
-        dateStyle: "long",
-        timeZone: "UTC",
-      }).format(date);
+    : new Intl.DateTimeFormat(htmlLang, dateFormatOptions).format(date);
 };
 
 const slugify = (text: string) =>

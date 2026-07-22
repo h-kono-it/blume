@@ -1028,6 +1028,49 @@ const lastModifiedConfigSchema = z.union([
   z.strictObject({ type: z.enum(["git", "frontmatter"]).default("git") }),
 ]);
 
+/**
+ * How the "last updated" stamp and the changelog timeline render their dates —
+ * a curated pass-through to `Intl.DateTimeFormat`, shared by both surfaces so
+ * they read alike. Defaults to `{ dateStyle: "long" }`. Both stamps format in
+ * UTC unless a `timeZone` is given, so a date reads the same regardless of the
+ * build machine's zone. `dateStyle` is a preset that can't be combined with the
+ * individual component fields (`year`, `month`, …), matching `Intl`'s own rule.
+ */
+const dateFormatConfigSchema = z
+  .strictObject({
+    /** Calendar system (e.g. `japanese`, `buddhist`). */
+    calendar: z.string().optional(),
+    /** Preset date length; mutually exclusive with the component fields. */
+    dateStyle: z.enum(["full", "long", "medium", "short"]).optional(),
+    /** Day representation. */
+    day: z.enum(["numeric", "2-digit"]).optional(),
+    /** Era representation (e.g. the Japanese imperial era). */
+    era: z.enum(["long", "short", "narrow"]).optional(),
+    /** Month representation. */
+    month: z.enum(["numeric", "2-digit", "long", "short", "narrow"]).optional(),
+    /** Numbering system (e.g. `latn`, `arab`). */
+    numberingSystem: z.string().optional(),
+    /** IANA time zone (e.g. `Asia/Tokyo`). Defaults to `UTC`. */
+    timeZone: z.string().optional(),
+    /** Weekday representation. */
+    weekday: z.enum(["long", "short", "narrow"]).optional(),
+    /** Year representation. */
+    year: z.enum(["numeric", "2-digit"]).optional(),
+  })
+  .refine(
+    (value) =>
+      value.dateStyle === undefined ||
+      (value.weekday === undefined &&
+        value.era === undefined &&
+        value.year === undefined &&
+        value.month === undefined &&
+        value.day === undefined),
+    {
+      message:
+        "dateFormat.dateStyle can't be combined with weekday/era/year/month/day; use one or the other.",
+    }
+  );
+
 /** Code-block rendering options (`markdown.code`). */
 const codeConfigSchema = z.strictObject({
   /**
@@ -1205,6 +1248,11 @@ export const blumeConfigSchema = z.strictObject({
     .optional()
     .transform((value) => normalizeBasePath(value)),
   content: contentConfigSchema.default({}),
+  /**
+   * Date presentation for the "last updated" stamp and the changelog timeline.
+   * Pass-through `Intl.DateTimeFormat` options; defaults to `{ dateStyle: "long" }`.
+   */
+  dateFormat: dateFormatConfigSchema.default({ dateStyle: "long" }),
   deployment: deploymentConfigSchema.default({}),
   description: z.string().optional(),
   /**
@@ -1237,6 +1285,8 @@ export const blumeConfigSchema = z.strictObject({
 
 /** Resolved config: every field present after defaults are applied. */
 export type ResolvedConfig = z.infer<typeof blumeConfigSchema>;
+/** Resolved `dateFormat`: the `Intl.DateTimeFormat` options both date stamps share. */
+export type ResolvedDateFormat = z.infer<typeof dateFormatConfigSchema>;
 /** Resolved `frontmatter.extend`: custom key → user-supplied schema. */
 export type FrontmatterExtend = Record<string, StandardSchema>;
 /** Resolved i18n block (present only when the project opts into i18n). */

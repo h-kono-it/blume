@@ -260,6 +260,54 @@ describe("toc heading-range refinement", () => {
   });
 });
 
+describe("dateFormat config", () => {
+  it("defaults to the long form", () => {
+    expect(blumeConfigSchema.parse({}).dateFormat).toStrictEqual({
+      dateStyle: "long",
+    });
+  });
+
+  it("accepts a dateStyle preset", () => {
+    expect(
+      blumeConfigSchema.parse({ dateFormat: { dateStyle: "medium" } })
+        .dateFormat
+    ).toStrictEqual({ dateStyle: "medium" });
+  });
+
+  it("accepts a numeric component house style", () => {
+    const config = blumeConfigSchema.parse({
+      dateFormat: { day: "2-digit", month: "2-digit", year: "numeric" },
+    });
+    expect(config.dateFormat).toStrictEqual({
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    });
+  });
+
+  it("accepts a custom time zone", () => {
+    expect(
+      blumeConfigSchema.parse({
+        dateFormat: { dateStyle: "short", timeZone: "Asia/Tokyo" },
+      }).dateFormat
+    ).toStrictEqual({ dateStyle: "short", timeZone: "Asia/Tokyo" });
+  });
+
+  it("rejects dateStyle combined with component fields", () => {
+    expect(
+      blumeConfigSchema.safeParse({
+        dateFormat: { dateStyle: "long", year: "numeric" },
+      }).success
+    ).toBe(false);
+  });
+
+  it("rejects unknown keys", () => {
+    expect(
+      blumeConfigSchema.safeParse({ dateFormat: { style: "long" } }).success
+    ).toBe(false);
+  });
+});
+
 describe("analytics script refinement", () => {
   it("accepts a script that sets exactly one of src or content", () => {
     const config = blumeConfigSchema.parse({

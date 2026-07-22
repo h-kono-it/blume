@@ -252,6 +252,33 @@ lastModified: 2026-06-20
 
 When enabled, the date is also emitted as schema.org `dateModified` in the page's structured data.
 
+## Date format
+
+Both the "Last updated" stamp and the [changelog](/docs/advanced/changelog) timeline render their dates through the same `dateFormat`, so they read alike. Dates always render in the site's locale; `dateFormat` controls the _shape_. It defaults to the long form (`July 21, 2026`, `2026年7月21日`):
+
+```ts blume.config.ts
+dateFormat: { dateStyle: "long" },
+```
+
+`dateFormat` is a pass-through to [`Intl.DateTimeFormat`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Intl/DateTimeFormat/DateTimeFormat) options. Use a `dateStyle` preset for a length:
+
+```ts blume.config.ts
+dateFormat: { dateStyle: "medium" },
+```
+
+Or the individual component fields for a numeric house style like `2026/07/21`:
+
+```ts blume.config.ts
+dateFormat: { year: "numeric", month: "2-digit", day: "2-digit" },
+```
+
+| Option | Description |
+| --- | --- |
+| `dateStyle` | Preset length: `"full"`, `"long"`, `"medium"`, or `"short"`. Can't be combined with the component fields. |
+| `weekday`, `era`, `year`, `month`, `day` | Individual components, e.g. `year: "numeric"`, `month: "2-digit"`. |
+| `timeZone` | IANA time zone. Defaults to `UTC`, so a date reads the same regardless of where the site builds. |
+| `calendar`, `numberingSystem` | Calendar system (e.g. `"japanese"`) and numbering system (e.g. `"arab"`). |
+
 ## SEO
 
 Open Graph images, RSS feeds, and JSON-LD structured data, grouped under `seo`. See the [SEO guide](/docs/configuration/seo) for metadata, frontmatter overrides, and the full reference.
