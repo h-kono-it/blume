@@ -29,7 +29,7 @@ const brandText = logo?.text ?? site.title;
 ---
 
 <a
-  class="inline-flex items-center gap-2 font-semibold text-base text-foreground"
+  class="inline-flex min-w-0 items-center gap-2 font-semibold text-base text-foreground"
   href={withBase(brandHref)}
 >
   {
@@ -71,5 +71,5 @@ const brandText = logo?.text ?? site.title;
         </>
       ))
   }
-  {brandText && <span>{brandText}</span>}
+  {brandText && <span class="truncate">{brandText}</span>}
 </a>

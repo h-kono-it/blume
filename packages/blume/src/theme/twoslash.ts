@@ -43,6 +43,16 @@ const OVERRIDES = `
   padding-right: 1.25rem;
 }
 
+/* Twoslash blocks keep \`overflow: visible\` so popups can escape, which means
+   long lines can't scroll — they'd push past the viewport on narrow screens.
+   Wrap them on mobile instead; hover popups still position against the token. */
+@media (max-width: 640px) {
+  .prose pre.twoslash code {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+}
+
 /* The rich renderer renders each popup's type signature as a nested Shiki
    pre. Strip the code-block chrome (border, radius, padding, background) so it
    sits flush inside the popup, which owns the frame. */
