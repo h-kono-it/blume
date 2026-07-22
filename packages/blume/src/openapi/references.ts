@@ -42,6 +42,11 @@ export interface ReferenceSource {
   spec: string;
   /** Per-block Scalar theme name override, if any (Scalar renderer only). */
   theme?: string;
+  /**
+   * Arbitrary Scalar config forwarded to `<ScalarComponent>` (Scalar renderer
+   * only). Takes precedence over Blume's derived spec/theme config.
+   */
+  scalar?: Record<string, unknown>;
   /** Display options carried through to the Blume renderer. */
   display: ReferenceDisplay;
   /**
@@ -117,6 +122,7 @@ const referencesFor = (
       label,
       renderer,
       route,
+      scalar: block.scalar,
       slug: routeSlug(route),
       spec: source.spec,
       theme: block.theme,

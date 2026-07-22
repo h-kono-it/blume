@@ -897,6 +897,13 @@ export interface OpenApiConfig {
   renderer?: "blume" | "scalar";
   /** Where the reference mounts. Defaults to `/reference`. */
   route?: string;
+  /**
+   * Extra Scalar options forwarded verbatim to the embedded `<ScalarComponent>`
+   * (Scalar renderer only) — e.g. `localization`, `agent`,
+   * `hideTestRequestButton`, `orderSchemaPropertiesBy`. These win over Blume's
+   * derived spec/theme config, so it's a full escape hatch to Scalar's API.
+   */
+  scalar?: Record<string, unknown>;
   /** One or more specs; each renders on its own route by default. */
   sources?: OpenApiSource[];
   /** Shorthand for a single source: `sources: [{ spec }]`. */
@@ -915,6 +922,12 @@ export interface AsyncApiConfig {
   enabled?: boolean;
   /** Where the reference mounts. Defaults to `/events`. */
   route?: string;
+  /**
+   * Extra Scalar options forwarded verbatim to the embedded `<ScalarComponent>`.
+   * These win over Blume's derived spec/theme config — a full escape hatch to
+   * Scalar's API.
+   */
+  scalar?: Record<string, unknown>;
   /** One or more specs. */
   sources?: OpenApiSource[];
   /** Shorthand for a single source. */

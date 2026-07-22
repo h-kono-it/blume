@@ -161,6 +161,10 @@ export const buildReferenceFiles = async (options: {
         configuration: {
           ...spec.config,
           ...themeConfiguration(config, ref.theme),
+          // Author-supplied Scalar options win outright — a full escape hatch
+          // over Blume's derived spec/theme config (localization, agent,
+          // hideTestRequestButton, orderSchemaPropertiesBy, and the rest).
+          ...ref.scalar,
         },
         dataImport: `${"../".repeat(depth + 1)}generated/data.json`,
         route: ref.route,

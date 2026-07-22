@@ -44,6 +44,7 @@ import {
   resolveReferences,
 } from "../src/openapi/references.ts";
 import { operationMdx, overviewMdx } from "../src/openapi/render-mdx.ts";
+import { buildReferenceFiles } from "../src/openapi/scalar.ts";
 import { isOpenApiSource, openApiSource } from "../src/openapi/source.ts";
 
 const ctx = (projectRoot: string) => ({
@@ -184,6 +185,52 @@ describe("references", () => {
     expect(hasScalarReferences(config)).toBe(true);
     expect(blumeReferences(config)).toStrictEqual([]);
     expect(resolveReferences(config)[0]?.renderer).toBe("scalar");
+  });
+
+  it("carries a scalar passthrough block onto its references", () => {
+    const config = blumeConfigSchema.parse({
+      openapi: {
+        enabled: true,
+        renderer: "scalar",
+        scalar: {
+          agent: { disabled: true },
+          hideTestRequestButton: true,
+          localization: { locale: "es" },
+          orderSchemaPropertiesBy: "preserve",
+        },
+        spec: "https://example.com/spec.json",
+      },
+    });
+    expect(resolveReferences(config)[0]?.scalar).toStrictEqual({
+      agent: { disabled: true },
+      hideTestRequestButton: true,
+      localization: { locale: "es" },
+      orderSchemaPropertiesBy: "preserve",
+    });
+  });
+
+  it("forwards scalar options into the generated page, winning over theme", async () => {
+    const config = blumeConfigSchema.parse({
+      openapi: {
+        enabled: true,
+        renderer: "scalar",
+        // A remote spec avoids file IO; the config is inlined verbatim.
+        scalar: { localization: { locale: "es" }, theme: "moon" },
+        spec: "https://example.com/spec.json",
+        theme: "purple",
+      },
+    });
+    const { files } = await buildReferenceFiles({
+      config,
+      contentRoutes: new Set(),
+      root: "/tmp",
+    });
+    expect(files).toHaveLength(1);
+    const { content } = files[0] ?? { content: "" };
+    expect(content).toContain('"locale": "es"');
+    // The scalar block's theme wins over the dedicated `theme` field.
+    expect(content).toContain('"theme": "moon"');
+    expect(content).not.toContain('"theme": "purple"');
   });
 
   it("dedupes Blume references that resolve to the same route", () => {

@@ -1129,6 +1129,16 @@ const openapiSourceSchema = z.strictObject({
 export type OpenApiSource = z.infer<typeof openapiSourceSchema>;
 
 /**
+ * Arbitrary Scalar API-reference options forwarded verbatim to the generated
+ * `<ScalarComponent>` (Scalar renderer only). A passthrough map — Blume doesn't
+ * mirror Scalar's full config surface — so keys like `localization`, `agent`,
+ * `hideTestRequestButton`, or `orderSchemaPropertiesBy` all flow through. These
+ * take precedence over Blume's own derived config (spec, theme), so this is a
+ * full escape hatch; the dedicated `theme` field is the ergonomic shorthand.
+ */
+const scalarConfigSchema = z.record(z.string(), z.unknown()).optional();
+
+/**
  * OpenAPI reference. By default (`renderer: "blume"`) Blume parses the spec with
  * Scalar's parser and renders its own UI: one real page per operation, grouped
  * by tag in the sidebar and included in site search, llms.txt, and OG. Set
@@ -1145,6 +1155,8 @@ const openapiConfigSchema = z.strictObject({
   renderer: z.enum(["blume", "scalar"]).default("blume"),
   /** Where the reference mounts. */
   route: z.string().default("/reference"),
+  /** Extra Scalar config forwarded to `<ScalarComponent>` (Scalar renderer only). */
+  scalar: scalarConfigSchema,
   /** One or more specs; each renders on its own route by default. */
   sources: z.array(openapiSourceSchema).default([]),
   /** Shorthand for a single source: `sources: [{ spec }]`. */
@@ -1160,6 +1172,8 @@ const openapiConfigSchema = z.strictObject({
 const asyncapiConfigSchema = z.strictObject({
   enabled: z.boolean().default(false),
   route: z.string().default("/events"),
+  /** Extra Scalar config forwarded to `<ScalarComponent>`. */
+  scalar: scalarConfigSchema,
   sources: z.array(openapiSourceSchema).default([]),
   spec: z.string().optional(),
   theme: z.string().optional(),

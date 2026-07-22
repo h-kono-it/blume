@@ -1185,10 +1185,13 @@ describe("api reference (scalar)", () => {
         label: "API Reference",
         renderer: "blume",
         route: "/reference",
+        // toStrictEqual requires the `scalar`/`theme` keys present and
+        // undefined; null would change what the resolved reference is asserted
+        // to be.
+        // oxlint-disable-next-line sonarjs/no-undefined-assignment
+        scalar: undefined,
         slug: "reference",
         spec: "https://example.com/openapi.json",
-        // toStrictEqual requires the `theme` key present and undefined; null
-        // would change what the resolved reference is asserted to be.
         // oxlint-disable-next-line sonarjs/no-undefined-assignment
         theme: undefined,
       },
