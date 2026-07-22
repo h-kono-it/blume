@@ -339,7 +339,7 @@ const youtube: ComponentMarkdown = ({ props }) => {
 
 /** Fence `code` so its opening/closing run outlengths any backticks inside. */
 const fencedBlock = (lang: string, code: string): string => {
-  const trimmed = code.replace(/\n+$/u, "");
+  const trimmed = code.replace(/(?<!\n)\n+$/u, "");
   const runs = trimmed.match(/`+/gu);
   const longest = runs ? Math.max(...runs.map((run) => run.length)) : 0;
   const fence = "`".repeat(Math.max(3, longest + 1));
