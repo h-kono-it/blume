@@ -376,6 +376,37 @@ describe("model.extractOperations", () => {
     ]);
   });
 
+  it("keeps distinct all-non-ASCII tags on distinct slugs", () => {
+    const { operations, tags } = extractOperations(
+      {
+        openapi: "3.1.0",
+        paths: {
+          "/orders": { get: { operationId: "listOrders", tags: ["注文"] } },
+          "/pets": { get: { operationId: "listPets", tags: ["ペット"] } },
+          "/pets/{petId}": { get: { operationId: "getPet", tags: ["ペット"] } },
+        },
+      } as unknown as ApiDocument,
+      "/api"
+    );
+    const byKey = new Map(operations.map((op) => [op.key, op]));
+    // Both slugify to nothing and fall back to "operations"; sharing the slug
+    // would silently merge the two tags' routes and sections. Collisions gain
+    // a suffix in first-seen order.
+    expect(byKey.get("listorders")?.tagSlug).toBe("operations");
+    expect(byKey.get("listpets")?.tagSlug).toBe("operations-2");
+    expect(byKey.get("listorders")?.route).toBe("/api/operations/listorders");
+    expect(byKey.get("listpets")?.route).toBe("/api/operations-2/listpets");
+    // The same tag name still shares one slug across its operations.
+    expect(byKey.get("getpet")?.tagSlug).toBe("operations-2");
+    // The tag list resolves to the slugs its operations were routed under.
+    expect(
+      tags.map((tag) => ({ name: tag.name, slug: tag.slug }))
+    ).toStrictEqual([
+      { name: "注文", slug: "operations" },
+      { name: "ペット", slug: "operations-2" },
+    ]);
+  });
+
   it("resolves an operation object out of its spec document", () => {
     const { operations } = extractOperations(SPEC_3_1, "/api");
     const spec = { document: SPEC_3_1 } as unknown as ApiSpecData;
@@ -656,9 +687,11 @@ describe("render-mdx", () => {
     };
     const page = operationMdx(specData(), op);
     expect(page.body).toContain("[docs](https://x.dev)");
-    // MDX-special characters are neutralized so the body still compiles.
+    // MDX-special characters are neutralized so the body still compiles. `>`
+    // stays raw — it isn't MDX-special on its own, and escaping it would turn
+    // `> Note:` blockquotes into literal "&gt; Note:" text.
     expect(page.body).toContain("&#123;details&#125;");
-    expect(page.body).toContain("&lt;config&gt;");
+    expect(page.body).toContain("&lt;config>");
     expect(
       page.body.trim().endsWith('<Operation source="api" id="op" />')
     ).toBe(true);
@@ -716,6 +749,94 @@ describe("render-mdx", () => {
     // Prose around the code is still neutralized.
     expect(page.body).toContain("&#123;retries&#125;");
     expect(page.body).toContain("&#105;mport statements");
+  });
+
+  it("does not let an unmatched inline backtick swallow a following fence", () => {
+    const op = {
+      deprecated: false,
+      description: [
+        "One stray ` backtick, then {braces} in prose:",
+        "",
+        "```json",
+        '{"petId": 1}',
+        "```",
+      ].join("\n"),
+      key: "op",
+      method: "get" as const,
+      operationId: "op",
+      path: "/x",
+      route: "/api/x/op",
+      summary: "Do a thing",
+      tag: "x",
+      tagSlug: "x",
+    };
+    const page = operationMdx(specData(), op);
+    // A lone backtick has no equal-length closer, so it must not pair with the
+    // first backtick of the fence run — the prose braces stay escaped and the
+    // fence body stays verbatim, with no entities leaking into it.
+    expect(page.body).toContain(
+      "One stray ` backtick, then &#123;braces&#125;"
+    );
+    expect(page.body).toContain('```json\n{"petId": 1}\n```');
+    expect(page.body).not.toContain('&#123;"petId"');
+  });
+
+  it("keeps a double-backtick span verbatim and escapes an unbalanced run", () => {
+    const balanced = operationMdx(specData(), {
+      deprecated: false,
+      description: "Span `a``b` with {braces}.",
+      key: "op",
+      method: "get" as const,
+      operationId: "op",
+      path: "/x",
+      route: "/api/x/op",
+      summary: "Do a thing",
+      tag: "x",
+      tagSlug: "x",
+    });
+    // A single-backtick span may contain a longer backtick run — it closes on
+    // the next equal-length (single) run and passes through untouched.
+    expect(balanced.body).toContain("`a``b`");
+    expect(balanced.body).toContain("&#123;braces&#125;");
+
+    const unbalanced = operationMdx(specData(), {
+      deprecated: false,
+      description: "Broken ``x` run and {braces} after.",
+      key: "op",
+      method: "get" as const,
+      operationId: "op",
+      path: "/x",
+      route: "/api/x/op",
+      summary: "Do a thing",
+      tag: "x",
+      tagSlug: "x",
+    });
+    // Double backticks with only a single-backtick "closer" form no span, so
+    // the whole line is prose and its braces are escaped.
+    expect(unbalanced.body).toContain("``x`");
+    expect(unbalanced.body).toContain("&#123;braces&#125;");
+  });
+
+  it("leaves a blockquote note in a description un-escaped", () => {
+    const op = {
+      deprecated: false,
+      description: "Heads up:\n\n> **Note:** Braces {inside} a note.\n\nDone.",
+      key: "op",
+      method: "get" as const,
+      operationId: "op",
+      path: "/x",
+      route: "/api/x/op",
+      summary: "Do a thing",
+      tag: "x",
+      tagSlug: "x",
+    };
+    const page = operationMdx(specData(), op);
+    // `>` isn't MDX-special on its own; escaping it would turn the blockquote
+    // into literal "&gt; **Note:**" text.
+    expect(page.body).toContain(
+      "> **Note:** Braces &#123;inside&#125; a note."
+    );
+    expect(page.body).not.toContain("&gt;");
   });
 
   it("gives every operation a distinct meta description", () => {

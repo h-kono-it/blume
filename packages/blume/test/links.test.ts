@@ -97,6 +97,28 @@ describe(extractLinks, () => {
     ]);
   });
 
+  it("keeps balanced parens in a link target", () => {
+    // Wikipedia-style URLs end in `(bar)` — the target must not truncate at
+    // the first `)`.
+    const body = "See [wiki](https://en.wikipedia.org/wiki/Foo_(bar)).";
+    expect(extractLinks(body)).toStrictEqual([
+      {
+        column: 12,
+        line: 1,
+        target: "https://en.wikipedia.org/wiki/Foo_(bar)",
+      },
+    ]);
+  });
+
+  it("extracts both targets of an image-wrapped link", () => {
+    // The outer link target and the nested image target are both validated,
+    // each with a column pointing at its own target.
+    expect(extractLinks("[![alt](/img.png)](/target)")).toStrictEqual([
+      { column: 20, line: 1, target: "/target" },
+      { column: 9, line: 1, target: "/img.png" },
+    ]);
+  });
+
   it("shifts recorded lines by the supplied offset", () => {
     // The body passed in is frontmatter-stripped; the offset re-anchors the
     // recorded lines to the raw file so diagnostics point at the right line.

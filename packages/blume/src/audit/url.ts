@@ -22,6 +22,21 @@ export const normalizePath = (path: string): string => {
   return trimmed === "" ? "/" : trimmed;
 };
 
+/**
+ * Percent-decode a pathname for comparison against the built file tree. Page
+ * URLs and file-index keys come from raw on-disk names, while `URL#pathname`
+ * (and the `encodeURI`'d sitemap `<loc>`s) are percent-encoded — a Japanese
+ * route would never match its own page without this. Malformed sequences are
+ * kept as-is: they can't have come from our own encoder.
+ */
+export const decodePath = (path: string): string => {
+  try {
+    return decodeURI(path);
+  } catch {
+    return path;
+  }
+};
+
 /** The origin of `deployment.site`, or null when no site is configured. */
 export const siteOrigin = (site?: string): string | null => {
   if (!site) {
@@ -73,7 +88,9 @@ export const resolveHref = (
       return {
         hash: parsed.hash.slice(1),
         kind: "self-origin",
-        path: normalizePath(stripBasePath(deployBase, parsed.pathname)),
+        path: normalizePath(
+          stripBasePath(deployBase, decodePath(parsed.pathname))
+        ),
       };
     }
     return { kind: "external", url: parsed.toString() };
@@ -98,6 +115,8 @@ export const resolveHref = (
   return {
     hash: resolved.hash.slice(1),
     kind: "internal",
-    path: normalizePath(stripBasePath(deployBase, resolved.pathname)),
+    path: normalizePath(
+      stripBasePath(deployBase, decodePath(resolved.pathname))
+    ),
   };
 };

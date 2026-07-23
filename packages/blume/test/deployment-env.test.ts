@@ -45,6 +45,33 @@ describe("applyDeploymentEnv", () => {
     expect(result.deployment.site).toBe("https://my-app.vercel.app");
   });
 
+  it("falls through an empty VERCEL_PROJECT_PRODUCTION_URL to VERCEL_URL", () => {
+    // A platform can set a var to the empty string; the chain must fall
+    // through per resolved value instead of dead-ending on the empty one.
+    const result = applyDeploymentEnv(
+      resolve(),
+      env({
+        VERCEL: "1",
+        VERCEL_PROJECT_PRODUCTION_URL: "",
+        VERCEL_URL: "my-app.vercel.app",
+      })
+    );
+    expect(result.deployment.site).toBe("https://my-app.vercel.app");
+  });
+
+  it("falls through empty Netlify URL vars to the first non-empty one", () => {
+    const result = applyDeploymentEnv(
+      resolve(),
+      env({
+        DEPLOY_PRIME_URL: "",
+        DEPLOY_URL: "https://deploy-123.netlify.app",
+        NETLIFY: "true",
+        URL: "",
+      })
+    );
+    expect(result.deployment.site).toBe("https://deploy-123.netlify.app");
+  });
+
   it("infers the adapter for server output", () => {
     const result = applyDeploymentEnv(
       resolve({ output: "server" }),

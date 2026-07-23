@@ -150,6 +150,24 @@ describe("MCP tools", () => {
     expect((JSON.parse(text) as unknown[]).length).toBe(1);
   });
 
+  it("search_docs includes the base-less route alongside the served URL", async () => {
+    const { text } = await callTool("search_docs", {
+      query: "install dev server",
+    });
+    const hits = JSON.parse(text) as { route: string; url: string }[];
+    // `route` is what `get_page` takes; `url` is where the page is served.
+    expect(hits[0]?.route).toBe("/guides/install");
+    expect(hits[0]?.url).toBe("https://docs.example.com/guides/install");
+  });
+
+  it("get_page accepts a full page URL", async () => {
+    const { text, isError } = await callTool("get_page", {
+      route: "https://docs.example.com/guides/install",
+    });
+    expect(isError).toBe(false);
+    expect(text).toContain("# Installation");
+  });
+
   it("get_page returns the raw Markdown source", async () => {
     const { text, isError } = await callTool("get_page", {
       route: "/guides/install",
@@ -219,6 +237,44 @@ describe("MCP tools", () => {
       await call("search_docs", { query: "install dev server" })
     ) as { url: string }[];
     expect(hits[0]?.url).toBe("https://docs.example.com/sub/guides/install");
+  });
+
+  it("get_page strips deployment.base from a full URL or prefixed path", async () => {
+    const based = createMcpFetchHandler({ ...DATA, base: "/sub" });
+    const call = async (route: string) => {
+      const response = await based(
+        new Request("https://docs.example.com/sub/mcp", {
+          body: JSON.stringify({
+            id: 1,
+            jsonrpc: "2.0",
+            method: "tools/call",
+            params: { arguments: { route }, name: "get_page" },
+          }),
+          headers: {
+            accept: "application/json, text/event-stream",
+            "content-type": "application/json",
+          },
+          method: "POST",
+        })
+      );
+      const body = (await response.json()) as {
+        result?: { content?: { text: string }[]; isError?: boolean };
+      };
+      return {
+        isError: body.result?.isError === true,
+        text: body.result?.content?.[0]?.text ?? "",
+      };
+    };
+
+    // An agent handing back a `url` from search_docs or llms.txt: the site and
+    // base are peeled off down to the base-less `pages` key.
+    const fromUrl = await call("https://docs.example.com/sub/guides/install");
+    expect(fromUrl.isError).toBe(false);
+    expect(fromUrl.text).toContain("# Installation");
+
+    const fromPrefixed = await call("/sub/guides/install");
+    expect(fromPrefixed.isError).toBe(false);
+    expect(fromPrefixed.text).toContain("# Installation");
   });
 });
 

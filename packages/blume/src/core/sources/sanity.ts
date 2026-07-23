@@ -8,7 +8,7 @@ import {
   pollingWatch,
   snapshotCache,
 } from "./cache.ts";
-import { slugify } from "./normalize.ts";
+import { slugify, slugifyPath } from "./normalize.ts";
 import { portableTextToMarkdown } from "./portable-text.ts";
 import type { PortableTextBlock } from "./portable-text.ts";
 import type {
@@ -142,9 +142,11 @@ export const sanitySource = (
       "untitled";
     // Fall back to the unique `_id` when a slug (e.g. a non-ASCII `slug.current`)
     // slugifies to empty, so distinct documents don't all collapse to the same
-    // `untitled.md` ref and silently overwrite each other.
+    // `untitled.md` ref and silently overwrite each other. Path-aware: a
+    // `guides/setup` slug keeps its `/` (per-segment slugging) instead of
+    // mashing into `guidessetup`.
     const slug =
-      slugify(slugValue) || slugify(asString(doc._id) ?? "") || "untitled";
+      slugifyPath(slugValue) || slugify(asString(doc._id) ?? "") || "untitled";
 
     const data: Record<string, unknown> = {};
     const title = asString(getPath(doc, fields.title ?? "title"));

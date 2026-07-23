@@ -1,17 +1,24 @@
+import { normalizeBasePath, stripBasePath } from "../../core/base-path.ts";
 import type { Diagnostic } from "../../core/types.ts";
 import { finding } from "../catalog.ts";
 import type { CheckId } from "../catalog.ts";
 import { pageSite } from "../locate.ts";
 import type { AuditContext, CheckModule, PageSnapshot } from "../types.ts";
+import { decodePath } from "../url.ts";
 
-const isNonCanonical = (page: PageSnapshot): boolean => {
+const isNonCanonical = (page: PageSnapshot, deployBase: string): boolean => {
   if (!page.canonical) {
     return false;
   }
   try {
+    // Canonicals are emitted as `site + base + route`; page URLs carry no
+    // deployment base — without stripping it, every page of a subpath
+    // deployment would look non-canonical and escape these checks entirely.
     return (
-      new URL(page.canonical).pathname.replace(/\/$/u, "") !==
-      page.url.replace(/\/$/u, "")
+      stripBasePath(
+        deployBase,
+        decodePath(new URL(page.canonical).pathname)
+      ).replace(/\/$/u, "") !== page.url.replace(/\/$/u, "")
     );
   } catch {
     return false;
@@ -19,8 +26,9 @@ const isNonCanonical = (page: PageSnapshot): boolean => {
 };
 
 /** Pages that can meaningfully be compared against each other for duplication. */
-const comparable = (context: AuditContext): PageSnapshot[] =>
-  context.pages.filter(
+const comparable = (context: AuditContext): PageSnapshot[] => {
+  const deployBase = normalizeBasePath(context.project.config.deployment.base);
+  return context.pages.filter(
     (page) =>
       page.indexable &&
       // A fallback page renders the default locale's content at a localized URL.
@@ -29,8 +37,9 @@ const comparable = (context: AuditContext): PageSnapshot[] =>
       !page.route?.fallback &&
       // A page that points its canonical elsewhere has already declared itself a
       // duplicate; that's the mechanism working, not a finding.
-      !isNonCanonical(page)
+      !isNonCanonical(page, deployBase)
   );
+};
 
 /**
  * Group pages by a value and report every group with more than one member.

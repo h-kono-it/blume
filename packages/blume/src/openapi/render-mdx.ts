@@ -11,13 +11,14 @@ import type { ApiOperationRef, ApiSpecData } from "./model.ts";
  * omit their own top heading.
  */
 
-// Neutralize the few characters MDX treats specially (`{` expressions, `<` JSX)
-// so an arbitrary spec description can be embedded in the body verbatim without
-// breaking compilation. They render as their literal selves.
-const MDX_UNSAFE = /[<>{}]/gu;
+// Neutralize the few characters MDX treats specially (`{` expressions, `<`
+// JSX) so an arbitrary spec description can be embedded in the body verbatim
+// without breaking compilation. They render as their literal selves. `>` is
+// deliberately not escaped: it isn't MDX-special on its own, and escaping it
+// turns a `> Note:` blockquote into literal "&gt; Note:" text.
+const MDX_UNSAFE = /[<{}]/gu;
 const ENTITIES: Record<string, string> = {
   "<": "&lt;",
-  ">": "&gt;",
   "{": "&#123;",
   "}": "&#125;",
 };
@@ -28,8 +29,12 @@ const MDX_ESM_KEYWORD = /^(?<keyword>import|export)\b/gmu;
 // Backtick code — inline spans and fences alike — is already literal in MDX,
 // and entities are NOT decoded inside it, so escaping there would render the
 // entity text verbatim (`/pets/&#123;petId&#125;`). Matching any balanced
-// backtick run covers `code`, ``code``, and ```fences``` in one shot.
-const BACKTICK_CODE = /(?<bt>`+)[\s\S]*?\k<bt>/gu;
+// backtick run covers `code`, ``code``, and ```fences``` in one shot. Both
+// runs are pinned by the backtick lookarounds: CommonMark pairs a span only
+// with an *equal-length* run, so without them a lone backtick would "close" on
+// the first backtick of a longer fence run — leaving `{` in the real prose
+// unescaped (a compile error) and escaping entities into the fence body.
+const BACKTICK_CODE = /(?<!`)(?<bt>`+)(?!`)[\s\S]*?(?<!`)\k<bt>(?!`)/gu;
 
 const escapeProse = (text: string): string =>
   text

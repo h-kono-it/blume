@@ -30,12 +30,17 @@ const PLATFORMS: Platform[] = [
   {
     adapter: "vercel",
     detect: (env) => Boolean(env.VERCEL),
-    site: (env) => toUrl(env.VERCEL_PROJECT_PRODUCTION_URL ?? env.VERCEL_URL),
+    // Fall through per *resolved* value, not per variable — a platform can set
+    // a var to the empty string, which `??` on the raw values treats as
+    // present, dead-ending the chain and silently losing the site URL.
+    site: (env) =>
+      toUrl(env.VERCEL_PROJECT_PRODUCTION_URL) ?? toUrl(env.VERCEL_URL),
   },
   {
     adapter: "netlify",
     detect: (env) => Boolean(env.NETLIFY),
-    site: (env) => toUrl(env.URL ?? env.DEPLOY_PRIME_URL ?? env.DEPLOY_URL),
+    site: (env) =>
+      toUrl(env.URL) ?? toUrl(env.DEPLOY_PRIME_URL) ?? toUrl(env.DEPLOY_URL),
   },
   {
     adapter: "cloudflare",

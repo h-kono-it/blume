@@ -12,7 +12,7 @@ import {
   pollingWatch,
   snapshotCache,
 } from "./cache.ts";
-import { slugify } from "./normalize.ts";
+import { slugifyPath } from "./normalize.ts";
 import type {
   ContentSource,
   SourceContext,
@@ -432,7 +432,9 @@ export const notionSource = (
     const slugProp = richToMarkdown(
       page.properties[props.slug ?? "Slug"]?.rich_text
     );
-    const slug = slugify(slugProp || title) || page.id;
+    // Path-aware: a `guides/setup` slug keeps its `/` (per-segment slugging)
+    // instead of mashing into `guidessetup`.
+    const slug = slugifyPath(slugProp || title) || page.id;
     return { data, slug };
   };
 

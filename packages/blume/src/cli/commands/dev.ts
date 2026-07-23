@@ -2,6 +2,7 @@ import { watch } from "node:fs";
 
 import { dev } from "astro";
 import { defineCommand } from "citty";
+import { basename, dirname } from "pathe";
 
 import { generateRuntime } from "../../astro/generate.ts";
 import { showBlumeErrorOverlay } from "../../astro/integration.ts";
@@ -202,8 +203,10 @@ export const devCommand = defineCommand({
     // Content is watched per source (filesystem uses fs.watch; remote sources
     // are frozen for the session). The remaining project inputs — user pages,
     // config, theme, and component overrides — are watched directly.
+    const dirTargets = [project.context.pagesRoot].filter(
+      (target) => target !== null
+    );
     const fileTargets = [
-      project.context.pagesRoot,
       project.context.configFile,
       project.context.themeFile,
       project.context.componentsFile,
@@ -211,8 +214,22 @@ export const devCommand = defineCommand({
 
     const disposers = [
       ...project.sources.map((source) => source.watch?.(regenerate)),
-      ...fileTargets.map((target) => {
+      ...dirTargets.map((target) => {
         const watcher = watch(target, { recursive: true }, regenerate);
+        return () => watcher.close();
+      }),
+      // Single files are watched via their parent directory: fs.watch on the
+      // file itself tracks the inode, so a rename-replace save (vim and most
+      // "atomic save" editors) orphans the watcher after the first write and
+      // every later edit is silently ignored.
+      ...fileTargets.map((target) => {
+        const name = basename(target);
+        const watcher = watch(dirname(target), (_event, filename) => {
+          // A null filename (some platforms) can't be filtered — regenerate.
+          if (!filename || filename === name) {
+            regenerate();
+          }
+        });
         return () => watcher.close();
       }),
     ].filter((dispose) => dispose !== undefined);

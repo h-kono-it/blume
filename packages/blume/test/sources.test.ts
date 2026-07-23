@@ -13,7 +13,7 @@ import type { FrontmatterExtend } from "../src/core/schema.ts";
 import { entriesDigest } from "../src/core/sources/cache.ts";
 import { filesystemSource } from "../src/core/sources/filesystem.ts";
 import { mdxRemoteSource } from "../src/core/sources/mdx-remote.ts";
-import { normalizeEntry } from "../src/core/sources/normalize.ts";
+import { normalizeEntry, slugifyPath } from "../src/core/sources/normalize.ts";
 import type {
   NormalizeContext,
   SourceContext,
@@ -181,6 +181,19 @@ const entryRouteOf = (entry: Partial<SourceEntry>) =>
     },
     { defaultType: "doc", source: { name: "s", staged: false } }
   ).pages[0];
+
+describe(slugifyPath, () => {
+  it("keeps path separators while slugging each segment", () => {
+    // `slugify` alone deletes `/` with the rest of the punctuation, which
+    // would mash `guides/getting-started` into `guidesgetting-started`.
+    expect(slugifyPath("guides/getting-started")).toBe(
+      "guides/getting-started"
+    );
+    expect(slugifyPath("Guides/Getting Started!")).toBe(
+      "guides/getting-started"
+    );
+  });
+});
 
 describe("normalizeEntry", () => {
   const fsEntry: SourceEntry = {

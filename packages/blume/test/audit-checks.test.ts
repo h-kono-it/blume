@@ -193,6 +193,23 @@ describe("duplicate checks", () => {
     expect(run(duplicateChecks, ctx)).toEqual([]);
   });
 
+  it("still compares pages whose canonicals carry the deployment base", () => {
+    // Canonicals are emitted as `site + base + route`. Without stripping the
+    // base, every page of a subpath deployment would look non-canonical and
+    // escape the duplicate checks entirely.
+    const ctx = context({
+      base: "/docs",
+      pages: [
+        snapshot({ canonical: `${SITE}/docs/a`, url: "/a" }),
+        snapshot({ canonical: `${SITE}/docs/b`, url: "/b" }),
+      ],
+    });
+    const found = run(duplicateChecks, ctx);
+    expect(found).toContain("DUPLICATE_TITLE");
+    expect(found).toContain("DUPLICATE_DESCRIPTION");
+    expect(found).toContain("DUPLICATE_CONTENT");
+  });
+
   it("does not treat two empty pages as duplicate content", () => {
     const ctx = context({
       pages: [
@@ -259,6 +276,18 @@ describe("indexability checks", () => {
   it("is silent on a self-canonical page", () => {
     const ctx = context({
       pages: [snapshot({ canonical: `${SITE}/`, url: "/" })],
+      site: SITE,
+    });
+    expect(run(indexabilityChecks, ctx)).toEqual([]);
+  });
+
+  it("treats a canonical carrying the deployment base as self-canonical", () => {
+    // Canonicals are emitted as `site + base + route`; page URLs carry no
+    // deployment base, so `/docs/guide` on the page served at `/guide` is the
+    // page pointing at itself, not at a missing target.
+    const ctx = context({
+      base: "/docs",
+      pages: [snapshot({ canonical: `${SITE}/docs/guide`, url: "/guide" })],
       site: SITE,
     });
     expect(run(indexabilityChecks, ctx)).toEqual([]);
@@ -902,6 +931,29 @@ describe("sitemap checks", () => {
       sitemap: doc([`${SITE}/`]),
     });
     expect(run(sitemapChecks, ctx)).toContain("INDEXABLE_PAGE_NOT_IN_SITEMAP");
+  });
+
+  it("matches locs carrying the deployment base against base-less page URLs", () => {
+    // `<loc>`s carry `deployment.base`; page URLs (from the built file tree) do
+    // not. Without stripping it, every page of a subpath deployment would be
+    // reported both as missing from the sitemap and as a bad listed URL.
+    const ctx = context({
+      base: "/docs",
+      pages: [snapshot({ url: "/" }), snapshot({ url: "/guide" })],
+      site: SITE,
+      sitemap: doc([`${SITE}/docs/`, `${SITE}/docs/guide`]),
+    });
+    expect(run(sitemapChecks, ctx)).toEqual([]);
+  });
+
+  it("does not call a canonical carrying the deployment base non-canonical", () => {
+    const ctx = context({
+      base: "/docs",
+      pages: [snapshot({ canonical: `${SITE}/docs/guide`, url: "/guide" })],
+      site: SITE,
+      sitemap: doc([`${SITE}/docs/guide`]),
+    });
+    expect(run(sitemapChecks, ctx)).not.toContain("NON_CANONICAL_IN_SITEMAP");
   });
 
   it("does not expect error routes in the sitemap", () => {

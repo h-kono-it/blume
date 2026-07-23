@@ -237,6 +237,21 @@ describe(codeTitleTransformer, () => {
     expect(attrs.dataTitle).toBe("enable lineNumbers later");
     expect(attrs.dataLineNumbers).toBeUndefined();
   });
+
+  it("does not promote a title= embedded in another attribute's value", () => {
+    // The `title="X"` inside the caption's quoted value must not be read as
+    // the block title; the bare token still is.
+    const attrs = metaAttrs(`caption='set title="X" here' file.ts`);
+    expect(attrs.dataTitle).toBe("file.ts");
+    // A real title attribute still wins over the embedded impostor.
+    expect(
+      metaAttrs(`caption='set title="X" here' title="My File"`).dataTitle
+    ).toBe("My File");
+    // And a *title= suffix attr alongside it stays ignored.
+    expect(
+      metaAttrs(`caption='set title="X" here' subtitle="Y"`).dataTitle
+    ).toBeUndefined();
+  });
 });
 
 describe(blumeShikiTransformers, () => {

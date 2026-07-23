@@ -12,9 +12,17 @@ const SERVER_ERROR = 500;
 /** Past this, a page is slow enough that it costs you crawl budget and readers. */
 const SLOW_MS = 1500;
 
-/** The live URL a built page is served at, under the `--url` origin. */
-const liveUrl = (origin: string, page: PageSnapshot): string =>
-  new URL(page.url, origin).toString();
+/**
+ * The live URL a built page is served at, under the `--url` origin. Page URLs
+ * come from the built file tree and carry no `deployment.base`, but the live
+ * site serves everything under it — probing without the base would 4xx every
+ * page of a healthy subpath deployment.
+ */
+const liveUrl = (
+  origin: string,
+  page: PageSnapshot,
+  deployBase: string
+): string => new URL(`${deployBase}${page.url}`, origin).toString();
 
 /**
  * Whether the response failed outright, and how. Null when the page is served.
@@ -144,17 +152,23 @@ export const networkChecks: CheckModule = {
     }
 
     const found: Diagnostic[] = [];
-    const targets = context.pages.map((page) => liveUrl(origin, page));
+    const deployBase = normalizeBasePath(
+      context.project.config.deployment.base
+    );
+    const targets = context.pages.map((page) =>
+      liveUrl(origin, page, deployBase)
+    );
     // robots.txt and sitemap.xml are fetched alongside the pages: they're the
     // two files a crawler asks for first, and a deploy that hides them silently
-    // undoes everything else the audit checks.
-    const robotsUrl = new URL("/robots.txt", origin).toString();
-    const sitemapUrl = new URL("/sitemap.xml", origin).toString();
+    // undoes everything else the audit checks. They sit at the root of the
+    // build output, which the host serves under the deployment base.
+    const robotsUrl = new URL(`${deployBase}/robots.txt`, origin).toString();
+    const sitemapUrl = new URL(`${deployBase}/sitemap.xml`, origin).toString();
 
     const results = await probeAll([...targets, robotsUrl, sitemapUrl]);
 
     for (const page of context.pages) {
-      const result = results.get(liveUrl(origin, page));
+      const result = results.get(liveUrl(origin, page, deployBase));
       if (!result) {
         continue;
       }

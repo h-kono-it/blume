@@ -325,7 +325,11 @@ const kbd = "rounded border border-border bg-muted px-1 py-0.5 font-mono";
         document.addEventListener("keydown", (event) => {
           if (
             (event.key === "k" || event.key === "K") &&
-            (event.metaKey || event.ctrlKey)
+            (event.metaKey || event.ctrlKey) &&
+            // Ctrl+Shift+K is Firefox's web console; a shifted or alted chord
+            // belongs to the browser, not the search dialog.
+            !event.shiftKey &&
+            !event.altKey
           ) {
             // ⌘K toggles, mirroring the Ask AI panel's ⌘I: pressing it with
             // the dialog open must close it, not re-showModal an open dialog

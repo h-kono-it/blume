@@ -3,6 +3,7 @@ import {
   lstat,
   mkdir,
   readFile,
+  readlink,
   realpath,
   rename,
   rm,
@@ -12,7 +13,7 @@ import {
 import { createRequire } from "node:module";
 import { pathToFileURL } from "node:url";
 
-import { basename, dirname, join, normalize, relative } from "pathe";
+import { basename, dirname, join, normalize, relative, resolve } from "pathe";
 import { glob } from "tinyglobby";
 
 import { buildAskData } from "../ai/ask-data.ts";
@@ -285,6 +286,17 @@ const linkDepsJunction = async (
   if (existing) {
     if (!existing.isSymbolicLink()) {
       return;
+    }
+    // Already pointing at the right target — leave it alone. This runs on
+    // every dev regeneration, and an unconditional rm+recreate opens a window
+    // in which the Vite server's module resolution races a missing
+    // `node_modules` and 500s intermittently.
+    try {
+      if (resolve(dirname(link), await readlink(link)) === resolve(depsDir)) {
+        return;
+      }
+    } catch {
+      // Unreadable link — replace it below.
     }
     await rm(link, { force: true });
   }

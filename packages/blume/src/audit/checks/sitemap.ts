@@ -3,7 +3,7 @@ import type { Diagnostic } from "../../core/types.ts";
 import { finding } from "../catalog.ts";
 import { pageSite } from "../locate.ts";
 import type { AuditContext, CheckModule } from "../types.ts";
-import { normalizePath, siteOrigin } from "../url.ts";
+import { decodePath, normalizePath, siteOrigin } from "../url.ts";
 
 const MAX_SITEMAP_BYTES = 50 * 1024 * 1024;
 const MAX_SITEMAP_URLS = 50_000;
@@ -18,12 +18,24 @@ const LASTMOD_SLACK_MS = 24 * 60 * 60 * 1000;
 /** Error routes are never crawlable destinations, so they belong out of the sitemap. */
 const ERROR_ROUTES = new Set(["/404", "/500"]);
 
-/** Site paths listed in the sitemap, normalized for comparison against page URLs. */
-const sitemapPaths = (context: AuditContext): Map<string, string> => {
+/**
+ * Site paths listed in the sitemap, normalized for comparison against page
+ * URLs. `<loc>`s carry the deployment base and are `encodeURI`'d; page URLs
+ * (from the file tree) carry neither, so both are undone here.
+ */
+const sitemapPaths = (
+  context: AuditContext,
+  deployBase: string
+): Map<string, string> => {
   const paths = new Map<string, string>();
   for (const loc of context.sitemap?.urls ?? []) {
     try {
-      paths.set(normalizePath(new URL(loc).pathname), loc);
+      paths.set(
+        normalizePath(
+          stripBasePath(deployBase, decodePath(new URL(loc).pathname))
+        ),
+        loc
+      );
     } catch {
       // A malformed <loc> is reported by SITEMAP_INVALID, not here.
     }
@@ -31,10 +43,20 @@ const sitemapPaths = (context: AuditContext): Map<string, string> => {
   return paths;
 };
 
-/** The path of a canonical URL, or null when it isn't parseable (CANONICAL_BAD_TARGET reports that). */
-const canonicalPath = (canonical: string): string | null => {
+/**
+ * The path of a canonical URL, or null when it isn't parseable
+ * (CANONICAL_BAD_TARGET reports that). Canonicals are emitted as
+ * `site + base + route`, so the deployment base is stripped to keep the result
+ * comparable against base-less page URLs.
+ */
+const canonicalPath = (
+  canonical: string,
+  deployBase: string
+): string | null => {
   try {
-    return normalizePath(new URL(canonical).pathname);
+    return normalizePath(
+      stripBasePath(deployBase, decodePath(new URL(canonical).pathname))
+    );
   } catch {
     return null;
   }
@@ -45,7 +67,8 @@ const checkListedUrl = (
   context: AuditContext,
   loc: string,
   origin: string | null,
-  file: string
+  file: string,
+  deployBase: string
 ): Diagnostic[] => {
   let parsed: URL;
   try {
@@ -70,12 +93,10 @@ const checkListedUrl = (
     ];
   }
 
-  // `<loc>`s carry the deployment base; page URLs (from the file tree) don't.
+  // `<loc>`s carry the deployment base and are `encodeURI`'d; page URLs (from
+  // the file tree) are neither.
   const path = normalizePath(
-    stripBasePath(
-      normalizeBasePath(context.project.config.deployment.base),
-      parsed.pathname
-    )
+    stripBasePath(deployBase, decodePath(parsed.pathname))
   );
   const page = context.byUrl.get(path);
   if (!page) {
@@ -104,7 +125,7 @@ const checkListedUrl = (
     );
   }
 
-  const canonical = page.canonical && canonicalPath(page.canonical);
+  const canonical = page.canonical && canonicalPath(page.canonical, deployBase);
   if (canonical && canonical !== path) {
     found.push(
       finding(
@@ -198,10 +219,15 @@ export const sitemapChecks: CheckModule = {
     }
 
     const origin = siteOrigin(site);
-    const listed = sitemapPaths(context);
+    const deployBase = normalizeBasePath(
+      context.project.config.deployment.base
+    );
+    const listed = sitemapPaths(context, deployBase);
 
     for (const loc of sitemap.urls) {
-      found.push(...checkListedUrl(context, loc, origin, sitemap.file));
+      found.push(
+        ...checkListedUrl(context, loc, origin, sitemap.file, deployBase)
+      );
     }
 
     // The other direction: a page that was built, is indexable, and should be

@@ -180,13 +180,30 @@ const AskAI = ({
     return () => window.removeEventListener("blume:open-ask-ai", handler);
   }, []);
 
-  // ⌘I / Ctrl+I toggles the panel; Escape closes it.
+  // ⌘I / Ctrl+I toggles the panel; Escape closes it. Shift/Alt chords are
+  // left alone — Ctrl+Shift+I is the browser's DevTools shortcut, and
+  // capturing it would flap the panel open alongside them.
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
-      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "i") {
+      if (
+        (event.metaKey || event.ctrlKey) &&
+        !event.shiftKey &&
+        !event.altKey &&
+        event.key.toLowerCase() === "i"
+      ) {
         event.preventDefault();
         setOpen((value) => !value);
       } else if (event.key === "Escape" && open) {
+        // An Escape aimed at a modal surface stacked on top (the search
+        // dialog traps focus inside itself) dismisses that surface only —
+        // this window listener still fires for it, and closing the panel
+        // underneath too would eat the user's conversation view. Duck-typed
+        // (`closest` presence) rather than `instanceof Element`, which needs
+        // a DOM global the test environment doesn't provide.
+        const target = event.target as Partial<Element> | null;
+        if (typeof target?.closest === "function" && target.closest("dialog")) {
+          return;
+        }
         setOpen(false);
       }
     };

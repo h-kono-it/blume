@@ -320,6 +320,34 @@ describe("per-locale navigation", () => {
     expect(graph.navigationByLocale.en?.root).toBe("/");
   });
 
+  it("localizes internal featured link hrefs per locale", async () => {
+    const resolved = blumeConfigSchema.parse({
+      i18n: {
+        defaultLocale: "en",
+        locales: [
+          { code: "en", label: "English" },
+          { code: "fr", label: "Français" },
+        ],
+      },
+      navigation: {
+        featured: [
+          { href: "/changelog", label: "Changelog" },
+          { href: "https://blog.example.com", label: "Blog" },
+        ],
+      },
+    });
+    const { graph } = await buildProject(resolved);
+
+    const hrefs = (locale: string): string[] =>
+      (graph.navigationByLocale[locale]?.featured ?? []).map(
+        (link) => link.href
+      );
+    // A pinned internal link rendered on `/fr/…` pages stays inside the
+    // reader's locale; external links pass through untouched.
+    expect(hrefs("fr")).toEqual(["/fr/changelog", "https://blog.example.com"]);
+    expect(hrefs("en")).toEqual(["/changelog", "https://blog.example.com"]);
+  });
+
   it("localizes tab dropdown item paths per locale", async () => {
     const resolved = blumeConfigSchema.parse({
       i18n: {
@@ -581,6 +609,34 @@ describe("dot parser and shared files", () => {
     // The drift is the French page's, and the diagnostic must say so.
     expect(mismatches[0]?.file).toContain("fr/guides/index.mdx");
     expect(mismatches[0]?.message).toContain('"Guides FR"');
+  });
+
+  it("strips a dir-parser locale directory from a shared $ file's nav path", () => {
+    // `fr/changelog.$.mdx` still sheds the locale dir — otherwise the default
+    // locale would route under `/fr/…` and the French copy at `/fr/fr/…`.
+    expect(
+      localePlacement("fr/changelog.$.mdx", ".mdx", i18nOf())
+    ).toStrictEqual({ locales: ["en", "fr"], navPath: "changelog.mdx" });
+    // A root-level shared file is unchanged.
+    expect(localePlacement("changelog.$.mdx", ".mdx", i18nOf())).toStrictEqual({
+      locales: ["en", "fr"],
+      navPath: "changelog.mdx",
+    });
+  });
+
+  it("keeps the dot parser's shared $ handling unchanged", () => {
+    // Under `dot` translations sit next to originals, so a leading directory
+    // is content structure, never a locale dir to strip.
+    expect(
+      localePlacement(
+        "guides/changelog.$.mdx",
+        ".mdx",
+        i18nOf({ parser: "dot" })
+      )
+    ).toStrictEqual({
+      locales: ["en", "fr"],
+      navPath: "guides/changelog.mdx",
+    });
   });
 
   it("recognizes a default-locale dot suffix as a locale variant", () => {

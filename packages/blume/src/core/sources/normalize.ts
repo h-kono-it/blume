@@ -38,6 +38,15 @@ export const slugify = (text: string): string =>
     .replaceAll(/-+/gu, "-")
     .replaceAll(/^-|-$/gu, "");
 
+/**
+ * {@link slugify} for a slug that may span path segments (`guides/setup`).
+ * `slugify` deletes `/` along with all other punctuation, which would mash
+ * `guides/setup` into `guidessetup` — and collide it with a genuine `guidessetup`
+ * document. Each segment is slugged on its own and the separators kept.
+ */
+export const slugifyPath = (text: string): string =>
+  text.split("/").map(slugify).filter(Boolean).join("/");
+
 /** Title-case a slug segment for display. */
 const titleCase = (value: string): string =>
   value
@@ -104,13 +113,24 @@ type FenceState = "```" | "~~~" | null;
  * the state untouched.
  */
 const nextFenceState = (line: string, fence: FenceState): FenceState => {
-  const delimiter = line.trimStart().match(CODE_FENCE)?.groups?.delimiter as
+  const trimmed = line.trimStart();
+  const delimiter = trimmed.match(CODE_FENCE)?.groups?.delimiter as
     | Exclude<FenceState, null>
     | undefined;
   if (delimiter === undefined) {
     return fence;
   }
   if (fence === null) {
+    // A backtick fence's info string cannot itself contain a backtick
+    // (CommonMark) — a line-leading ```inline``` span is a paragraph, and
+    // opening a phantom fence on it would swallow every heading and link
+    // after it. Tilde fences carry no such rule.
+    if (delimiter === "```") {
+      const run = trimmed.match(/^`+/u)?.[0].length ?? 0;
+      if (trimmed.slice(run).includes("`")) {
+        return fence;
+      }
+    }
     return delimiter;
   }
   return fence === delimiter ? null : fence;
@@ -157,6 +177,13 @@ const PROMPT_CLOSE = /<\/Prompt>/u;
 const linesWithoutFrontMatter = (body: string): string[] => {
   const lines = body.split("\n");
   if (!/^-{3}\s*$/u.test(lines[0] ?? "")) {
+    return lines;
+  }
+  // A blank line directly after the dashes means the body *opens* with a
+  // thematic break, not front matter — YAML metadata starts on the very next
+  // line. Treating it as an unclosed block ate everything up to the next
+  // `---`/`...` line of an already-stripped body.
+  if ((lines[1] ?? "").trim() === "") {
     return lines;
   }
   const close = lines.findIndex(
@@ -304,8 +331,25 @@ export const extractHeadings = (body: string): Heading[] => {
   return headings;
 };
 
-const MD_LINK = /\[[^\]]*\]\((?<target>[^)\s]+)(?:\s+"[^"]*")?\)/gu;
+// The label admits one level of nested brackets so an image-wrapped link
+// (`[![alt](/img.png)](/target)`) matches as the *outer* link — with a flat
+// `[^\]]*` label the match stopped at the image's `]` and the outer target was
+// never seen. The target admits one level of balanced parens so a Wikipedia-
+// style URL (`/wiki/Foo_(bar)`) isn't truncated at its first `)`.
+const MD_LINK =
+  /\[(?<label>(?:[^[\]]|\[[^\]]*\])*)\]\((?<target>(?:[^()\s]|\([^()\s]*\))+)(?<title>\s+"[^"]*")?\)/gu;
+// An image inside a link label; its target was matched (and so validated) as a
+// link of its own before labels admitted nesting, and still should be.
+const MD_IMAGE =
+  /!\[[^\]]*\]\((?<target>(?:[^()\s]|\([^()\s]*\))+)(?<title>\s+"[^"]*")?\)/gu;
 const INLINE_CODE = /`[^`]*`/gu;
+
+/** Column (0-based, within `matched`) where a link/image match's target starts. */
+const targetOffsetIn = (
+  matched: string,
+  target: string,
+  title: string | undefined
+): number => matched.length - 1 - (title?.length ?? 0) - target.length;
 
 /**
  * Extract link targets from a markdown body for later validation, recording the
@@ -335,16 +379,33 @@ const scanLinkLine = (
     if (target === undefined || match.index === undefined) {
       continue;
     }
-    // Locate the target from the `](` boundary rather than searching for the
-    // target text from the match start — otherwise a label that contains the
-    // same text (e.g. `[/a/b](/a/b)`) reports the column inside the label. The
-    // label can't contain `]`, so `](` is unambiguous.
-    const targetOffset = match.index + match[0].indexOf("](") + "](".length;
+    // Locate the target by arithmetic from the match end rather than searching
+    // for its text — a label that contains the same text (e.g. `[/a/b](/a/b)`)
+    // would otherwise report the column inside the label.
+    const targetOffset = targetOffsetIn(match[0], target, match.groups?.title);
     links.push({
-      column: targetOffset + 1,
+      column: match.index + targetOffset + 1,
       line: lineNumber,
       target,
     });
+    // An image nested in the label (`[![alt](/img.png)](/target)`) carries its
+    // own target; surface it too so a missing image is still caught.
+    const label = match[0].slice(0, targetOffset - "](".length);
+    for (const image of label.matchAll(MD_IMAGE)) {
+      const imageTarget = image.groups?.target;
+      if (imageTarget === undefined || image.index === undefined) {
+        continue;
+      }
+      links.push({
+        column:
+          match.index +
+          image.index +
+          targetOffsetIn(image[0], imageTarget, image.groups?.title) +
+          1,
+        line: lineNumber,
+        target: imageTarget,
+      });
+    }
   }
   return next;
 };

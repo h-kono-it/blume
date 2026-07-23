@@ -19,6 +19,17 @@ interface ConfiguredRedirect {
  * An external destination (`https://…`) is always `ok`: it's outside the site,
  * so there's no local page to check it against.
  */
+/**
+ * A destination's page path: the part before any query string or fragment. A
+ * redirect to `/guide#setup` or `/search?q=x` lands on the `/guide` / `/search`
+ * page — the suffix belongs to the browser, not the file tree, so keeping it
+ * would report a working redirect as broken.
+ */
+const pathOnly = (value: string): string => {
+  const cut = value.search(/[?#]/u);
+  return cut === -1 ? value : value.slice(0, cut);
+};
+
 export const resolveRedirects = (
   redirects: readonly ConfiguredRedirect[],
   pageUrls: ReadonlySet<string>
@@ -40,7 +51,7 @@ export const resolveRedirects = (
         chain.push(current);
         break;
       }
-      const next = normalizePath(current);
+      const next = normalizePath(pathOnly(current));
       if (seen.has(next)) {
         chain.push(next);
         return {

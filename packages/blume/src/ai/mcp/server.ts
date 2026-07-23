@@ -5,7 +5,7 @@ import {
   ListToolsRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
 
-import { withBasePath } from "../../core/base-path.ts";
+import { stripBasePath, withBasePath } from "../../core/base-path.ts";
 import { buildOramaIndex, queryOramaIndex } from "../../search/orama-index.ts";
 import type { OramaDoc } from "../../search/orama-index.ts";
 import type { McpData } from "./data.ts";
@@ -81,12 +81,32 @@ const asLimit = (value: unknown): number => {
   return Math.min(Math.max(Math.trunc(num), 1), MAX_SEARCH_LIMIT);
 };
 
-/** Normalize a user-supplied route to a `pages` key (`/`, `/a/b`, no suffix). */
-const normalizeRoute = (input: string): string => {
-  const noTrailing = input.trim().replace(/\/+$/u, "");
+/**
+ * Normalize a user-supplied route to a `pages` key (`/`, `/a/b`, no suffix).
+ * Accepts a full URL too — `search_docs` hits and llms.txt entries carry
+ * `site` + `deployment.base`, and an agent following "pass a route from
+ * `search_docs`" will hand one straight back — reducing it to its base-less,
+ * percent-decoded path.
+ */
+const normalizeRoute = (input: string, data: McpData): string => {
+  let value = input.trim();
+  if (/^https?:\/\//iu.test(value)) {
+    try {
+      value = new URL(value).pathname;
+    } catch {
+      // Not parseable as a URL after all; treat it as a path.
+    }
+  }
+  try {
+    value = decodeURI(value);
+  } catch {
+    // Malformed percent sequence — compare it as written.
+  }
+  const noTrailing = value.replace(/\/+$/u, "");
   const noSuffix = noTrailing.replace(/\.mdx?$/u, "");
   const withSlash = noSuffix.startsWith("/") ? noSuffix : `/${noSuffix}`;
-  return withSlash === "" ? "/" : withSlash;
+  const based = stripBasePath(data.base, withSlash);
+  return based === "" ? "/" : based;
 };
 
 /** Build the absolute (or root-relative) URL for a route. */
@@ -141,8 +161,11 @@ const buildServer = (
         asString(args.query),
         asLimit(args.limit)
       );
+      // `route` is the key `get_page` takes (the tool descriptions promise
+      // it); `url` is where the page is served.
       const results = hits.map((doc: OramaDoc) => ({
         excerpt: excerptFor(doc),
+        route: doc.route,
         title: doc.title,
         url: urlFor(doc.route, data),
       }));
@@ -150,7 +173,7 @@ const buildServer = (
     }
 
     if (name === "get_page") {
-      const key = normalizeRoute(asString(args.route));
+      const key = normalizeRoute(asString(args.route), data);
       const markdown = data.pages[key];
       if (markdown === undefined) {
         return text(

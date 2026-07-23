@@ -473,9 +473,13 @@ const normalizeRef = (ref: string): string => {
     return "/";
   }
   const withSlash = ref.startsWith("/") ? ref : `/${ref}`;
-  const trimmed = withSlash.endsWith("/index")
-    ? withSlash.slice(0, -"/index".length)
-    : withSlash;
+  // Routes are stored slashless (`/guides`, not `/guides/`); a hand-written
+  // `"guides/"` ref must still find its page instead of being silently
+  // dropped from the sidebar.
+  const noTrailing = withSlash.replace(/\/+$/u, "");
+  const trimmed = noTrailing.endsWith("/index")
+    ? noTrailing.slice(0, -"/index".length)
+    : noTrailing;
   // "/index" trims to "" — that's the root, not an empty route.
   return trimmed === "" ? "/" : trimmed;
 };

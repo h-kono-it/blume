@@ -155,6 +155,13 @@ const currentPath = (): string =>
 export const useAskAI = (): UseAskAI => {
   const [messages, setMessages] = useState<AskMessage[]>([]);
   const [loading, setLoading] = useState(false);
+  // The stream writes into the conversation via state updates, so `reset()`
+  // mid-answer must revoke the in-flight request's right to write — otherwise
+  // its next chunk re-appends the assistant bubble onto the emptied list, and
+  // its error path resurrects the entire pre-reset history. Mirrors the
+  // built-in island's generation/abort guard.
+  const generation = useRef(0);
+  const abortRef = useRef<AbortController | null>(null);
 
   // Retained for the compiler-off opt-out path (`react: { compiler: false }`):
   // preserves a stable `ask` identity for consumers that depend on it. With the
@@ -166,6 +173,11 @@ export const useAskAI = (): UseAskAI => {
       if (!trimmed || loading) {
         return;
       }
+      generation.current += 1;
+      const { current } = generation;
+      const controller = new AbortController();
+      abortRef.current = controller;
+      const live = () => current === generation.current;
       const history: AskMessage[] = [
         ...messages,
         { content: trimmed, role: "user" },
@@ -181,30 +193,33 @@ export const useAskAI = (): UseAskAI => {
           }),
           headers: { "content-type": "application/json" },
           method: "POST",
+          signal: controller.signal,
         });
         if (!response.ok) {
           // An error body (JSON, HTML error page) must not stream in as the
           // assistant's answer.
-          assistant.content = ASK_ERROR;
-          setMessages([...history, { ...assistant }]);
+          if (live()) {
+            assistant.content = ASK_ERROR;
+            setMessages([...history, { ...assistant }]);
+          }
           return;
         }
         const reader = response.body?.getReader();
         const decoder = new TextDecoder();
         if (reader) {
           let done = false;
-          while (!done) {
+          while (!done && live()) {
             // oxlint-disable-next-line no-await-in-loop, react-doctor/async-await-in-loop -- sequential stream consumption; iterations are not independent
             const chunk = await reader.read();
             ({ done } = chunk);
-            if (chunk.value) {
+            if (chunk.value && live()) {
               // Streaming mode: a multi-byte UTF-8 sequence split across
               // chunks must not flush as U+FFFD garbage.
               assistant.content += decoder.decode(chunk.value, {
                 stream: true,
               });
-              setMessages((current) => [
-                ...current.slice(0, -1),
+              setMessages((currentMessages) => [
+                ...currentMessages.slice(0, -1),
                 { ...assistant },
               ]);
             }
@@ -212,11 +227,16 @@ export const useAskAI = (): UseAskAI => {
         }
       } catch {
         // A thrown fetch (offline, DNS failure, CORS) must not strand the
-        // pre-appended empty assistant message as a stuck placeholder.
-        assistant.content = ASK_ERROR;
-        setMessages([...history, { ...assistant }]);
+        // pre-appended empty assistant message as a stuck placeholder. A
+        // reset's abort lands here too — the guard keeps it silent.
+        if (live()) {
+          assistant.content = ASK_ERROR;
+          setMessages([...history, { ...assistant }]);
+        }
       } finally {
-        setLoading(false);
+        if (live()) {
+          setLoading(false);
+        }
       }
     },
     [loading, messages]
@@ -225,7 +245,14 @@ export const useAskAI = (): UseAskAI => {
   // Retained for the compiler-off opt-out path (`react: { compiler: false }`):
   // keeps a stable `reset` identity. With the compiler on it's redundant but inert.
   // oxlint-disable-next-line react-doctor/react-compiler-no-manual-memoization -- see above
-  const reset = useCallback(() => setMessages([]), []);
+  const reset = useCallback(() => {
+    generation.current += 1;
+    abortRef.current?.abort();
+    abortRef.current = null;
+    setMessages([]);
+    // The in-flight `ask`'s finally is now stale and won't clear this.
+    setLoading(false);
+  }, []);
 
   return { ask, loading, messages, reset };
 };

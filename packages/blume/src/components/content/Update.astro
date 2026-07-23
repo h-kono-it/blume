@@ -81,3 +81,48 @@ const tagList = Array.isArray(tags) ? tags : tags ? [tags] : [];
     <slot />
   </div>
 </article>
+
+<script>
+  const state = window as Window & { __blumeUpdateIds?: boolean };
+  if (!state.__blumeUpdateIds) {
+    state.__blumeUpdateIds = true;
+
+    // Repeated labels slug to the same id (two "Bug fixes" entries on one
+    // changelog page); suffix the later ones so ids stay unique and each
+    // entry's self-anchor jumps to itself, not the first duplicate. The first
+    // keeps the plain slug, so hash deep-links stay stable. Mirrors the
+    // accordion id dedupe in `AccordionItem.astro`.
+    const dedupeUpdateIds = () => {
+      const seen = new Map<string, number>();
+      for (const update of document.querySelectorAll<HTMLElement>(
+        "[data-blume-update][id]"
+      )) {
+        const previous = update.id;
+        const count = seen.get(previous) ?? 0;
+        seen.set(previous, count + 1);
+        if (count === 0) {
+          continue;
+        }
+        update.id = `${previous}-${count + 1}`;
+        // Re-point the entry's own header anchor when it targets the old id;
+        // an explicit `href` prop (an external permalink) is left alone.
+        const anchor = update.querySelector<HTMLAnchorElement>("header a[href]");
+        const href = anchor?.getAttribute("href");
+        if (anchor && href?.endsWith(`#${previous}`)) {
+          anchor.setAttribute(
+            "href",
+            `${href.slice(0, -previous.length)}${update.id}`
+          );
+        }
+      }
+    };
+
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", dedupeUpdateIds, {
+        once: true,
+      });
+    } else {
+      dedupeUpdateIds();
+    }
+  }
+</script>

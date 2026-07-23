@@ -383,6 +383,46 @@ describe(extractHeadings, () => {
     expect(extractHeadings(body).map((h) => h.text)).toStrictEqual(["After"]);
   });
 
+  it("keeps headings when the body opens with a thematic break", () => {
+    // A leading `---` followed by a blank line is a thematic break, not front
+    // matter — treating it as an unclosed block would eat every heading up to
+    // the next `---` line.
+    const body = ["---", "", "# First", "", "---", "", "## Second"].join("\n");
+    expect(extractHeadings(body).map((h) => h.text)).toStrictEqual([
+      "First",
+      "Second",
+    ]);
+  });
+
+  it("still strips real front matter from a raw document", () => {
+    // YAML starts directly on the line after the dashes; the `#` line inside
+    // the block is a YAML comment and must not surface as a heading.
+    const body = ["---", "title: x", "# a yaml comment", "---", "# Real"].join(
+      "\n"
+    );
+    expect(extractHeadings(body).map((h) => h.text)).toStrictEqual(["Real"]);
+  });
+
+  it("does not open a fence on a line-leading inline code span", () => {
+    // ```inline``` is a paragraph-level code span (a backtick fence's info
+    // string cannot contain a backtick) — opening a phantom fence on it would
+    // swallow every heading after it.
+    const body = ["```inline``` is a span", "", "## After"].join("\n");
+    expect(extractHeadings(body).map((h) => h.text)).toStrictEqual(["After"]);
+  });
+
+  it("still opens a fence with an info string", () => {
+    const body = ["```js", "## Hidden", "```", "## After"].join("\n");
+    expect(extractHeadings(body).map((h) => h.text)).toStrictEqual(["After"]);
+  });
+
+  it("still opens a longer-run fence with an info string", () => {
+    // Four backticks plus an info string: the trailing text holds no backtick
+    // beyond the opening run, so this is a real fence, not a code span.
+    const body = ["````md fence", "## Hidden", "````", "## After"].join("\n");
+    expect(extractHeadings(body).map((h) => h.text)).toStrictEqual(["After"]);
+  });
+
   it("keeps a trailing # that is part of the heading text", () => {
     const body = ["## What is C#", "## Setup ##"].join("\n");
     // A closing hash sequence needs preceding whitespace (CommonMark); a bare

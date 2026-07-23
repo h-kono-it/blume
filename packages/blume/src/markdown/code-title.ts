@@ -51,7 +51,13 @@ const parseTitle = (raw: string | undefined): string | undefined => {
   if (!raw) {
     return undefined;
   }
-  const explicit = raw.match(TITLE_ATTR);
+  // Blank every *other* quoted attr first, so a `title="…"` embedded in
+  // another attribute's value (`caption='set title="X" here'`) can't be
+  // promoted to the block title.
+  const scrubbed = raw.replace(QUOTED_ATTR, (attr) =>
+    attr.startsWith("title=") ? attr : " "
+  );
+  const explicit = scrubbed.match(TITLE_ATTR);
   const attrTitle = explicit?.groups?.dq ?? explicit?.groups?.sq;
   if (attrTitle) {
     return attrTitle;

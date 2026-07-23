@@ -102,6 +102,32 @@ const isOperation = (value: unknown): value is OperationObject =>
   typeof value === "object" && value !== null;
 
 /**
+ * Assign each distinct tag name a unique slug. `slugify` can collapse
+ * different names onto one value — any two all-non-ASCII tags (`ペット`,
+ * `注文`) both fall through to the `operations` fallback — and a shared slug
+ * silently merges the tags' routes, sidebar groups, and overview sections.
+ * Collisions gain `-2`, `-3`, … in first-seen order.
+ */
+const tagSlugger = (): ((name: string) => string) => {
+  const assigned = new Map<string, string>();
+  const taken = new Set<string>();
+  return (name) => {
+    const existing = assigned.get(name);
+    if (existing) {
+      return existing;
+    }
+    const base = slugify(name) || "operations";
+    let slug = base;
+    for (let suffix = 2; taken.has(slug); suffix += 1) {
+      slug = `${base}-${suffix}`;
+    }
+    taken.add(slug);
+    assigned.set(name, slug);
+    return slug;
+  };
+};
+
+/**
  * Flatten a 3.1 document into a route-mapped operation list and its ordered
  * tags. Operations inherit the first tag they declare; keys are de-duplicated so
  * a repeated `operationId` still yields distinct routes. `warnings` reports
@@ -119,6 +145,7 @@ export const extractOperations = (
   );
   const seen = new Set<string>();
   const warnings: string[] = [];
+  const slugForTag = tagSlugger();
 
   for (const [path, rawItem] of Object.entries(document.paths ?? {})) {
     const item = rawItem as PathItemObject | undefined;
@@ -137,7 +164,7 @@ export const extractOperations = (
         continue;
       }
       const tag = operation.tags?.[0] ?? UNTAGGED;
-      const tagSlug = slugify(tag) || "operations";
+      const tagSlug = slugForTag(tag);
       if (!tagsSeen.has(tag)) {
         tagsSeen.add(tag);
         tagOrder.push(tag);
@@ -166,7 +193,9 @@ export const extractOperations = (
   const tags: ApiTagRef[] = tagOrder.map((name) => ({
     description: tagMeta.get(name) ?? "",
     name,
-    slug: slugify(name) || "operations",
+    // The same slugger instance, so every tag resolves to the slug its
+    // operations were routed under.
+    slug: slugForTag(name),
   }));
 
   return { operations, tags, warnings };

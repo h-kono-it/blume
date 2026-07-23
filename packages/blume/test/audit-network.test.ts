@@ -24,6 +24,7 @@ const ROUTES: Record<
   { status?: number; headers?: Record<string, string>; body?: string }
 > = {
   "/": { headers: { "content-encoding": "gzip" } },
+  "/docs/based": { headers: { "content-encoding": "gzip" } },
   "/gone": { status: 404 },
   "/insecure": { headers: { "x-robots-tag": "noindex" } },
   "/oops": { status: 500 },
@@ -152,6 +153,19 @@ describe("network checks", () => {
       withOrigin([snapshot({ url: "/insecure" })])
     );
     expect(found).toContain("ROBOTS_HEADER_CONFLICT");
+  });
+
+  it("probes pages under the deployment base", async () => {
+    // The live site serves everything under `deployment.base`, but page URLs
+    // (from the built file tree) do not carry it. The fixture server only
+    // answers /docs/based, so probing without the base would 4xx a healthy page.
+    const ctx = {
+      ...context({ base: "/docs", pages: [snapshot({ url: "/based" })] }),
+      origin: ORIGIN,
+    };
+    const found = await run(networkChecks, ctx);
+    expect(found).not.toContain("HTTP_4XX");
+    expect(found).not.toContain("NOT_COMPRESSED");
   });
 
   it("reports a sitemap that is in the build but unreachable", async () => {

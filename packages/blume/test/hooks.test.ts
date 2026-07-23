@@ -115,6 +115,12 @@ const setFetch = (
   globalThis.fetch = handler as typeof fetch;
 };
 
+/**
+ * Yield a macrotask: every pending microtask flushes first, letting an
+ * in-flight `ask` advance to (or past) its next `reader.read()`.
+ */
+const flush = (): Promise<void> => Bun.sleep(0);
+
 describe("useBlume / usePage", () => {
   it("returns null without the injected snapshot", () => {
     // No `document` in this runtime yet — the SSR guard path.
@@ -310,5 +316,71 @@ describe("useAskAI", () => {
     expect(messages).toHaveLength(2);
     reset();
     expect(render(useAskAI).messages).toStrictEqual([]);
+  });
+
+  it("discards stream chunks that land after a mid-answer reset", async () => {
+    const encoder = new TextEncoder();
+    let controller: ReadableStreamDefaultController<Uint8Array> | undefined;
+    setFetch(() =>
+      Promise.resolve(
+        new Response(
+          new ReadableStream<Uint8Array>({
+            start(streamController) {
+              controller = streamController;
+            },
+          }),
+          { status: 200 }
+        )
+      )
+    );
+    // `ask` and `reset` must come from the same render so they share the
+    // generation guard.
+    const { ask, reset } = freshRender(useAskAI);
+    const pending = ask("streaming?");
+    await flush();
+    controller?.enqueue(encoder.encode("Partial "));
+    await flush();
+    // Mid-answer: user bubble plus the streaming assistant bubble.
+    expect(render(useAskAI).messages).toStrictEqual([
+      { content: "streaming?", role: "user" },
+      { content: "Partial ", role: "assistant" },
+    ]);
+
+    reset();
+    expect(render(useAskAI).messages).toStrictEqual([]);
+    expect(render(useAskAI).loading).toBe(false);
+
+    // Chunks the revoked stream still delivers must not re-append the
+    // assistant bubble onto the emptied conversation.
+    controller?.enqueue(encoder.encode("late"));
+    controller?.close();
+    await pending;
+    const after = render(useAskAI);
+    expect(after.messages).toStrictEqual([]);
+    expect(after.loading).toBe(false);
+  });
+
+  it("does not resurrect pre-reset history through the error path", async () => {
+    setFetch(() => Promise.resolve(streamResponse(["ok"])));
+    const initial = freshRender(useAskAI);
+    await initial.ask("hi");
+    // Re-render so `ask` sees the settled conversation; `ask` and `reset`
+    // share this render's generation guard.
+    const mid = render(useAskAI);
+    expect(mid.messages).toHaveLength(2);
+
+    const gate = Promise.withResolvers<Response>();
+    setFetch(() => gate.promise);
+    const pending = mid.ask("more?");
+    mid.reset();
+    expect(render(useAskAI).messages).toStrictEqual([]);
+
+    // The failure lands after the reset: its catch must not write the
+    // pre-reset history (plus error notice) back into the emptied state.
+    gate.reject(new TypeError("Failed to fetch"));
+    await expect(pending).resolves.toBeUndefined();
+    const after = render(useAskAI);
+    expect(after.messages).toStrictEqual([]);
+    expect(after.loading).toBe(false);
   });
 });

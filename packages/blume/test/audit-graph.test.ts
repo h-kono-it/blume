@@ -3,7 +3,13 @@ import { describe, expect, it } from "bun:test";
 import { fileToUrl, parseRobots, parseSitemap } from "../src/audit/crawl.ts";
 import { buildGraph, orphanPages } from "../src/audit/graph.ts";
 import { resolveRedirects } from "../src/audit/redirects.ts";
-import { normalizePath, resolveHref, siteOrigin } from "../src/audit/url.ts";
+import {
+  decodePath,
+  normalizePath,
+  resolveHref,
+  siteOrigin,
+} from "../src/audit/url.ts";
+import { withBasePath } from "../src/core/base-path.ts";
 import { snapshot } from "./audit-support.ts";
 
 /** The pure layers under the checks: URL resolution, the link graph, redirects, parsers. */
@@ -82,6 +88,31 @@ describe("resolveHref", () => {
     expect(resolveHref("/", "/other/x", SITE, "/base")).toMatchObject({
       path: "/other/x",
     });
+  });
+
+  it("resolves a percent-encoded href to the raw UTF-8 path", () => {
+    // Page URLs and file-index keys come from raw on-disk names; hrefs in built
+    // HTML are percent-encoded. A Japanese route would never match its own page
+    // without decoding.
+    expect(resolveHref("/", "/%E3%82%AC%E3%82%A4%E3%83%89", SITE)).toEqual({
+      hash: "",
+      kind: "internal",
+      path: "/ガイド",
+    });
+    expect(
+      resolveHref("/", `${SITE}/%E3%82%AC%E3%82%A4%E3%83%89`, SITE)
+    ).toEqual({
+      hash: "",
+      kind: "self-origin",
+      path: "/ガイド",
+    });
+  });
+
+  it("passes a malformed percent sequence through unchanged", () => {
+    // A sequence our own encoder could never have produced is kept as-is
+    // instead of throwing.
+    expect(decodePath("/%E0%A4%A")).toBe("/%E0%A4%A");
+    expect(decodePath("/%E3%82%AC")).toBe("/ガ");
   });
 
   it("normalizes a trailing slash away", () => {
@@ -201,6 +232,39 @@ describe("resolveRedirects", () => {
       pages
     );
     expect(result?.outcome).toBe("loop");
+  });
+
+  it("resolves a destination with a fragment or query to its page", () => {
+    // `/new#setup` and `/search?q=x` land on the `/new` / `/search` pages — the
+    // suffix belongs to the browser, not the file tree.
+    const [withFragment, withQuery] = resolveRedirects(
+      [
+        { from: "/old", status: 301, to: "/new#setup" },
+        { from: "/older", status: 301, to: "/new?q=x" },
+      ],
+      pages
+    );
+    expect(withFragment?.outcome).toBe("ok");
+    expect(withQuery?.outcome).toBe("ok");
+  });
+
+  it("resolves configured redirects against based page URLs under a basePath", () => {
+    // Mirrors runAudit: redirects are authored as if mounted at root, but built
+    // page URLs carry `basePath` (it is a real directory in the build), so both
+    // sides gain it before resolution.
+    const basePath = "/docs";
+    const [result] = resolveRedirects(
+      [
+        {
+          from: withBasePath(basePath, "/old"),
+          status: 301,
+          to: withBasePath(basePath, "/new"),
+        },
+      ],
+      new Set(["/docs", "/docs/new"])
+    );
+    expect(result?.outcome).toBe("ok");
+    expect(result?.chain).toEqual(["/docs/old", "/docs/new"]);
   });
 
   it("accepts an external destination without following it", () => {

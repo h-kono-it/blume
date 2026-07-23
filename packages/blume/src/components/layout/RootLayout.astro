@@ -901,6 +901,12 @@ const bannerKey = banner?.dismissible ? banner.key : null;
         };
 
         for (const image of zoomTargets) {
+          // An image that is itself a link navigates on click — binding zoom
+          // to it would flash a zoom overlay in the instant before navigation
+          // and advertise (via the cursor) a zoom that never happens.
+          if (image.closest("a")) {
+            continue;
+          }
           image.classList.add("cursor-zoom-in");
           image.addEventListener("click", () => openZoom(image));
         }

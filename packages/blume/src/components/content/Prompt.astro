@@ -13,7 +13,10 @@ const escapeRawHtml = (value: string): string =>
 
 const unwrapParagraph = (html: string): string => {
   const trimmed = html.trim();
-  const match = trimmed.match(/^<p>(?<content>[\s\S]*)<\/p>$/u);
+  // Only a *single* paragraph is unwrapped: the content must not contain its
+  // own `</p>`, or `<p>a</p>\n<p>b</p>` would "unwrap" to `a</p>\n<p>b` —
+  // unbalanced HTML injected via set:html.
+  const match = trimmed.match(/^<p>(?<content>(?:(?!<\/p>)[\s\S])*)<\/p>$/u);
   return match?.groups?.content ?? trimmed;
 };
 

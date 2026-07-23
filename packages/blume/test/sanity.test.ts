@@ -270,6 +270,25 @@ describe("sanitySource (field + client resolution edge cases)", () => {
     expect(refs).toStrictEqual(["doc-a.md", "doc-b.md"]);
   });
 
+  it("keeps the segments of a slashed slug", async () => {
+    // A `guides/setup`-style slug is slugged per segment, keeping its `/`
+    // instead of mashing into `guidessetup`.
+    const source = sanitySource(
+      {
+        client: clientReturning([
+          { _id: "doc-a", slug: { current: "Guides/Getting Started!" } },
+        ]),
+        dataset: "production",
+        name: "guides",
+        projectId: "p1",
+        query: "*",
+      },
+      ctxFor(await tempDir())
+    );
+    const { entries } = await source.load();
+    expect(entries[0]?.ref).toBe("guides/getting-started.md");
+  });
+
   it("skips images whose asset ref is malformed", async () => {
     const source = sanitySource(
       {

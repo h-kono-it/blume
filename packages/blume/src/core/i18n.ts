@@ -105,11 +105,19 @@ export const localePlacement = (
 ): { navPath: string; locales: string[] } => {
   const base = rel.slice(0, rel.length - ext.length);
 
-  // Shared `$` file: the same content in every locale.
+  // Shared `$` file: the same content in every locale. A shared file placed
+  // inside a locale directory (`fr/changelog.$.mdx`) still sheds that
+  // directory from its nav path — otherwise every locale's record would route
+  // under `/fr/…`, nesting the default locale inside the French namespace and
+  // the French copy at `/fr/fr/…`.
   if (base.endsWith(".$")) {
+    const shared = `${base.slice(0, -2)}${ext}`;
     return {
       locales: i18n.locales.map((locale) => locale.code),
-      navPath: `${base.slice(0, -2)}${ext}`,
+      navPath:
+        i18n.parser === "dir"
+          ? detectLocale(shared.split("/"), i18n).rest.join("/")
+          : shared,
     };
   }
 

@@ -116,7 +116,13 @@ const buildLocaleNavigation = (
     basePath: options.basePath ?? "",
     diagnostics,
     display: options.navigation.sidebar.display,
-    featured: options.navigation.featured,
+    // Internal featured hrefs are localized like tab paths — a pinned
+    // `/changelog` link rendered on `/fr/…` pages must stay inside the
+    // reader's locale, not kick them back to the default one.
+    featured: options.navigation.featured?.map((link) => ({
+      ...link,
+      href: localizePath(link.href),
+    })),
     folderMeta: options.folderMeta,
     // The localized tree root ("/" for the hidden default, "/fr" otherwise):
     // the tab pointing here spans the whole tree and must not be treated as a

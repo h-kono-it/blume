@@ -1,10 +1,11 @@
+import { normalizeBasePath, stripBasePath } from "../../core/base-path.ts";
 import { SITE_INFERRING_ADAPTERS } from "../../core/deployment-env.ts";
 import type { Diagnostic } from "../../core/types.ts";
 import { finding } from "../catalog.ts";
 import { pageSite } from "../locate.ts";
 import { ERROR_ROUTES } from "../types.ts";
 import type { AuditContext, CheckModule, PageSnapshot } from "../types.ts";
-import { normalizePath, siteOrigin } from "../url.ts";
+import { decodePath, normalizePath, siteOrigin } from "../url.ts";
 
 /** The canonical URL parsed, or null when it isn't a usable absolute URL. */
 const parseCanonical = (page: PageSnapshot): URL | null => {
@@ -76,7 +77,15 @@ const canonicalChecks = (
     return found;
   }
 
-  const target = normalizePath(canonical.pathname);
+  // Canonicals are emitted as `site + base + route`; page URLs and `byUrl`
+  // keys carry no deployment base, so strip it (and percent-encoding) before
+  // comparing.
+  const target = normalizePath(
+    stripBasePath(
+      normalizeBasePath(context.project.config.deployment.base),
+      decodePath(canonical.pathname)
+    )
+  );
   if (target === normalizePath(page.url)) {
     return found;
   }

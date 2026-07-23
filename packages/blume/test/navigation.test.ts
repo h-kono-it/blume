@@ -414,6 +414,16 @@ describe("buildNavigation — explicit config sidebar", () => {
     expect(labels(nav.sidebar)).toStrictEqual(["Home", "Foo", "Bar"]);
   });
 
+  it("resolves a trailing-slash ref to its slashless route", () => {
+    // Routes are stored slashless (`/foo`, not `/foo/`); a hand-written
+    // `"foo/"` ref must still find its page instead of being dropped.
+    const nav = buildNavigation(pages, {
+      folderMeta: empty,
+      sidebar: ["foo/", "/bar/"],
+    });
+    expect(labels(nav.sidebar)).toStrictEqual(["Foo", "Bar"]);
+  });
+
   it("normalizes a leading-slash /index ref to the root route", () => {
     // "/index" used to trim to "" and emit a link to nowhere.
     const nav = buildNavigation(pages, {

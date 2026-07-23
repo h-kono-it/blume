@@ -54,6 +54,7 @@ interface ContextOptions {
   pages?: PageSnapshot[];
   adapter?: string;
   site?: string;
+  base?: string;
   redirects?: { from: string; to: string; status: number }[];
   sitemap?: SitemapDoc | null;
   robots?: RobotsDoc | null;
@@ -75,7 +76,7 @@ export const context = (options: ContextOptions = {}): AuditContext => {
       basePath: "",
       deployment: {
         adapter: options.adapter ?? null,
-        base: undefined,
+        base: options.base,
         site: options.site,
       },
       redirects,
