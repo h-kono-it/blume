@@ -18,11 +18,18 @@ import {
   collectStaged,
   detectNeedsReact,
   detectUsesMath,
+  diagnosticWarning,
   ensureDepsLink,
   generateRuntime,
   pruneOrphans,
+  reactCompilerWarnings,
+  resolveReactCompiler,
+  sameRealDir,
+  searchProviderWarnings,
 } from "../src/astro/generate.ts";
 import { scanProject } from "../src/core/project-graph.ts";
+import type { ResolvedConfig } from "../src/core/schema.ts";
+import type { Diagnostic } from "../src/core/types.ts";
 
 let srcDir: string;
 
@@ -1096,5 +1103,107 @@ describe("ensureDepsLink version-less conflict", () => {
     expect(warning).toContain("Astro version conflict");
     expect(warning).toContain("a second copy of Astro");
     expect(warning).toContain("<Blume's astro version>");
+  });
+});
+
+describe("resolveReactCompiler", () => {
+  const compilerOn = { react: { compiler: true } } as ResolvedConfig;
+  const compilerOff = { react: { compiler: false } } as ResolvedConfig;
+
+  it("resolves Blume's shipped babel plugin as an absolute path", () => {
+    expect(resolveReactCompiler(compilerOn, true)).toContain(
+      "babel-plugin-react-compiler"
+    );
+  });
+
+  it("returns null when React isn't needed or the compiler is off", () => {
+    expect(resolveReactCompiler(compilerOn, false)).toBeNull();
+    expect(resolveReactCompiler(compilerOff, true)).toBeNull();
+  });
+
+  it("returns null when the plugin doesn't resolve from the package dir", () => {
+    // An empty temp dir has no node_modules anywhere up its ancestor chain
+    // that could hold the plugin, so resolution throws and the helper
+    // degrades to null instead of failing the build.
+    expect(resolveReactCompiler(compilerOn, true, srcDir)).toBeNull();
+  });
+});
+
+describe("reactCompilerWarnings", () => {
+  const compilerOn = { react: { compiler: true } } as ResolvedConfig;
+
+  it("warns when the compiler was requested but its plugin is missing", () => {
+    const warnings = reactCompilerWarnings(compilerOn, true, null);
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0]).toContain("babel-plugin-react-compiler");
+    expect(warnings[0]).toContain("react: { compiler: false }");
+  });
+
+  it("stays quiet when the plugin resolved or React isn't in play", () => {
+    expect(reactCompilerWarnings(compilerOn, true, "/some/path")).toEqual([]);
+    expect(reactCompilerWarnings(compilerOn, false, null)).toEqual([]);
+  });
+});
+
+describe("sameRealDir", () => {
+  it("matches two spellings of one physical directory", () => {
+    expect(sameRealDir(srcDir, join(srcDir, ".", "."))).toBe(true);
+  });
+
+  it("is false for distinct directories", () => {
+    expect(sameRealDir(srcDir, tmpdir())).toBe(false);
+  });
+
+  it("is false when a path doesn't exist", () => {
+    expect(sameRealDir(join(srcDir, "missing"), srcDir)).toBe(false);
+  });
+});
+
+describe("diagnosticWarning", () => {
+  const base: Diagnostic = {
+    code: "BLUME_TEST",
+    message: "Something looks off.",
+    severity: "warning",
+  };
+
+  it("appends the suggestion when one exists", () => {
+    expect(diagnosticWarning({ ...base, suggestion: "Fix it." })).toBe(
+      "Something looks off. Fix it."
+    );
+  });
+
+  it("returns the bare message otherwise", () => {
+    expect(diagnosticWarning(base)).toBe("Something looks off.");
+  });
+});
+
+describe("generateRuntime preflight and write failures", () => {
+  it("warns when the search provider's SDK isn't installed anywhere", () => {
+    // An empty temp dir stands in for both the project root and the Blume
+    // package, so the provider's SDK resolves from neither.
+    const warnings = searchProviderWarnings("flexsearch", srcDir, srcDir);
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0]).toContain('Search provider "flexsearch"');
+    expect(warnings[0]).toContain('needs "flexsearch"');
+  });
+
+  it("stays quiet when the provider's SDK ships with Blume", () => {
+    expect(searchProviderWarnings("orama", srcDir)).toEqual([]);
+  });
+
+  it("cleans up the temp file and rethrows when the atomic rename fails", async () => {
+    const project = await scanProject(
+      await writeProject({ "docs/index.md": "# Home\n" })
+    );
+    const out = project.context.outDir;
+    // A directory squatting on a generated file path: `rename` can't replace a
+    // directory with a file, so the atomic write fails after the temp file is
+    // written — and must remove it on the way out.
+    await mkdir(join(out, "astro.config.mjs"), { recursive: true });
+
+    await expect(generateRuntime(project)).rejects.toThrow();
+    expect(existsSync(join(out, `astro.config.mjs.${process.pid}.tmp`))).toBe(
+      false
+    );
   });
 });

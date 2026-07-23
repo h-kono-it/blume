@@ -39,7 +39,7 @@ import type { BlumeProject } from "../core/project-graph.ts";
 import type { ResolvedConfig } from "../core/schema.ts";
 import { resolveDocsCollection } from "../core/sources/resolve.ts";
 import { resolveTsconfigAliases } from "../core/tsconfig-aliases.ts";
-import type { Navigation, ProjectContext } from "../core/types.ts";
+import type { Diagnostic, Navigation, ProjectContext } from "../core/types.ts";
 import { buildRssFeeds, renderRssFeed } from "../deploy/rss.ts";
 import { resolveOgLogo } from "../og/logo.ts";
 import { hasScalarReferences, referenceRoutes } from "../openapi/references.ts";
@@ -119,17 +119,18 @@ const canResolveFrom = (fromDir: string, spec: string): boolean => {
  * that never installed the plugin directly. Resolving from `packageRoot()` binds
  * to Blume's shipped copy regardless of the user's package manager or hoisting.
  */
-const resolveReactCompiler = (
+export const resolveReactCompiler = (
   config: ResolvedConfig,
-  needsReact: boolean
+  needsReact: boolean,
+  pkgDir: string = packageRoot()
 ): string | null => {
   if (!(needsReact && config.react.compiler)) {
     return null;
   }
   try {
-    return createRequire(
-      pathToFileURL(join(packageRoot(), "_.js")).href
-    ).resolve("babel-plugin-react-compiler");
+    return createRequire(pathToFileURL(join(pkgDir, "_.js")).href).resolve(
+      "babel-plugin-react-compiler"
+    );
   } catch {
     return null;
   }
@@ -138,9 +139,9 @@ const resolveReactCompiler = (
 /**
  * Warning (as a spreadable list) for the case where the React Compiler was
  * requested but its plugin couldn't be resolved — so the build silently drops
- * to uncompiled output rather than failing.
+ * to uncompiled output rather than failing. Exported for testing.
  */
-const reactCompilerWarnings = (
+export const reactCompilerWarnings = (
   config: ResolvedConfig,
   needsReact: boolean,
   compilerPath: string | null
@@ -196,8 +197,11 @@ const resolvedAstroHit = (
   }
 };
 
-/** Whether two paths name the same physical directory (realpath equality). */
-const sameRealDir = (a: string, b: string): boolean => {
+/**
+ * Whether two paths name the same physical directory (realpath equality).
+ * Exported for testing.
+ */
+export const sameRealDir = (a: string, b: string): boolean => {
   try {
     return realpathSync(a) === realpathSync(b);
   } catch {
@@ -586,6 +590,34 @@ const deploymentAdapterWarnings = (
     ];
   }
   return [];
+};
+
+/**
+ * Warn when the configured search provider's SDK is missing. Provider SDKs are
+ * optional peers; warn (rather than fail opaquely in Vite) when the package
+ * isn't installed. A dep is available if the project installed it (resolves
+ * from the root) OR Blume ships it (resolves from the Blume package — the same
+ * set the `.blume` deps link exposes to the build). Resolving from the project
+ * root alone falsely flagged a shipped SDK like Orama (the default provider)
+ * as missing whenever it wasn't hoisted into the project, e.g. under isolated
+ * linkers. We resolve from each package's real location rather than through
+ * the `.blume` junction, which can't be traversed reliably for store-symlinked
+ * deps. `pkgDir` is injectable for testing.
+ */
+export const searchProviderWarnings = (
+  provider: ResolvedConfig["search"]["provider"],
+  root: string,
+  pkgDir: string = packageRoot()
+): string[] => {
+  const warnings: string[] = [];
+  for (const dep of searchProviderMeta(provider).runtimeDeps) {
+    if (!(canResolveFrom(root, dep) || canResolveFrom(pkgDir, dep))) {
+      warnings.push(
+        `Search provider "${provider}" needs "${dep}", which isn't installed. Run \`npm install ${dep}\` (or your package manager's equivalent).`
+      );
+    }
+  }
+  return warnings;
 };
 
 /** Absolute path to the configured `examples.css`, or null when unset. */
@@ -1270,6 +1302,15 @@ const writeNotFoundPage = async (
   await write(join(srcDir, "pages", "404.astro"), notFoundPageTemplate());
 };
 
+/**
+ * Flatten a diagnostic to a single warning line, appending the suggestion when
+ * one exists. Exported for testing.
+ */
+export const diagnosticWarning = (diagnostic: Diagnostic): string =>
+  diagnostic.suggestion
+    ? `${diagnostic.message} ${diagnostic.suggestion}`
+    : diagnostic.message;
+
 export interface GenerateResult {
   /** Whether any structural file changed (config/page/content config). */
   structuralChange: boolean;
@@ -1688,11 +1729,7 @@ export const generateRuntime = async (
     ...[
       ...validateNavTargets(project.graph.navigation, navTargetRoutes),
       ...validateSearchPopularIcons(config.search.popular),
-    ].map((diagnostic) =>
-      diagnostic.suggestion
-        ? `${diagnostic.message} ${diagnostic.suggestion}`
-        : diagnostic.message
-    )
+    ].map(diagnosticWarning)
   );
 
   // Unknown-component check: a `<Tag>` in MDX that isn't a built-in, an island,
@@ -1701,40 +1738,17 @@ export const generateRuntime = async (
     ...islandDiscovery.islands.map((island) => island.name),
     ...overrideTags,
   ]);
+  // Missing-dependency preflights: the search provider's SDK, the deployment
+  // adapter's package, and — since React ships with Blume while Vue/Svelte
+  // don't — any island framework's Astro integration. Warn early rather than
+  // let Vite fail to resolve them opaquely.
   warnings.push(
     ...validateUsedComponents(
       project.graph.pages,
       knownComponentTags,
       new Set(registry.map((item) => item.name))
-    ).map((diagnostic) =>
-      diagnostic.suggestion
-        ? `${diagnostic.message} ${diagnostic.suggestion}`
-        : diagnostic.message
-    )
-  );
-
-  // Provider SDKs are optional peers; warn (rather than fail opaquely in Vite)
-  // when the configured provider's package isn't installed. A dep is available
-  // if the project installed it (resolves from the root) OR Blume ships it
-  // (resolves from the Blume package — the same set the `.blume` deps link
-  // exposes to the build). Resolving from the project root alone falsely flagged
-  // a shipped SDK like Orama (the default provider) as missing whenever it
-  // wasn't hoisted into the project, e.g. under isolated linkers. We resolve
-  // from each package's real location rather than through the `.blume` junction,
-  // which can't be traversed reliably for store-symlinked deps.
-  for (const dep of searchProviderMeta(config.search.provider).runtimeDeps) {
-    if (
-      !(canResolveFrom(context.root, dep) || canResolveFrom(packageRoot(), dep))
-    ) {
-      warnings.push(
-        `Search provider "${config.search.provider}" needs "${dep}", which isn't installed. Run \`npm install ${dep}\` (or your package manager's equivalent).`
-      );
-    }
-  }
-
-  // React ships with Blume; Vue/Svelte islands need their Astro integration
-  // installed by the project. Warn early rather than let Vite fail to resolve it.
-  warnings.push(
+    ).map(diagnosticWarning),
+    ...searchProviderWarnings(config.search.provider, context.root),
     ...deploymentAdapterWarnings(config.deployment, context.root),
     ...islandFrameworkWarnings(frameworks, context.root)
   );
