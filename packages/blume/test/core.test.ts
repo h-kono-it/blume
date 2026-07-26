@@ -1240,6 +1240,22 @@ describe("api reference (scalar)", () => {
     ]);
   });
 
+  it("keeps a tab's declared href but rejects an empty one", () => {
+    const config = blumeConfigSchema.parse({
+      navigation: {
+        tabs: [{ href: "/changelog", label: "Changelog", path: "/changelog" }],
+      },
+    });
+    expect(config.navigation.tabs[0]?.href).toBe("/changelog");
+    // An empty href would render a link to nowhere; omitting the field is how
+    // you ask for the resolved target instead.
+    expect(
+      blumeConfigSchema.safeParse({
+        navigation: { tabs: [{ href: "", label: "Changelog", path: "/x" }] },
+      }).success
+    ).toBeFalsy();
+  });
+
   it("defaults openapi and asyncapi to disabled with sensible routes", () => {
     const config = blumeConfigSchema.parse({});
     expect(config.openapi.enabled).toBeFalsy();

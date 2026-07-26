@@ -358,7 +358,10 @@ const contentConfigSchema = z.strictObject({
 });
 
 const navTabSchema = z.strictObject({
-  href: z.string().optional(),
+  // Rejected empty rather than accepted: an empty `href` would render a link to
+  // nowhere, and it can't mean "resolve it for me" either — that's what
+  // omitting the field does.
+  href: z.string().min(1).optional(),
   icon: iconName.optional(),
   items: z
     .array(
