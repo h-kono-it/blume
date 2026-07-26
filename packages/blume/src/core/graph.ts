@@ -97,6 +97,7 @@ const buildLocaleNavigation = (
     path.startsWith("/") ? localizeRoute(path, code, i18n) : path;
   const tabs = options.navigation.tabs?.map((tab) => ({
     ...tab,
+    href: tab.href ? localizePath(tab.href) : undefined,
     items: tab.items?.map((item) => ({
       ...item,
       path: localizePath(item.path),

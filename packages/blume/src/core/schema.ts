@@ -358,6 +358,7 @@ const contentConfigSchema = z.strictObject({
 });
 
 const navTabSchema = z.strictObject({
+  href: z.string().optional(),
   icon: iconName.optional(),
   items: z
     .array(

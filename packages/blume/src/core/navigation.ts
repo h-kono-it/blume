@@ -613,10 +613,16 @@ const resolveTabHref = (sidebar: NavNode[], path: string): string => {
   return walk(sidebar) ? path : (first ?? path);
 };
 
-/** Attach a resolved `href` to each tab whose section has no index page. */
+/**
+ * Attach a resolved `href` to each tab whose section has no index page. An
+ * author-declared `href` is the tab's stated target, so it's kept as-is —
+ * resolution only fills in the tabs that didn't declare one. That's what lets a
+ * tab point at a route outside the content tree (a generated `/changelog`
+ * index, a custom `.astro` page), which resolution can't see.
+ */
 const withTabHrefs = (tabs: NavTab[], sidebar: NavNode[]): NavTab[] =>
   tabs.map((tab) => {
-    const href = resolveTabHref(sidebar, tab.path);
+    const href = tab.href ?? resolveTabHref(sidebar, tab.path);
     return href === tab.path ? tab : { ...tab, href };
   });
 
@@ -688,6 +694,7 @@ export const buildNavigation = (
   const tabs = basePath
     ? (options.tabs ?? []).map((tab) => ({
         ...tab,
+        href: tab.href ? withBasePath(basePath, tab.href) : undefined,
         items: tab.items?.map(rebasePath),
         path: withBasePath(basePath, tab.path),
       }))

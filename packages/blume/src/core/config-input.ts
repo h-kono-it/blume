@@ -291,6 +291,14 @@ export interface NavTabItem {
 
 /** A top-level tab in the header, optionally opening a dropdown of items. */
 export interface NavTab {
+  /**
+   * Where the tab links to, when that differs from `path`. `path` scopes the
+   * sidebar section and matches the active tab; without `href`, a section whose
+   * `path` isn't itself a page falls back to the section's first page. Set this
+   * to send readers somewhere else — e.g. a generated `/changelog` index, or a
+   * custom `.astro` landing page, neither of which is part of the content tree.
+   */
+  href?: string;
   /** Lucide icon name shown beside the label. */
   icon?: string;
   /** Dropdown items; omit for a plain link tab. */

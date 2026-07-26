@@ -270,6 +270,23 @@ describe("buildNavigation — filesystem sidebar", () => {
     expect(nav.tabs[0]?.href).toBeUndefined();
   });
 
+  it("keeps an author-declared tab href instead of resolving one", () => {
+    // `/changelog` is served by a generated page, so it isn't in the content
+    // tree: resolution would fall back to the section's first entry. A declared
+    // `href` is the author's stated target and wins over that fallback.
+    const nav = buildNavigation(
+      [
+        page("changelog/v2.mdx", "/changelog/v2", "v2"),
+        page("changelog/v1.mdx", "/changelog/v1", "v1"),
+      ],
+      {
+        folderMeta: empty,
+        tabs: [{ href: "/changelog", label: "Changelog", path: "/changelog" }],
+      }
+    );
+    expect(nav.tabs[0]?.href).toBe("/changelog");
+  });
+
   it("applies folder meta: title, collapsed, and explicit page order", () => {
     const folderMeta = new Map<string, FolderMeta>([
       [
@@ -803,6 +820,7 @@ describe("buildNavigation — basePath", () => {
           path: "/",
         },
         { label: "Blog", path: "https://blog.example.com" },
+        { href: "/changelog", label: "Changelog", path: "/changelog" },
       ],
     });
 
@@ -814,6 +832,8 @@ describe("buildNavigation — basePath", () => {
     expect(nav.tabs[0]?.path).toBe("/docs");
     expect(nav.tabs[0]?.items?.[0]?.path).toBe("/docs/guide");
     expect(nav.tabs[1]?.path).toBe("https://blog.example.com");
+    // A declared href is a route like any other: it carries the base too.
+    expect(nav.tabs[2]?.href).toBe("/docs/changelog");
   });
 
   it("bases explicit-sidebar refs, hrefs, and unmatched fallbacks", () => {

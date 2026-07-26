@@ -123,6 +123,18 @@ navigation: {
 }
 ```
 
+A tab's `path` is its section prefix, and it doubles as the link target. A section whose `path` isn't a page of its own — a folder with no `index.mdx` — would link to a 404, so the tab falls back to the first page in the section instead. Set `href` when you want it to land somewhere else:
+
+```ts blume.config.ts
+navigation: {
+  tabs: [
+    { label: "Changelog", path: "/changelog", href: "/changelog" },
+  ],
+}
+```
+
+This matters for routes that aren't part of the content tree, since the fallback can't see them: the generated [changelog](/docs/advanced/changelog) index, or a [custom page](/docs/advanced/custom-pages) you added under `pages/`. Without `href`, a `/changelog` tab lands on the newest entry rather than the index. Tabs that don't set `href` are unaffected.
+
 Tabs also **scope the sidebar**: when the current route falls under a tab's `path`, the sidebar shows only that section's pages — so `/adapters/*` lists the adapters and nothing else. The folder at a tab's `path` becomes the section, so this needs no extra config beyond the tabs themselves; structure your content into a folder per tab and point each tab at it.
 
 On a route under no tab (or a tab whose `path` is `/`), the sidebar shows the pages that _don't_ belong to a tab — each tab's folder is hidden from it, since that section already has its own tab in the header. So a root landing page lists your loose top-level pages while the sectioned content stays behind its tab, mirroring Fumadocs' root folders. If a route has no pages of its own to show this way, the full tree is shown instead, so the sidebar is never left blank.

@@ -201,9 +201,10 @@ export interface NavTab {
    */
   path: string;
   /**
-   * The clickable target. Equals `path` when the section has an index page;
-   * otherwise it's resolved to the section's first page so the tab never links
-   * to a 404. Absent when it matches `path`.
+   * The clickable target. Author-declared when the config sets it; otherwise
+   * equals `path` when the section has an index page, and is resolved to the
+   * section's first page when it doesn't, so the tab never links to a 404.
+   * Absent when a resolved target matches `path`.
    */
   href?: string;
   icon?: string;

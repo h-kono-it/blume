@@ -61,6 +61,16 @@ Once you have at least one `type: changelog` entry, Blume generates a **`/change
 
 The page appears only when nothing already occupies the `/changelog` route. To replace it with your own design, add a [custom page](/docs/advanced/custom-pages) at `pages/changelog.astro` — it takes over and Blume stops generating the default timeline.
 
+Because this page is generated rather than authored, it isn't part of the content tree — so a header [tab](/docs/content/navigation#tabs) pointing at `/changelog` resolves to the newest entry instead. Give the tab an `href` to land on the index itself:
+
+```ts blume.config.ts
+navigation: {
+  tabs: [
+    { label: "Changelog", path: "/changelog", href: "/changelog" },
+  ],
+}
+```
+
 ### Grouped by major version
 
 When your versions follow [semver](https://semver.org) and span more than one major, Blume paginates the timeline by major version. Only the newest major line is shown, with a **Show N.x releases** button at the bottom that reveals the next-oldest major one click at a time:
