@@ -99,10 +99,10 @@ const expandable =
   }
   {
     expandable && (
-      <details class="group mt-2" open={expandAll}>
+      <details class="mt-2" open={expandAll}>
         <summary class="cursor-pointer select-none text-accent text-xs hover:underline">
-          <span class="group-open:hidden">Show properties</span>
-          <span class="hidden group-open:inline">Hide properties</span>
+          <span class="[details[open]>summary_&]:hidden">Show properties</span>
+          <span class="hidden [details[open]>summary_&]:inline">Hide properties</span>
         </summary>
         <div class="mt-2 border-border border-l pl-4">
           <SchemaTable

@@ -7,7 +7,6 @@ const { defaultOpen = false, name, openable = true } = Astro.props;
 {
   openable ? (
     <details
-      class="group"
       data-blume-tree-folder
       data-blume-tree-openable="true"
       open={defaultOpen}
@@ -20,7 +19,7 @@ const { defaultOpen = false, name, openable = true } = Astro.props;
         role="treeitem"
       >
         <Icon
-          class="shrink-0 transition-transform group-open:rotate-90"
+          class="shrink-0 transition-transform [details[open]>summary_&]:rotate-90"
           name="chevron-right"
           size={15}
         />

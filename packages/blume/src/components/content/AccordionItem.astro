@@ -22,7 +22,7 @@ const accordionId = id ?? slugify(title);
 ---
 
 <details
-  class="not-prose group"
+  class="not-prose"
   data-blume-accordion
   id={accordionId}
   open={defaultOpen}
@@ -52,7 +52,7 @@ const accordionId = id ?? slugify(title);
       </span>
     </span>
     <Icon
-      class="text-muted-foreground transition-transform group-open:rotate-180"
+      class="text-muted-foreground transition-transform [details[open]>summary_&]:rotate-180"
       name="chevron-down"
       size={16}
     />
