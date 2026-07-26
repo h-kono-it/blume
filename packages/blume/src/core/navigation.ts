@@ -694,7 +694,7 @@ export const buildNavigation = (
   const tabs = basePath
     ? (options.tabs ?? []).map((tab) => ({
         ...tab,
-        href: tab.href ? withBasePath(basePath, tab.href) : undefined,
+        ...(tab.href ? { href: withBasePath(basePath, tab.href) } : {}),
         items: tab.items?.map(rebasePath),
         path: withBasePath(basePath, tab.path),
       }))

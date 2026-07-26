@@ -821,6 +821,11 @@ describe("buildNavigation — basePath", () => {
         },
         { label: "Blog", path: "https://blog.example.com" },
         { href: "/changelog", label: "Changelog", path: "/changelog" },
+        {
+          href: "https://releases.example.com",
+          label: "Releases",
+          path: "/releases",
+        },
       ],
     });
 
@@ -834,6 +839,8 @@ describe("buildNavigation — basePath", () => {
     expect(nav.tabs[1]?.path).toBe("https://blog.example.com");
     // A declared href is a route like any other: it carries the base too.
     expect(nav.tabs[2]?.href).toBe("/docs/changelog");
+    // An external declared href is left alone, like an external tab path.
+    expect(nav.tabs[3]?.href).toBe("https://releases.example.com");
   });
 
   it("bases explicit-sidebar refs, hrefs, and unmatched fallbacks", () => {

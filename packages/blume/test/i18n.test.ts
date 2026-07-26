@@ -303,6 +303,11 @@ describe("per-locale navigation", () => {
           { label: "Docs", path: "/docs" },
           { label: "Home", path: "/" },
           { href: "/changelog", label: "Changelog", path: "/changelog" },
+          {
+            href: "https://releases.example.com",
+            label: "Releases",
+            path: "/releases",
+          },
         ],
       },
     });
@@ -310,14 +315,18 @@ describe("per-locale navigation", () => {
 
     expect(
       (graph.navigationByLocale.fr?.tabs ?? []).map((tab) => tab.path)
-    ).toEqual(["/fr/docs", "/fr", "/fr/changelog"]);
+    ).toEqual(["/fr/docs", "/fr", "/fr/changelog", "/fr/releases"]);
     // The hidden default locale keeps unprefixed tab paths.
     expect(
       (graph.navigationByLocale.en?.tabs ?? []).map((tab) => tab.path)
-    ).toEqual(["/docs", "/", "/changelog"]);
+    ).toEqual(["/docs", "/", "/changelog", "/releases"]);
     // A declared href is localized alongside its tab's path, so the tab keeps
     // the reader inside their locale.
     expect(graph.navigationByLocale.fr?.tabs?.[2]?.href).toBe("/fr/changelog");
+    // An external declared href passes through localization untouched.
+    expect(graph.navigationByLocale.fr?.tabs?.[3]?.href).toBe(
+      "https://releases.example.com"
+    );
     // Each locale's navigation carries its root in the same localized space,
     // so render-time scoping recognizes `/fr` as the root tab, not a section.
     expect(graph.navigationByLocale.fr?.root).toBe("/fr");
