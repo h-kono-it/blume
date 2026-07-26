@@ -445,6 +445,15 @@ describe("layout chrome sources", () => {
     );
   });
 
+  it("rotates a collapsible group's chevron from its own details only", async () => {
+    const source = await layoutSource("NavTree.astro");
+    // `group-open:` matches any descendant of an open `.group`, and every
+    // nested group is itself a `.group`, so a collapsed child's chevron pointed
+    // down whenever an ancestor was open.
+    expect(source).not.toContain("group-open:rotate-90");
+    expect(source).toContain("[details[open]>summary_&]:rotate-90");
+  });
+
   it("gives the reference shell lang/dir and a skip link", async () => {
     const source = await layoutSource("ReferenceLayout.astro");
     expect(source).toContain("<html dir={dir} lang={locale}>");

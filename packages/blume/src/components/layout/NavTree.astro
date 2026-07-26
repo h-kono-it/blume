@@ -287,7 +287,11 @@ const initialId =
                       )}
                     </>
                   )}
-                  <span class="shrink-0 text-muted-foreground transition-transform group-open:rotate-90">
+                  {/* Rotate on this group's own `details`, not `group-open:`:
+                      that matches any descendant of an open `.group`, so nested
+                      groups — every one of which is a `.group` — would point
+                      down whenever an ancestor was open, while staying closed. */}
+                  <span class="shrink-0 text-muted-foreground transition-transform [details[open]>summary_&]:rotate-90">
                     <Icon name="chevron-right" size={13} />
                   </span>
                 </summary>
