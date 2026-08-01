@@ -40,32 +40,50 @@ const BOOST = { description: 2, title: 3 };
 const SEGMENTED_LANGUAGES = new Set(["ja", "ko", "th", "zh"]);
 
 /**
- * Segments made only of these scripts are re-cut into overlapping character
- * bigrams instead of being indexed whole. Han, Hiragana and Katakana (plus the
- * halfwidth katakana forms), matching the scripts Lucene's CJK analyzer
- * bigrams.
+ * Languages indexed as character bigrams rather than whole segments, and
+ * queried to match accordingly. Japanese and Chinese write compounds in
+ * {@link BIGRAM_SCRIPTS} without delimiters; Korean separates words with
+ * spaces and Thai has no comparable bigram convention, so both keep the plain
+ * segmented tokens even where a page mixes in Han or kana.
  *
  * Dictionary segmentation alone drops the adjacency that makes a compound term
  * distinctive: 資金決済法 becomes 資金 / 決済 / 法, and because Orama scores a
  * bag of words, a page that merely mentions each fragment somewhere outranks
  * the page about the law itself. Bigrams put that adjacency back as index
- * terms, and dropping the single-segment tokens keeps a fragment as common as
+ * terms, and dropping the whole-segment tokens keeps a fragment as common as
  * 法 from matching on its own.
- *
- * Hangul and Thai are deliberately absent. Korean is written with spaces
- * between words, so its segments are already whole words, and Thai has no
- * comparable bigram convention — both keep the plain segmented tokens.
  */
-const BIGRAM_SCRIPTS = /^[々-〇ぁ-ヿㇰ-ㇿ㐀-䶿一-鿿豈-﫿ｦ-ﾟ]+$/u;
+const BIGRAM_LANGUAGES = new Set(["ja", "zh"]);
 
-/** Emit every overlapping 2-character window of `run`, or the lone character. */
+/**
+ * Segments written entirely in these scripts are the ones re-cut into bigrams,
+ * matching the scripts Lucene's CJK analyzer bigrams. Property escapes rather
+ * than ranges, so ideographs outside the basic plane are covered as well —
+ * 𠮟, the 常用漢字表 form of しかる, is one. The literals that follow belong to
+ * no script of their own but appear only inside such words: the iteration
+ * marks, the prolonged sound mark, and the halfwidth voiced sound marks.
+ */
+const BIGRAM_SCRIPTS =
+  /^[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}々〆〇ーﾞﾟ]+$/u;
+
+/**
+ * Emit every overlapping 2-character window of `run`, or the lone character.
+ * Windows are cut by code point: an ideograph outside the basic plane is a
+ * surrogate pair, and slicing by code unit would split it into halves that
+ * match nothing.
+ */
 const addBigrams = (run: string, tokens: Set<string>): void => {
-  if (run.length === 1) {
+  const characters = [...run];
+  if (characters.length === 1) {
     tokens.add(run);
     return;
   }
-  for (let index = 0; index < run.length - 1; index += 1) {
-    tokens.add(run.slice(index, index + 2));
+  let previous = "";
+  for (const character of characters) {
+    if (previous) {
+      tokens.add(previous + character);
+    }
+    previous = character;
   }
 };
 
@@ -78,11 +96,12 @@ const addBigrams = (run: string, tokens: Set<string>): void => {
  * already serves, and on runtimes without `Intl.Segmenter`, where the caller
  * falls back to Orama's default.
  *
- * Runs of adjacent {@link BIGRAM_SCRIPTS} segments are joined and re-cut into
- * character bigrams; everything else (Latin, digits, Hangul, Thai) is emitted
- * as the segmenter produced it. Punctuation and spaces are not word-like, so
- * they end a run — 「クーリング・オフ」 bigrams either side of the interpunct
- * rather than across it.
+ * On a {@link BIGRAM_LANGUAGES} index, runs of adjacent
+ * {@link BIGRAM_SCRIPTS} segments are joined and re-cut into character
+ * bigrams; everything else (Latin, digits, and every segment on a Korean or
+ * Thai index) is emitted as the segmenter produced it. Punctuation and spaces
+ * are not word-like, so they end a run — 「クーリング・オフ」 bigrams either
+ * side of the interpunct rather than across it.
  */
 const segmentingTokenizer = (locale?: string): Tokenizer | undefined => {
   const language = locale?.toLowerCase().split(/[-_]/u)[0] ?? "";
@@ -93,6 +112,9 @@ const segmentingTokenizer = (locale?: string): Tokenizer | undefined => {
     return;
   }
   const segmenter = new Intl.Segmenter(language, { granularity: "word" });
+  // Keyed off the same set the strict query pass reads, so an index is never
+  // built from bigrams that the query side then matches loosely.
+  const bigram = BIGRAM_LANGUAGES.has(language);
   return {
     language,
     normalizationCache: new Map(),
@@ -110,7 +132,7 @@ const segmentingTokenizer = (locale?: string): Tokenizer | undefined => {
           flush();
           continue;
         }
-        if (BIGRAM_SCRIPTS.test(segment.segment)) {
+        if (bigram && BIGRAM_SCRIPTS.test(segment.segment)) {
           run += segment.segment;
           continue;
         }
@@ -144,14 +166,6 @@ export const buildOramaIndex = async (
   await insertMultiple(db, documents);
   return db;
 };
-
-/**
- * Languages whose tokens are character bigrams (see {@link BIGRAM_SCRIPTS}).
- * Every 2-character window matches widely on its own, so these indexes are
- * queried for documents carrying all of a term's bigrams before falling back
- * to Orama's any-token default.
- */
-const BIGRAM_LANGUAGES = new Set(["ja", "zh"]);
 
 /** Orama keeps only documents matching every token at a threshold of 0. */
 const ALL_TOKENS = 0;

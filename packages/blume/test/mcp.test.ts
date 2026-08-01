@@ -553,6 +553,52 @@ describe("orama index helpers", () => {
     expect(hits.map((doc) => doc.route)).toEqual(["/matching"]);
   });
 
+  it("pairs ideographs from outside the basic plane without splitting them", async () => {
+    // 𠮟 (U+20B9F) is a surrogate pair: cutting windows by code unit would
+    // index half of it. It is the 常用漢字表 form of しかる, not a curiosity.
+    const db = await buildOramaIndex(
+      [
+        {
+          content: "𠮟責は懲戒処分にあたります。",
+          description: "",
+          locale: "ja",
+          route: "/scold",
+          title: "懲戒",
+        },
+        {
+          content: "責任の所在を明確にします。",
+          description: "",
+          locale: "ja",
+          route: "/other",
+          title: "責任",
+        },
+      ],
+      "ja"
+    );
+    const hits = await queryOramaIndex(db, "𠮟責", 5);
+    expect(hits.map((doc) => doc.route)).toEqual(["/scold"]);
+  });
+
+  it("leaves Han content alone on an index that is not bigrammed", async () => {
+    // Korean and Thai indexes keep segmented words throughout, so the query
+    // side's loose matching stays consistent with how they were indexed.
+    const docs = [
+      {
+        content: "검색 설정. 資金決済法 관련.",
+        description: "",
+        locale: "ko",
+        route: "/ko",
+        title: "설정",
+      },
+    ];
+    const db = await buildOramaIndex(docs, "ko");
+    const korean = await queryOramaIndex(db, "설정", 5);
+    expect(korean.length).toBe(1);
+    // Segmented whole, so a fragment of the compound matches it as before.
+    const fragment = await queryOramaIndex(db, "資金", 5);
+    expect(fragment.length).toBe(1);
+  });
+
   it("matches a lone character, which has no neighbour to pair with", async () => {
     const db = await buildOramaIndex(COMPOUND_DOCS, "ja");
     // Mid-composition input is one character long, so it is indexed and queried
