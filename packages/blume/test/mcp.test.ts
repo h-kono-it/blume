@@ -492,6 +492,113 @@ describe("orama index helpers", () => {
     expect(hits.map((found) => found.length)).toEqual([1, 1, 1]);
   });
 
+  // A hub page naming every law shallowly, plus the pages each law belongs to.
+  // Segmenting alone cuts 資金決済法 into 資金 / 決済 / 法, and the hub carries
+  // more of those fragments than any single page — the ranking this guards.
+  const COMPOUND_DOCS = [
+    {
+      content: "資金決済法、景品表示法、下請法などの一覧。出会い系の話題も。",
+      description: "扱う法令の一覧",
+      locale: "ja",
+      route: "/index",
+      title: "法令ハブ",
+    },
+    {
+      content: "前払式支払手段は資金決済法の対象です。",
+      description: "",
+      locale: "ja",
+      route: "/money",
+      title: "ポイント発行",
+    },
+    {
+      content: "景品の上限は景品表示法で決まります。",
+      description: "",
+      locale: "ja",
+      route: "/prize",
+      title: "懸賞キャンペーン",
+    },
+    {
+      content: "出会い系サイト規制法の届出が必要です。",
+      description: "",
+      locale: "ja",
+      route: "/matching",
+      title: "マッチングサービス",
+    },
+  ];
+
+  it("ranks a compound term's own page above one that only shares its parts", async () => {
+    const db = await buildOramaIndex(COMPOUND_DOCS, "ja");
+    const routes = async (term: string) => {
+      const hits = await queryOramaIndex(db, term, 5);
+      return hits.map((doc) => doc.route);
+    };
+    const [money, prize, subcontract] = await Promise.all([
+      routes("資金決済法"),
+      routes("景品表示法"),
+      routes("下請法"),
+    ]);
+    // The hub mentions the law, but the page about it comes first...
+    expect(money[0]).toBe("/money");
+    expect(prize[0]).toBe("/prize");
+    // ...and a term no page elaborates on stops at the one naming it, instead
+    // of reaching every page through a fragment as common as 法.
+    expect(subcontract).toEqual(["/index"]);
+  });
+
+  it("keeps a term written with okurigana off pages sharing only its tail", async () => {
+    const db = await buildOramaIndex(COMPOUND_DOCS, "ja");
+    // 出会い系 segments to 出会い / 系; without bigrams 系 alone would pull in
+    // any page using it as a suffix.
+    const hits = await queryOramaIndex(db, "出会い系サイト規制法", 5);
+    expect(hits.map((doc) => doc.route)).toEqual(["/matching"]);
+  });
+
+  it("matches a lone character, which has no neighbour to pair with", async () => {
+    const db = await buildOramaIndex(COMPOUND_DOCS, "ja");
+    // Mid-composition input is one character long, so it is indexed and queried
+    // as itself; Orama's prefix matching takes it from there.
+    const hits = await queryOramaIndex(db, "法", 5);
+    expect(hits.length).toBeGreaterThan(0);
+  });
+
+  it("falls back to any-token matching when no page carries the whole term", async () => {
+    const db = await buildOramaIndex(COMPOUND_DOCS, "ja");
+    // Nothing states this in full, so the strict pass finds nothing — a
+    // sentence-like query still returns its closest pages rather than none.
+    const hits = await queryOramaIndex(
+      db,
+      "資金決済法の前払式支払手段について",
+      5
+    );
+    expect(hits.length).toBeGreaterThan(0);
+  });
+
+  it("leaves Latin, Hangul and Thai terms whole", async () => {
+    const db = await buildOramaIndex(JA_DOCS, "ja");
+    const install = await queryOramaIndex(db, "install", 5);
+    expect(install.length).toBe(1);
+    // Bigramming Latin would index "se", "er", "rv"… so an interior window of
+    // "server" would match. Orama matches tokens by prefix, so the window has
+    // to be one no indexed word starts with.
+    expect(await queryOramaIndex(db, "rv", 5)).toEqual([]);
+
+    // Hangul and Thai keep their segmented words, so a whole word still hits.
+    const spaced = [
+      { content: "검색 설정을 변경합니다.", locale: "ko", term: "설정" },
+      { content: "เปลี่ยนการตั้งค่าการค้นหา", locale: "th", term: "ค้นหา" },
+    ];
+    const found = await Promise.all(
+      spaced.map(async ({ content, locale, term }) => {
+        const other = await buildOramaIndex(
+          [{ content, description: "", locale, route: "/x", title: "X" }],
+          locale
+        );
+        return await queryOramaIndex(other, term, 5);
+      })
+    );
+    expect(found.map((hits) => hits.length)).toEqual([1, 1]);
+  });
+
   it("falls back to the default tokenizer when Intl.Segmenter is unavailable", async () => {
     // Simulate a runtime without Intl.Segmenter (e.g. Firefox before 125).
     const intl = Intl as { Segmenter?: typeof Intl.Segmenter };

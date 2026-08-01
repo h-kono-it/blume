@@ -40,6 +40,36 @@ const BOOST = { description: 2, title: 3 };
 const SEGMENTED_LANGUAGES = new Set(["ja", "ko", "th", "zh"]);
 
 /**
+ * Segments made only of these scripts are re-cut into overlapping character
+ * bigrams instead of being indexed whole. Han, Hiragana and Katakana (plus the
+ * halfwidth katakana forms), matching the scripts Lucene's CJK analyzer
+ * bigrams.
+ *
+ * Dictionary segmentation alone drops the adjacency that makes a compound term
+ * distinctive: 資金決済法 becomes 資金 / 決済 / 法, and because Orama scores a
+ * bag of words, a page that merely mentions each fragment somewhere outranks
+ * the page about the law itself. Bigrams put that adjacency back as index
+ * terms, and dropping the single-segment tokens keeps a fragment as common as
+ * 法 from matching on its own.
+ *
+ * Hangul and Thai are deliberately absent. Korean is written with spaces
+ * between words, so its segments are already whole words, and Thai has no
+ * comparable bigram convention — both keep the plain segmented tokens.
+ */
+const BIGRAM_SCRIPTS = /^[々-〇ぁ-ヿㇰ-ㇿ㐀-䶿一-鿿豈-﫿ｦ-ﾟ]+$/u;
+
+/** Emit every overlapping 2-character window of `run`, or the lone character. */
+const addBigrams = (run: string, tokens: Set<string>): void => {
+  if (run.length === 1) {
+    tokens.add(run);
+    return;
+  }
+  for (let index = 0; index < run.length - 1; index += 1) {
+    tokens.add(run.slice(index, index + 2));
+  }
+};
+
+/**
  * A word-segmenting tokenizer for languages the default splitter can't handle,
  * built on `Intl.Segmenter` (the same engine `@orama/tokenizers` wraps).
  * Input is lowercased before segmenting — unlike the upstream tokenizers —
@@ -47,6 +77,12 @@ const SEGMENTED_LANGUAGES = new Set(["ja", "ko", "th", "zh"]);
  * case-insensitively. Returns `undefined` for languages the default tokenizer
  * already serves, and on runtimes without `Intl.Segmenter`, where the caller
  * falls back to Orama's default.
+ *
+ * Runs of adjacent {@link BIGRAM_SCRIPTS} segments are joined and re-cut into
+ * character bigrams; everything else (Latin, digits, Hangul, Thai) is emitted
+ * as the segmenter produced it. Punctuation and spaces are not word-like, so
+ * they end a run — 「クーリング・オフ」 bigrams either side of the interpunct
+ * rather than across it.
  */
 const segmentingTokenizer = (locale?: string): Tokenizer | undefined => {
   const language = locale?.toLowerCase().split(/[-_]/u)[0] ?? "";
@@ -62,11 +98,26 @@ const segmentingTokenizer = (locale?: string): Tokenizer | undefined => {
     normalizationCache: new Map(),
     tokenize: (raw: string): string[] => {
       const tokens = new Set<string>();
-      for (const segment of segmenter.segment(raw.toLowerCase())) {
-        if (segment.isWordLike) {
-          tokens.add(segment.segment);
+      let run = "";
+      const flush = (): void => {
+        if (run) {
+          addBigrams(run, tokens);
+          run = "";
         }
+      };
+      for (const segment of segmenter.segment(raw.toLowerCase())) {
+        if (!segment.isWordLike) {
+          flush();
+          continue;
+        }
+        if (BIGRAM_SCRIPTS.test(segment.segment)) {
+          run += segment.segment;
+          continue;
+        }
+        flush();
+        tokens.add(segment.segment);
       }
+      flush();
       return [...tokens];
     },
   };
@@ -95,9 +146,26 @@ export const buildOramaIndex = async (
 };
 
 /**
+ * Languages whose tokens are character bigrams (see {@link BIGRAM_SCRIPTS}).
+ * Every 2-character window matches widely on its own, so these indexes are
+ * queried for documents carrying all of a term's bigrams before falling back
+ * to Orama's any-token default.
+ */
+const BIGRAM_LANGUAGES = new Set(["ja", "zh"]);
+
+/** Orama keeps only documents matching every token at a threshold of 0. */
+const ALL_TOKENS = 0;
+
+/**
  * Query the index, returning the matching documents (highest-ranked first).
  * When `locale` is given, results are filtered to that language via an exact
  * `where` match on the `locale` enum.
+ *
+ * On a bigrammed index the strict pass runs first: a term is only meant to
+ * match where its bigrams sit together, and scoring them independently lets a
+ * page sharing a couple of windows outrank the page the term is about. Terms
+ * spanning several words rarely appear in full on one page, so an empty strict
+ * result falls back to the default pass rather than reporting no matches.
  */
 export const queryOramaIndex = async (
   db: AnyOrama,
@@ -105,12 +173,18 @@ export const queryOramaIndex = async (
   limit: number,
   locale?: string
 ): Promise<OramaDoc[]> => {
-  const found = await search(db, {
+  const params = {
     boost: BOOST,
     limit,
     properties: ["title", "description", "content"],
     term,
     ...(locale ? { where: { locale: { eq: locale } } } : {}),
-  });
+  };
+  const bigrammed = BIGRAM_LANGUAGES.has(db.tokenizer?.language ?? "");
+  const strict = bigrammed
+    ? await search(db, { ...params, threshold: ALL_TOKENS })
+    : undefined;
+  const found =
+    strict && strict.hits.length > 0 ? strict : await search(db, params);
   return found.hits.map((hit) => hit.document as unknown as OramaDoc);
 };
