@@ -599,12 +599,28 @@ describe("orama index helpers", () => {
     expect(fragment.length).toBe(1);
   });
 
-  it("matches a lone character, which has no neighbour to pair with", async () => {
+  it("matches a lone character through the bigrams it opens", async () => {
     const db = await buildOramaIndex(COMPOUND_DOCS, "ja");
-    // Mid-composition input is one character long, so it is indexed and queried
-    // as itself; Orama's prefix matching takes it from there.
+    // Mid-composition input is one character long, so it is queried as itself
+    // and Orama prefix-matches the bigrams it opens — 法の, 法で, 法な here.
     const hits = await queryOramaIndex(db, "法", 5);
     expect(hits.length).toBeGreaterThan(0);
+    // A page where the character only closes a run is out of reach: 法 sits in
+    // 示法, which the query does not prefix-match. That is the cost of dropping
+    // fragment tokens, shared with Lucene's CJK analyzer.
+    const runFinal = await buildOramaIndex(
+      [
+        {
+          content: "景品表示法。",
+          description: "",
+          locale: "ja",
+          route: "/closing",
+          title: "余白",
+        },
+      ],
+      "ja"
+    );
+    expect(await queryOramaIndex(runFinal, "法", 5)).toEqual([]);
   });
 
   it("falls back to any-token matching when no page carries the whole term", async () => {

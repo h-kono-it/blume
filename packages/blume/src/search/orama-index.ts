@@ -71,6 +71,12 @@ const BIGRAM_SCRIPTS =
  * Windows are cut by code point: an ideograph outside the basic plane is a
  * surrogate pair, and slicing by code unit would split it into halves that
  * match nothing.
+ *
+ * Dropping the whole-segment tokens means a single-character query reaches
+ * only pages where the character opens a bigram: a run-final 法 sits in 示法,
+ * which the query 法 does not prefix-match. Lucene's CJK analyzer shares this
+ * property; indexing lone characters alongside the bigrams would reinvite the
+ * fragment noise this file exists to remove.
  */
 const addBigrams = (run: string, tokens: Set<string>): void => {
   const characters = [...run];
