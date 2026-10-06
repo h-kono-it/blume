@@ -37,7 +37,13 @@ const dateFormatOptions = resolveDateFormatOptions(data.config.dateFormat);
 // style keeps its month wording, a component format simply drops the year.
 const { dateStyle, year: _year, ...dateComponents } = dateFormatOptions;
 const rowDateFormat: Intl.DateTimeFormatOptions = dateStyle
-  ? { ...dateComponents, day: "numeric", month: "short", timeZone: dateFormatOptions.timeZone }
+  ? {
+      ...dateComponents,
+      day: "numeric",
+      // `medium` abbreviates the month; every other preset spells it out, so a
+      // `long` site keeps reading "October 5" rather than dropping to "Oct 5".
+      month: dateStyle === "medium" ? "short" : "long",
+    }
   : dateComponents;
 const formatRowDate = (date: Date) =>
   new Intl.DateTimeFormat(locale ?? "en", rowDateFormat).format(date);
@@ -88,7 +94,11 @@ const entries = [
     entry.data.type === "changelog" &&
     !entry.data.draft &&
     !entry.data.sidebar?.hidden &&
-    (locale === null || routeByEntry.has(entry.id))
+    // A route is required on every site, not only localized ones: without
+    // i18n the map still drops archived versions, and an entry with no
+    // current-docs route would otherwise be listed with a dead self-anchor
+    // while the Markdown mirror left it out.
+    routeByEntry.has(entry.id)
 );
 
 const rows = entries

@@ -128,7 +128,12 @@ describe("Changelog component", () => {
     // no generator flag reaches.
     expect(source).toContain('route.collection === "staged"');
     expect(source).toContain('await getCollection("docs")');
-    expect(source).toContain('getCollection("staged" as "docs")');
+    // Both sides of it: the staged read is reached only through that check, so
+    // a site with no staged source never asks for a collection it lacks.
+    expect(source).toContain(
+      'hasStaged ? await getCollection("staged" as "docs")'
+    );
+    expect(source).not.toMatch(/^\s*\.\.\.\(await getCollection\("staged"/mu);
   });
 
   it("lists the default locale's entries whatever locale it sits in", async () => {
@@ -164,6 +169,44 @@ describe("Changelog component", () => {
     expect(mirror).toContain("!page.fallback");
   });
 
+  it("drops the year a row's group already shows, keeping the style's month wording", async () => {
+    const source = await componentSource();
+    // Moved here from the template's tests with the markup. `medium` is the
+    // one preset that abbreviates the month, so a `long` or `full` site keeps
+    // reading "October 5"; a component format just loses its `year` key.
+    expect(source).toContain(
+      "const { dateStyle, year: _year, ...dateComponents } = dateFormatOptions;"
+    );
+    expect(source).toContain(
+      'month: dateStyle === "medium" ? "short" : "long",'
+    );
+    expect(source).toContain("timeZone: dateFormatOptions.timeZone,");
+    expect(source).toContain('year: "numeric",');
+  });
+
+  it("requires a current-docs route on every site, not only localized ones", async () => {
+    const source = await componentSource();
+    // The route map drops archived versions for everyone, so short-circuiting
+    // the membership check when i18n is off would list an archived entry with
+    // a dead self-anchor while the Markdown mirror left it out.
+    expect(source).toContain("routeByEntry.has(entry.id)");
+    expect(source).not.toContain(
+      "locale === null || routeByEntry.has(entry.id)"
+    );
+  });
+
+  it("links each row to its own page, under the deployment base", async () => {
+    const source = await componentSource();
+    // Moved here from the template's tests with the list. The manifest route is
+    // base-less, so a row rebases it the way the catch-all's canonical does,
+    // and falls back to its own anchor when an entry has no page.
+    expect(source).toContain("const route = routeByEntry.get(entry.id);");
+    expect(source).toContain("href: route ? withMountedBase(route) : null,");
+    // A regex, so the anchor's own `${…}` isn't read as interpolation here.
+    expect(source).toMatch(/href=\{item\.href \?\? `#\$\{item\.id\}`\}/u);
+    expect(source).toContain("routeByEntry.set(route.entryId, route.path);");
+  });
+
   it("is a built-in tag, so a page using it passes the component check", async () => {
     const { BUILTIN_MDX_TAGS } = await import("../src/core/builtin-tags.ts");
     expect(BUILTIN_MDX_TAGS.has("Changelog")).toBe(true);
@@ -171,9 +214,14 @@ describe("Changelog component", () => {
 
   it("keeps the list's markup, not the page's heading or description", async () => {
     const source = await componentSource();
+    expect(source).toContain("<h2");
     expect(source).toContain("{group.year}");
+    expect(source).toContain("{item.label}");
     expect(source).toContain("datetime={item.dateTime}");
+    expect(source).toContain("tag: entry.data.changelog?.category ?? null,");
     expect(source).toContain("{strings.empty}");
+    // The empty line is translatable, never the English baseline inline.
+    expect(source).not.toContain("No changelog entries yet.");
     // The heading and the description belong to whoever owns the page: the
     // generated page keeps its translatable pair, an authored page writes its
     // own prose.
