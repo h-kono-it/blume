@@ -54,14 +54,22 @@ const slugify = (text: string) =>
     .replaceAll(/^-+|-+$/gu, "") || "update";
 
 // Map each entry to its own page. The collection entry id matches the route
-// manifest's `entryId`, and under i18n every locale serves a page for it, all
-// sharing that id — so a map over every route would keep whichever locale came
-// last. Only this locale's routes are kept, and an entry is listed only when it
-// has one, so a translated changelog file (a distinct entry under its own
-// locale) does not add a second row for the same release.
+// manifest's `entryId`, and the manifest carries a route per locale and per
+// archived version, all sharing that id — so a map over every route would keep
+// whichever came last: a Portuguese permalink on an unlocalized index, or a
+// row pointing into last year's archived docs. Keep the current docs of the
+// listed locale, never a fallback copy (which renders another locale's content
+// at this URL), and list an entry only when it has such a route, so a
+// translated changelog file does not add a second row for the same release.
+// These are the conditions `ai/changelog-markdown.ts` filters pages by, so the
+// rendered list and the Markdown mirror select the same releases.
 const routeByEntry = new Map<string, string>();
 for (const route of data.routes) {
-  if (locale === null || route.locale === locale) {
+  if (
+    route.version === "" &&
+    !route.fallback &&
+    (locale === null || route.locale === locale)
+  ) {
     routeByEntry.set(route.entryId, route.path);
   }
 }

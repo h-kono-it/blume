@@ -144,6 +144,31 @@ describe("Changelog component", () => {
     expect(source).toContain("contentStrings(data, Astro.currentLocale)");
   });
 
+  it("selects the same releases the Markdown mirror does", async () => {
+    const source = await componentSource();
+    // The mirror filters pages by `version === ""`, `!fallback` and the
+    // default locale; the component filters routes by the same three. Without
+    // the version and fallback conditions a versioned site's row could link
+    // into archived docs while the mirror linked to the current ones — the two
+    // surfaces disagreeing is exactly what moving the list into one component
+    // is meant to prevent.
+    expect(source).toContain('route.version === ""');
+    expect(source).toContain("!route.fallback");
+    const mirror = await readFile(
+      fileURLToPath(
+        new URL("../src/ai/changelog-markdown.ts", import.meta.url)
+      ),
+      "utf-8"
+    );
+    expect(mirror).toContain('page.version === ""');
+    expect(mirror).toContain("!page.fallback");
+  });
+
+  it("is a built-in tag, so a page using it passes the component check", async () => {
+    const { BUILTIN_MDX_TAGS } = await import("../src/core/builtin-tags.ts");
+    expect(BUILTIN_MDX_TAGS.has("Changelog")).toBe(true);
+  });
+
   it("keeps the list's markup, not the page's heading or description", async () => {
     const source = await componentSource();
     expect(source).toContain("{group.year}");
