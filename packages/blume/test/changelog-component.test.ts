@@ -144,9 +144,17 @@ describe("Changelog component", () => {
     expect(source).toContain(
       "const locale = i18n ? i18n.defaultLocale : null;"
     );
-    expect(source).not.toContain("Astro.currentLocale ?? i18n.defaultLocale");
-    // The chrome around it still follows the reader.
+    expect(source).toContain("(locale === null || route.locale === locale)");
+    // The chrome around it still follows the reader: the empty line, and the
+    // row dates and year headings, which a Portuguese page reads in Portuguese.
     expect(source).toContain("contentStrings(data, Astro.currentLocale)");
+    expect(source).toContain(
+      'const readerLocale = i18n ? (Astro.currentLocale ?? i18n.defaultLocale) : "en";'
+    );
+    expect(source).toContain(
+      "new Intl.DateTimeFormat(readerLocale, rowDateFormat)"
+    );
+    expect(source).toContain("new Intl.DateTimeFormat(readerLocale, {");
   });
 
   it("selects the same releases the Markdown mirror does", async () => {
@@ -270,14 +278,20 @@ describe("Changelog serializer", () => {
     expect(authored).not.toContain("# Changelog");
   });
 
-  it("declines on a site with no releases rather than emitting a bare heading", async () => {
+  it("drops the tag on a site with no releases rather than leaving it as written", async () => {
     const project = await scanFixture({
       "blume.config.ts": 'export default { title: "Acme" };',
       "docs/index.md": "---\ntitle: Home\n---\n\nHome.\n",
     });
-    // Declining leaves the page's own prose as all an agent reads, which is
-    // accurate — an empty "## Undated" would not be. The serializer reads the
-    // project, not the usage, so it takes no context.
-    expect(changelogComponentSerializers(project).Changelog()).toBeNull();
+    const markdown = downlevelComponents(
+      "Prose above the list.\n\n<Changelog />\n",
+      changelogComponentSerializers(project)
+    );
+    // The page's own prose is all an agent reads — no bare "## Undated", and
+    // no literal tag, which is what a `null` from the serializer would leave
+    // (a GitHub Releases fetch that degrades to empty lands here too).
+    expect(markdown).toContain("Prose above the list.");
+    expect(markdown).not.toContain("<Changelog");
+    expect(markdown).not.toContain("##");
   });
 });

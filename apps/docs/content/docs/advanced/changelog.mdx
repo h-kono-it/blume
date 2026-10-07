@@ -79,7 +79,7 @@ The page appears only when nothing already occupies the `/changelog` route.
 
 To put something above the list — an introduction, a link to the feed, a note about your release cadence — write the page yourself and place `<Changelog />` where the list belongs. Blume still owns the list, so you only write the parts it has no slot for:
 
-```mdx content/changelog.mdx
+```mdx changelog/index.mdx
 ---
 title: Changelog
 description: Every Acme SDK release, newest first.
@@ -91,9 +91,9 @@ Every release, newest first. Subscribe to the [RSS feed](/changelog/rss.xml) to 
 <Changelog />
 ```
 
-A content page at `/changelog` takes over the route, so the generated page steps aside and yours renders instead. [`mode: center`](/docs/content/frontmatter#layout) gives it the generated page's layout — no sidebar, no table of contents, a wider centered column — and the generated page renders the same component, so the two can't drift apart. The list downlevels to Markdown on the agent surfaces (`/changelog.md`, llms-full.txt, MCP `get_page`, search) exactly as the generated page's does.
+A content page at `/changelog` takes over the route, so the generated page steps aside and yours renders instead. Put it at `changelog/index.mdx`, beside your entries, so the sidebar's Changelog group links to it — a `changelog.mdx` next to the folder adds a second Changelog item to the sidebar. [`mode: center`](/docs/content/frontmatter#layout) gives it the generated page's layout — no sidebar, no table of contents, a wider centered column — and the generated page renders the same component, so the two can't drift apart. The list downlevels to Markdown on the agent surfaces (`/changelog.md`, llms-full.txt, MCP `get_page`, search) exactly as the generated page's does.
 
-The list is always the default locale's entries, wherever the tag sits — the rule every surface that publishes it already follows, so a translated page lists the same releases rather than disagreeing about which exist.
+The list is always the default locale's entries, wherever the tag sits — the rule every surface that publishes it already follows, so a translated page lists the same releases rather than disagreeing about which exist. Its dates read in the page's own language.
 
 ### Replacing the page entirely
 

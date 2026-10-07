@@ -18,10 +18,7 @@ import type { ComponentMarkdown } from "./component-markdown.ts";
  */
 export const changelogComponentSerializers = (project: BlumeProject) =>
   ({
-    Changelog: () => {
-      const blocks = changelogIndexBlocks(project);
-      // An empty changelog declines rather than emitting a bare heading: the
-      // page's own prose is then all an agent reads, which is accurate.
-      return blocks.length > 0 ? blocks.join("\n\n") : null;
-    },
+    // An empty changelog replaces the tag with nothing, so the page's own prose
+    // is all an agent reads. Returning `null` would leave the tag as written.
+    Changelog: () => changelogIndexBlocks(project).join("\n\n"),
   }) satisfies Record<string, ComponentMarkdown>;

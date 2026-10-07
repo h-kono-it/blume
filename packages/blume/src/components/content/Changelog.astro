@@ -28,9 +28,12 @@ const i18n = data.config.i18n;
 // would be the one surface disagreeing with the rest about which releases
 // exist. Releases are also commonly written once and left untranslated, in
 // which case a per-locale list is the same list with fallback copies anyway.
-// (The chrome around it still follows the reader: `strings` below.)
+// (The chrome around it still follows the reader: `strings` and the dates.)
 const locale = i18n ? i18n.defaultLocale : null;
 const { changelog: strings } = contentStrings(data, Astro.currentLocale);
+// The page's own language, for the row dates and year headings. On the
+// unprefixed generated `/changelog` Astro resolves the default locale.
+const readerLocale = i18n ? (Astro.currentLocale ?? i18n.defaultLocale) : "en";
 
 const dateFormatOptions = resolveDateFormatOptions(data.config.dateFormat);
 // The year heads each group, so a row shows the rest of the date: a preset
@@ -46,9 +49,9 @@ const rowDateFormat: Intl.DateTimeFormatOptions = dateStyle
     }
   : dateComponents;
 const formatRowDate = (date: Date) =>
-  new Intl.DateTimeFormat(locale ?? "en", rowDateFormat).format(date);
+  new Intl.DateTimeFormat(readerLocale, rowDateFormat).format(date);
 const formatYear = (date: Date) =>
-  new Intl.DateTimeFormat(locale ?? "en", {
+  new Intl.DateTimeFormat(readerLocale, {
     timeZone: dateFormatOptions.timeZone,
     year: "numeric",
   }).format(date);
