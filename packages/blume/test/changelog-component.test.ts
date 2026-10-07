@@ -198,7 +198,7 @@ describe("Changelog component", () => {
     // the membership check when i18n is off would list an archived entry with
     // a dead self-anchor while the Markdown mirror left it out.
     expect(source).toContain(
-      "    routeByEntry.has(entryKey(entry.collection, entry.id))\n);"
+      "routeByEntry.has(entryKey(entry.collection, entry.id))"
     );
     expect(source).not.toContain("locale === null || routeByEntry.has(");
   });
