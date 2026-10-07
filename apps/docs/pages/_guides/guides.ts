@@ -103,9 +103,10 @@ export interface Guide {
   updated?: string;
 }
 
-// Written 2026-09-27 against main ahead of the 2.1 release, from the plan in
-// "Search-focused tutorials for Blume". None has been run end to end on a
-// clean project yet, so none sets `tested`, and none has its example project.
+// The first batch was written 2026-09-27 against main ahead of the 2.1
+// release, from the plan in "Search-focused tutorials for Blume". None of
+// those has been run end to end on a clean project yet, so none sets `tested`.
+// Guides added since set `tested` only when their walkthrough really ran.
 export const guides: Guide[] = [
   {
     author: "hayden",
@@ -691,6 +692,46 @@ export const guides: Guide[] = [
         href: "/docs/references/openapi#authorization",
         label: "Authorization",
       },
+      { href: "/docs/content/navigation#tabs", label: "Navigation tabs" },
+      { href: "/docs/cli/validate", label: "Validate links" },
+      { href: "/docs/deployment", label: "Deployment" },
+    ],
+    id: "aspnet-core-api-documentation",
+    image: { src: "/guides/aspnet-core-api-documentation.webp" },
+    meta: {
+      description:
+        "Generate your ASP.NET Core OpenAPI document at build time, describe endpoints with XML comments and JWT auth, and publish it as a docs site with guides.",
+      title: "How to publish ASP.NET Core API documentation from OpenAPI",
+    },
+    nextStep: {
+      body: "Run it at the root of your repository, beside your API project, then point OpenApiDocumentsDirectory at the new docs-site folder.",
+      command: "npx blume init docs-site --template docs --yes",
+      link: {
+        href: "/guides/openapi-documentation-ci",
+        label: "Add breaking-change checks in CI",
+      },
+      title: "Add docs to your ASP.NET Core API",
+    },
+    prerequisites: [
+      "The .NET 10 SDK",
+      "Node.js 22.12 or later",
+      "An ASP.NET Core API, or the template created in the guide",
+    ],
+    published: "2026-10-05",
+    summary:
+      "Generate an ASP.NET Core API's OpenAPI document on every build, turn its XML comments and JWT auth into a page per operation beside your guides, and fail CI when the committed spec goes stale.",
+    tested: { date: "2026-10-05", version: "2.1.3" },
+    title: "Publish ASP.NET Core API documentation from build-time OpenAPI",
+    topic: "reference",
+  },
+  {
+    author: "hayden",
+    docs: [
+      { href: "/docs/references/openapi", label: "OpenAPI reference" },
+      {
+        href: "/docs/references/openapi#authorization",
+        label: "Authorization",
+      },
       { href: "/docs/cli/validate", label: "Validate links" },
       { href: "/docs/deployment", label: "Deployment" },
     ],
@@ -718,6 +759,161 @@ export const guides: Guide[] = [
     summary:
       "A DRF API whose drf-spectacular schema generates without warnings, published as an API reference with a first-request tutorial beside it and rebuilt from code in CI.",
     title: "Build Django REST Framework docs with drf-spectacular",
+    topic: "reference",
+  },
+  {
+    author: "hayden",
+    docs: [
+      { href: "/docs/references/openapi", label: "OpenAPI reference" },
+      {
+        href: "/docs/references/openapi#authorization",
+        label: "Authorization",
+      },
+      {
+        href: "/docs/references/openapi#try-it-playground",
+        label: "Try it",
+      },
+      { href: "/docs/cli/validate", label: "Validate" },
+    ],
+    id: "laravel-api-documentation-scramble",
+    image: { src: "/guides/laravel-api-documentation-scramble.webp" },
+    meta: {
+      description:
+        "Generate an OpenAPI spec from Laravel routes, Form Requests, and API resources with Scramble, then publish it as a static API reference beside your guides.",
+      title: "How to publish Laravel API documentation with Scramble",
+    },
+    nextStep: {
+      body: "Add oasdiff to the workflow, so a pull request that would break existing clients, like one adding a required request field, fails before it merges.",
+      link: {
+        href: "/guides/openapi-documentation-ci",
+        label: "Read the CI sync guide",
+      },
+      title: "Catch breaking changes in review",
+    },
+    prerequisites: [
+      "A Laravel API, or PHP 8.3 or later and Composer to create one",
+      "Node.js 22.12 or later",
+      "A GitHub repository, for the CI step",
+    ],
+    published: "2026-10-05",
+    summary:
+      "A Laravel API whose Form Requests, resources, and PHPDoc become an OpenAPI 3.1 spec through Scramble, published as a Blume reference with Sanctum tokens in Try it and checked for freshness in CI.",
+    tested: { date: "2026-10-05", version: "2.1.3" },
+    title: "Publish Laravel API documentation with Scramble",
+    topic: "reference",
+  },
+  {
+    author: "hayden",
+    docs: [
+      { href: "/docs/references/openapi", label: "OpenAPI reference" },
+      {
+        href: "/docs/references/openapi#try-it-playground",
+        label: "Try it playground",
+      },
+      { href: "/docs/cli/validate", label: "Validate links" },
+      { href: "/docs/deployment", label: "Deployment" },
+    ],
+    id: "rails-api-documentation-rswag",
+    image: { src: "/guides/rails-api-documentation-rswag.webp" },
+    meta: {
+      description:
+        "Turn rswag request specs into OpenAPI with examples recorded from real test runs, and publish Rails API docs that only rebuild after the specs pass.",
+      title: "How to publish Rails API documentation from rswag specs",
+    },
+    nextStep: {
+      body: "Run it at the root of your Rails app once rswag writes docs-site/openapi.yaml, then mount the file with openapi().",
+      command: "npx blume init docs-site --template docs --yes",
+      link: {
+        href: "/guides/openapi-documentation-ci",
+        label: "Add breaking-change checks in CI",
+      },
+      title: "Add docs to your Rails API",
+    },
+    prerequisites: [
+      "A Rails API, or Ruby 3.2 or later to build the one here",
+      "Node.js 22.12 or later",
+      "A GitHub repository, for the CI step",
+    ],
+    published: "2026-10-05",
+    summary:
+      "Describe your Rails API in rswag request specs that test every documented response, write OpenAPI with real recorded examples, and rebuild the docs only when the specs pass.",
+    tested: { date: "2026-10-05", version: "2.1.3" },
+    title: "Publish Rails API documentation from rswag request specs",
+    topic: "reference",
+  },
+  {
+    author: "hayden",
+    docs: [
+      { href: "/docs/references/openapi", label: "OpenAPI reference" },
+      {
+        href: "/docs/references/openapi#multiple-specs",
+        label: "Multiple specs",
+      },
+      { href: "/docs/content/meta", label: "Folder meta" },
+      { href: "/docs/cli/validate", label: "Validate" },
+    ],
+    id: "typespec-documentation-website",
+    image: { src: "/guides/typespec-documentation-website.webp" },
+    meta: {
+      description:
+        "Compile a TypeSpec API definition to OpenAPI and publish it with Blume: doc comments, summaries, and examples become a page per operation, beside your guides.",
+      title: "How to publish API documentation from a TypeSpec definition",
+    },
+    nextStep: {
+      body: "Run it at the root of your TypeSpec project, point openapi() at the file tsp compile writes, and give every operation a @summary.",
+      command: "npx blume init . --template docs --yes",
+      link: {
+        href: "/guides/openapi-documentation-ci",
+        label: "Add breaking-change checks in CI",
+      },
+      title: "Add docs to your TypeSpec project",
+    },
+    prerequisites: [
+      "A TypeSpec project, or the REST template created in the guide",
+      "Node.js 22.12 or later",
+      "Some familiarity with TypeSpec decorators",
+    ],
+    published: "2026-10-05",
+    summary:
+      "Compile TypeSpec to OpenAPI in the same project as your docs, turn doc comments, summaries, and examples into a page per operation, and fail CI when the committed spec goes stale.",
+    tested: { date: "2026-10-05", version: "2.1.3" },
+    title: "Publish API documentation from a TypeSpec definition",
+    topic: "reference",
+  },
+  {
+    author: "hayden",
+    docs: [
+      { href: "/docs/content/navigation#tabs", label: "Navigation tabs" },
+      { href: "/docs/content/meta", label: "Folder meta" },
+      { href: "/docs/content/frontmatter", label: "Frontmatter" },
+      { href: "/docs/cli/validate", label: "blume validate" },
+    ],
+    id: "typescript-library-documentation-typedoc",
+    image: { src: "/guides/typescript-library-documentation-typedoc.webp" },
+    meta: {
+      description:
+        "Generate TypeScript API reference from TSDoc comments with TypeDoc and typedoc-plugin-markdown, and publish it in a Reference tab beside your tutorials.",
+      title: "How to build a TypeScript library docs site with TypeDoc",
+    },
+    nextStep: {
+      body: "Run it at the root of your library's repository, then add TypeDoc, the two plugins, and the config from this guide.",
+      command: "npx blume init docs-site --template docs --yes",
+      link: {
+        href: "/docs/content/navigation#tabs",
+        label: "Read the navigation docs",
+      },
+      title: "Add a docs site to your library",
+    },
+    prerequisites: [
+      "A TypeScript library with TSDoc comments",
+      "The library's dependencies installed, since TypeDoc type-checks it",
+      "Node.js 22.12 or later",
+    ],
+    published: "2026-10-05",
+    summary:
+      "Turn your TSDoc comments into a page per export with TypeDoc, and publish them in a Reference tab beside hand-written tutorials, with links between the two checked on every pull request.",
+    tested: { date: "2026-10-05", version: "2.1.3" },
+    title: "Publish TypeScript API reference beside your tutorials",
     topic: "reference",
   },
   {
@@ -2712,30 +2908,389 @@ export const guides: Guide[] = [
       { href: "/docs/migrating", label: "Migrating" },
       { href: "/docs/content/syntax", label: "Syntax" },
       { href: "/docs/content/navigation", label: "Navigation" },
+      { href: "/docs/content/meta", label: "Folder meta" },
+      { href: "/docs/content/includes", label: "Includes" },
       { href: "/docs/deployment#redirects", label: "Redirects" },
     ],
     id: "migrate-from-mkdocs-material",
     image: { src: "/guides/migrate-from-mkdocs-material.webp" },
     meta: {
       description:
-        "Migrate from MkDocs Material to Blume: map mkdocs.yml and nav, rewrite admonitions, tabs, and snippets, replace plugins, and keep every old URL working.",
+        "Migrate from MkDocs Material with a coding agent: a codemod converts admonitions, tabs, and snippets, nav becomes folders, and every old URL keeps working.",
       title: "How to migrate from MkDocs Material to Blume",
     },
     nextStep: {
-      body: "Run it at the root of your MkDocs project, on a clean branch. With no MkDocs mappings, the agent inventories the repo first, so point it at the tables above.",
-      command: "npx blume migrate --claude",
+      body: "Run it in the folder that holds mkdocs.yml, on a clean branch, then check its work against the sections above.",
+      command: "npx blume migrate mkdocs --claude",
       link: { href: "/docs/migrating", label: "Read the migration reference" },
-      title: "Draft the migration",
+      title: "Migrate your docs",
     },
     prerequisites: [
-      "An MkDocs Material site's repository",
+      "An MkDocs, Material for MkDocs, or Zensical site's repository",
+      "The Python setup that builds it today",
       "Node.js 22.12 or later",
-      "Claude Code or Codex, if an agent drafts the first pass",
+      "Claude Code or Codex, signed in",
     ],
     published: "2026-09-27",
     summary:
-      "Move an MkDocs Material site's Markdown to Blume, rebuild its nav as folders, rewrite extension syntax, replace its plugins, and check that every old URL still works.",
+      "Move a Material for MkDocs site to Blume with a coding agent and a codemod, rebuild its nav as folders, keep its heading anchors, and check that every old URL still works.",
     title: "Migrate your docs from MkDocs Material",
+    topic: "migrate",
+    updated: "2026-10-05",
+  },
+  {
+    author: "hayden",
+    docs: [
+      { href: "/docs/migrating", label: "Migrating" },
+      { href: "/docs/content/includes", label: "Includes" },
+      { href: "/docs/content/variables", label: "Variables" },
+      { href: "/docs/content/meta", label: "Folder meta" },
+      { href: "/docs/deployment#redirects", label: "Redirects" },
+    ],
+    id: "migrate-from-mdbook",
+    image: { src: "/guides/migrate-from-mdbook.webp" },
+    meta: {
+      description:
+        "Move an mdBook to Blume with a coding agent: rebuild SUMMARY.md as folders, keep every .html URL working, and generate included code from your source.",
+      title: "How to migrate from mdBook to Blume",
+    },
+    nextStep: {
+      body: "Run it in the folder holding book.toml, on a clean branch, after building your old book. Then work through the review above.",
+      command: "npx blume migrate mdbook --claude",
+      link: { href: "/docs/migrating", label: "Read the migration reference" },
+      title: "Migrate your book",
+    },
+    prerequisites: [
+      "An mdBook 0.4 or 0.5 book's repository",
+      "The mdBook version and plugins your CI uses",
+      "Node.js 22.12 or later",
+      "Claude Code or Codex, signed in",
+    ],
+    published: "2026-10-06",
+    summary:
+      "Hand your mdBook to a coding agent, rebuild SUMMARY.md as folders that keep each chapter's path, redirect every old .html page, and keep included code generated from your source on every build.",
+    title: "Migrate your docs from mdBook",
+    topic: "migrate",
+  },
+  {
+    author: "hayden",
+    docs: [
+      { href: "/docs/migrating", label: "Migrating" },
+      { href: "/docs/content/navigation", label: "Navigation" },
+      { href: "/docs/content/includes", label: "Includes" },
+      { href: "/docs/deployment#redirects", label: "Redirects" },
+    ],
+    id: "migrate-from-gitbook",
+    image: { src: "/guides/migrate-from-gitbook.webp" },
+    meta: {
+      description:
+        "Move Git-synced GitBook docs to Blume with a coding agent: every page at its old URL, GitBook blocks as components, heading anchors kept, old links redirected.",
+      title: "How to migrate from GitBook to Blume",
+    },
+    nextStep: {
+      body: "Run it at the root of the repository GitBook syncs to, on a clean branch, then work through the review above.",
+      command: "npx blume migrate gitbook --claude",
+      link: { href: "/docs/migrating", label: "Read the migration reference" },
+      title: "Migrate your docs",
+    },
+    prerequisites: [
+      "GitBook docs synced to a GitHub or GitLab repository",
+      "Node.js 22.12 or later",
+      "Claude Code or Codex, signed in",
+    ],
+    published: "2026-10-05",
+    summary:
+      "Hand your Git-synced GitBook repository to a coding agent, keep every page at the URL it has today, convert GitBook's blocks to components, and deploy docs you host yourself.",
+    title: "Migrate your docs from GitBook",
+    topic: "migrate",
+  },
+  {
+    author: "hayden",
+    docs: [
+      { href: "/docs/migrating", label: "Migrating" },
+      { href: "/docs/references/openapi", label: "OpenAPI" },
+      { href: "/docs/content/islands", label: "Islands" },
+      { href: "/docs/deployment#redirects", label: "Redirects" },
+    ],
+    id: "migrate-from-readme",
+    image: { src: "/guides/migrate-from-readme.webp" },
+    meta: {
+      description:
+        "Move a ReadMe developer hub to Blume with a coding agent: a codemod converts ReadMe's syntax, your specs become the API reference, and every URL keeps working.",
+      title: "How to migrate from ReadMe to Blume",
+    },
+    nextStep: {
+      body: "Run it at the root of the repository ReadMe syncs to, on a branch named after none of your versions, then work through the review above.",
+      command: "npx blume migrate readme --claude",
+      link: { href: "/docs/migrating", label: "Read the migration reference" },
+      title: "Migrate your docs",
+    },
+    prerequisites: [
+      "A ReadMe project synced to Git, or exported to a repository",
+      "Node.js 22.12 or later",
+      "Claude Code or Codex, signed in",
+    ],
+    published: "2026-10-05",
+    summary:
+      "Hand your Git-synced ReadMe repository to a coding agent, keep every page at its flat URL, generate the API reference from your specs, and deploy docs you host yourself.",
+    title: "Migrate your docs from ReadMe",
+    topic: "migrate",
+  },
+  {
+    author: "hayden",
+    docs: [
+      { href: "/docs/migrating", label: "Migrating" },
+      { href: "/docs/content/syntax", label: "Syntax" },
+      { href: "/docs/content/includes", label: "Includes" },
+      { href: "/docs/deployment#redirects", label: "Redirects" },
+    ],
+    id: "migrate-from-vitepress",
+    image: { src: "/guides/migrate-from-vitepress.webp" },
+    meta: {
+      description:
+        "Move a VitePress site to Blume with a coding agent and a codemod: convert containers, code groups, and snippets, and keep every .html URL and anchor working.",
+      title: "How to migrate from VitePress to Blume",
+    },
+    nextStep: {
+      body: "Run it in the folder whose package.json runs VitePress, on a clean branch, after saving your old build. Then work through the review above.",
+      command: "npx blume migrate vitepress --claude",
+      link: { href: "/docs/migrating", label: "Read the migration reference" },
+      title: "Migrate your docs",
+    },
+    prerequisites: [
+      "A VitePress 1.x site's repository",
+      "Node.js 22.12 or later",
+      "Claude Code or Codex, signed in",
+    ],
+    published: "2026-10-05",
+    summary:
+      "Hand your VitePress site to a coding agent, convert its Markdown extensions with a codemod, rebuild sidebar groups without moving URLs, and keep every old .html address and heading anchor working.",
+    title: "Migrate your docs from VitePress",
+    topic: "migrate",
+  },
+  {
+    author: "hayden",
+    docs: [
+      { href: "/docs/migrating", label: "Migrating" },
+      { href: "/docs/references/openapi", label: "OpenAPI" },
+      { href: "/docs/content/navigation", label: "Navigation" },
+      { href: "/docs/deployment#redirects", label: "Redirects" },
+    ],
+    id: "migrate-from-fern",
+    image: { src: "/guides/migrate-from-fern.webp" },
+    meta: {
+      description:
+        "Move Fern Docs to Blume with a coding agent: keep every page URL, export a Fern Definition to OpenAPI, redirect every endpoint, and keep SDK generation.",
+      title: "How to migrate from Fern Docs to Blume",
+    },
+    nextStep: {
+      body: "Run it at the root of your repository, the folder that holds fern/, on a clean branch, then work through the review above.",
+      command: "npx blume migrate fern --claude",
+      link: { href: "/docs/migrating", label: "Read the migration reference" },
+      title: "Migrate your docs",
+    },
+    prerequisites: [
+      "A Fern Docs project (fern/docs.yml) in Git",
+      "Node.js 22.12 or later",
+      "Claude Code or Codex, signed in",
+    ],
+    published: "2026-10-05",
+    summary:
+      "Hand your Fern repository to a coding agent, keep every page URL and redirect every endpoint, export a Fern Definition to OpenAPI, and deploy docs you host yourself while Fern keeps generating your SDKs.",
+    title: "Migrate your docs from Fern",
+    topic: "migrate",
+  },
+  {
+    author: "hayden",
+    docs: [
+      { href: "/docs/migrating", label: "Migrating" },
+      { href: "/docs/references/openapi", label: "OpenAPI" },
+      { href: "/docs/content/includes", label: "Includes" },
+      { href: "/docs/deployment#redirects", label: "Redirects" },
+    ],
+    id: "migrate-from-redocly",
+    image: { src: "/guides/migrate-from-redocly.webp" },
+    meta: {
+      description:
+        "Move Redocly Realm docs to Blume with a coding agent: Markdoc to MDX, sidebars to folders and tabs, and redirects that keep every API reference URL working.",
+      title: "How to migrate from Redocly to Blume",
+    },
+    nextStep: {
+      body: "Run it at the root of your Redocly project, on a clean branch, then work through the review above.",
+      command: "npx blume migrate redocly --claude",
+      link: { href: "/docs/migrating", label: "Read the migration reference" },
+      title: "Migrate your docs",
+    },
+    prerequisites: [
+      "A Redocly Realm project in Git",
+      "Node.js 22.12 or later",
+      "Claude Code or Codex, signed in",
+    ],
+    published: "2026-10-05",
+    summary:
+      "Hand your Redocly project to a coding agent, convert Markdoc to MDX, keep every API reference URL with generated redirects, and deploy docs you host yourself.",
+    title: "Migrate your docs from Redocly",
+    topic: "migrate",
+  },
+  {
+    author: "hayden",
+    docs: [
+      { href: "/docs/migrating", label: "Migrating" },
+      { href: "/docs/content/syntax", label: "Syntax" },
+      { href: "/docs/content/i18n", label: "Internationalization" },
+      { href: "/docs/deployment#redirects", label: "Redirects" },
+    ],
+    id: "migrate-from-vuepress",
+    image: { src: "/guides/migrate-from-vuepress.webp" },
+    meta: {
+      description:
+        "Move a VuePress site to Blume with a coding agent: convert containers, badges, and code groups, redirect every .html URL, and keep every heading anchor.",
+      title: "How to migrate from VuePress to Blume",
+    },
+    nextStep: {
+      body: "Run it in the folder whose package.json runs VuePress, on a clean branch, after saving your old build. Then work through the review above.",
+      command: "npx blume migrate vuepress --claude",
+      link: { href: "/docs/migrating", label: "Read the migration reference" },
+      title: "Migrate your docs",
+    },
+    prerequisites: [
+      "A VuePress 1 site's repository",
+      "Node.js 22.12 or later",
+      "Claude Code or Codex, signed in",
+    ],
+    published: "2026-10-05",
+    summary:
+      "Hand your VuePress site to a coding agent, turn its Vue-flavored Markdown into Blume pages in every language, and keep every old .html URL and heading anchor working.",
+    title: "Migrate your docs from VuePress",
+    topic: "migrate",
+  },
+  {
+    author: "hayden",
+    docs: [
+      { href: "/docs/migrating", label: "Migrating" },
+      { href: "/docs/content/syntax", label: "Syntax" },
+      { href: "/docs/discoverability/mcp", label: "MCP server" },
+      { href: "/docs/deployment#redirects", label: "Redirects" },
+    ],
+    id: "migrate-from-docus",
+    image: { src: "/guides/migrate-from-docus.webp" },
+    meta: {
+      description:
+        "Move a Docus site to Blume with a coding agent and a codemod: convert MDC components, keep every URL and anchor, and keep the assistant and MCP server.",
+      title: "How to migrate from Docus to Blume",
+    },
+    nextStep: {
+      body: "Run it in the folder whose package.json depends on docus, on a clean branch, after saving your old site's URLs. Then work through the review above.",
+      command: "npx blume migrate docus --claude",
+      link: { href: "/docs/migrating", label: "Read the migration reference" },
+      title: "Migrate your docs",
+    },
+    prerequisites: [
+      "A Docus 3 or later site's repository",
+      "Node.js 22.12 or later",
+      "Claude Code or Codex, signed in",
+    ],
+    published: "2026-10-06",
+    summary:
+      "Hand your Docus site to a coding agent, convert its MDC components with a codemod, turn sections into tabs without moving a URL, and keep your assistant, MCP server, redirects, and heading anchors.",
+    title: "Migrate your docs from Docus",
+    topic: "migrate",
+  },
+  {
+    author: "hayden",
+    docs: [
+      { href: "/docs/migrating", label: "Migrating" },
+      { href: "/docs/content/navigation", label: "Navigation" },
+      { href: "/docs/content/includes", label: "Includes" },
+      { href: "/docs/deployment#redirects", label: "Redirects" },
+    ],
+    id: "migrate-from-docsify",
+    image: { src: "/guides/migrate-from-docsify.webp" },
+    meta: {
+      description:
+        "Move a Docsify site to Blume with a coding agent and a codemod: convert callouts, tabs, and includes, and keep every old #/ link and ?id= anchor working.",
+      title: "How to migrate from Docsify to Blume",
+    },
+    nextStep: {
+      body: "Run it in the folder that holds your docs/ folder, on a clean branch, after saving your old routes. Then work through the review above.",
+      command: "npx blume migrate docsify --claude",
+      link: { href: "/docs/migrating", label: "Read the migration reference" },
+      title: "Migrate your docs",
+    },
+    prerequisites: [
+      "A Docsify site's repository",
+      "Node.js 22.12 or later",
+      "Claude Code or Codex, signed in",
+    ],
+    published: "2026-10-05",
+    summary:
+      "Hand your Docsify site to a coding agent, convert its callouts, tabs, and includes with a codemod, rebuild its sidebar as folders, and keep every old #/ link and heading anchor working.",
+    title: "Migrate your docs from Docsify",
+    topic: "migrate",
+  },
+  {
+    author: "hayden",
+    docs: [
+      { href: "/docs/migrating", label: "Migrating" },
+      { href: "/docs/content/navigation", label: "Navigation" },
+      { href: "/docs/content/includes", label: "Includes" },
+      { href: "/docs/deployment#redirects", label: "Redirects" },
+    ],
+    id: "migrate-from-jekyll",
+    image: { src: "/guides/migrate-from-jekyll.webp" },
+    meta: {
+      description:
+        "Move a Just the Docs site on Jekyll to Blume with a coding agent and a codemod: rebuild the sidebar as folders, convert callouts and includes, keep every URL.",
+      title: "How to migrate from Just the Docs (Jekyll) to Blume",
+    },
+    nextStep: {
+      body: "Run it in the folder that holds _config.yml, on a clean branch, after building your old site. Then work through the review above.",
+      command: "npx blume migrate jekyll --claude",
+      link: { href: "/docs/migrating", label: "Read the migration reference" },
+      title: "Migrate your docs",
+    },
+    prerequisites: [
+      "A Jekyll site on the Just the Docs theme",
+      "Ruby and Bundler, to build the old site once",
+      "Node.js 22.12 or later",
+      "Claude Code or Codex, signed in",
+    ],
+    published: "2026-10-06",
+    summary:
+      "Hand your Just the Docs site to a coding agent, convert its Kramdown callouts, includes, and Liquid with a codemod, rebuild its front-matter sidebar as folders, and keep every old URL, redirect, and heading anchor working.",
+    title: "Migrate your docs from Just the Docs",
+    topic: "migrate",
+  },
+  {
+    author: "hayden",
+    docs: [
+      { href: "/docs/migrating", label: "Migrating" },
+      { href: "/docs/content/navigation", label: "Navigation" },
+      { href: "/docs/content/meta", label: "meta.ts" },
+      { href: "/docs/deployment", label: "Deployment" },
+    ],
+    id: "migrate-from-github-wiki",
+    image: { src: "/guides/migrate-from-github-wiki.webp" },
+    meta: {
+      description:
+        "Move a GitHub wiki to a Blume docs site with a coding agent and a codemod: convert wiki links and the sidebar, and prepare a link stub for every old wiki page.",
+      title: "How to migrate a GitHub wiki to Blume",
+    },
+    nextStep: {
+      body: "Run it in a copy of your wiki clone with its remote removed, after saving the old page list. Then work through the review above.",
+      command: "npx blume migrate github-wiki --claude",
+      link: { href: "/docs/migrating", label: "Read the migration reference" },
+      title: "Migrate your wiki",
+    },
+    prerequisites: [
+      "A GitHub wiki, cloned",
+      "Node.js 22.12 or later",
+      "Claude Code or Codex, signed in",
+    ],
+    published: "2026-10-06",
+    summary:
+      "Hand your GitHub wiki to a coding agent, convert its wiki links, alerts, and images with a codemod, rebuild _Sidebar.md as folders, and prepare a link stub for every old wiki page, ready for you to push.",
+    title: "Migrate your docs from a GitHub wiki",
     topic: "migrate",
   },
 ];

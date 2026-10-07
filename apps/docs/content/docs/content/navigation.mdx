@@ -46,7 +46,13 @@ export default defineMeta({
 
 See [Folder meta](/docs/content/meta) for every field and computing meta at scan time.
 
-A folder's `meta.title` and its own `index` page's frontmatter `title` are resolved independently — translating one under i18n and forgetting the other renders a correct sidebar with a stale `<title>`/heading on the landing page itself. Blume reports a `BLUME_NAV_INDEX_TITLE_MISMATCH` warning when they diverge on an index page that hides its own sidebar row (`sidebar.hidden: true`), where the folder title is the only sidebar label the page has. When the index row is visible, the sidebar already shows both titles, so pairing a folder title with a different page title ("CLI" over "Overview") is fine. Untranslated pages filled in from the fallback locale are exempt — their title belongs to the fallback locale, and the fix is translating the page, not editing its frontmatter.
+A folder's `meta.title` and its own `index` page's frontmatter `title` are resolved independently — translating one under i18n and forgetting the other renders a correct sidebar with a stale heading on the landing page itself. Blume reports a `BLUME_NAV_INDEX_TITLE_MISMATCH` warning when they diverge on an index page that hides its own sidebar row (`sidebar.hidden: true`), where the folder title is the only sidebar label the page has. The check reads `title`, which the page's heading shows; `seo.title` replaces only the `<title>`, so it doesn't count. Untranslated pages filled in from the fallback locale are exempt — their title belongs to the fallback locale, and the fix is translating the page, not editing its frontmatter.
+
+Like every warning, it fails [`blume validate --strict`](/docs/cli/validate). Any of these clears it:
+
+- Change the page's `title` or the folder's `meta.title` so the two match.
+- Keep the page's title on purpose by setting its `sidebar.label` to the folder title, the way any page sets a sidebar label that differs from its title.
+- Show the index row again. The sidebar then shows both titles, so pairing a folder title with a different page title ("CLI" over "Overview") is fine.
 
 To group pages _without_ adding a URL segment, use a parenthesized folder name — see [Pages](/docs/content#group-folders).
 
@@ -152,7 +158,9 @@ sidebar:
   hidden: true
 ```
 
-A folder's `index` page appears both as the group row's link and as the first row inside the group. Hide the index page to keep only the linked header: the group row still opens the landing page, and previous/next links still pass through it.
+A hidden page also stays out of the sitemap and `llms.txt`, and out of site search unless [`search.indexing.includeHiddenPages`](/docs/configuration/search#excluding-pages) is on.
+
+A folder's `index` page appears both as the group row's link and as the first row inside the group. Hide the index page to keep only the linked header: the group row still opens the landing page, and previous/next links still pass through it. Since the navigation still links the page, it isn't a hidden page anywhere else: it stays in the sitemap, site search, and `llms.txt`.
 
 ## Tabs
 

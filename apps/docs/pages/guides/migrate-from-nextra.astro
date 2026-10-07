@@ -495,8 +495,10 @@ Task-by-task guides for the Acme API.`}
   <p>
     Keep this <code>title</code> and the folder's <code>meta.ts</code> title
     the same, or Blume warns with{" "}
-    <code>BLUME_NAV_INDEX_TITLE_MISMATCH</code>. The file differs by version:
-    Nextra 4's <code>asIndexPage</code> key has to go, and Nextra 2 and 3's{" "}
+    <code>BLUME_NAV_INDEX_TITLE_MISMATCH</code>. To keep a different heading,
+    set the page's <code>sidebar.label</code> to the folder's title. The file
+    differs by version: Nextra 4's <code>asIndexPage</code> key has to go, and
+    Nextra 2 and 3's{" "}
     <code>guides.mdx</code> beside the folder moves to{" "}
     <code>guides/index.mdx</code>, which keeps the <code>/guides</code> URL.
     Left beside the folder, it shows up as a second Guides entry.
@@ -706,9 +708,9 @@ Replies to your number arrive as \`message.received\` webhook events.
     longer lands on a page:
   </p>
   <CodeBlock
-    code={`while read -r path; do
-  code=$(curl -sL -o /dev/null -w "%{http_code}" "http://localhost:4321$path")
-  [ "$code" = "200" ] || echo "$code $path"
+    code={`while read -r route; do
+  code=$(curl -sL -o /dev/null -w "%{http_code}" "http://localhost:4321$route")
+  [ "$code" = "200" ] || echo "$code $route"
 done < ../old-urls.txt`}
     lang="bash"
   />
