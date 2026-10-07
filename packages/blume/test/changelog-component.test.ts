@@ -197,10 +197,10 @@ describe("Changelog component", () => {
     // The route map drops archived versions for everyone, so short-circuiting
     // the membership check when i18n is off would list an archived entry with
     // a dead self-anchor while the Markdown mirror left it out.
-    expect(source).toContain("routeByEntry.has(entry.id)");
-    expect(source).not.toContain(
-      "locale === null || routeByEntry.has(entry.id)"
+    expect(source).toContain(
+      "    routeByEntry.has(entryKey(entry.collection, entry.id))\n);"
     );
+    expect(source).not.toContain("locale === null || routeByEntry.has(");
   });
 
   it("links each row to its own page, under the deployment base", async () => {
@@ -208,11 +208,21 @@ describe("Changelog component", () => {
     // Moved here from the template's tests with the list. The manifest route is
     // base-less, so a row rebases it the way the catch-all's canonical does,
     // and falls back to its own anchor when an entry has no page.
-    expect(source).toContain("const route = routeByEntry.get(entry.id);");
+    expect(source).toContain(
+      "const route = routeByEntry.get(entryKey(entry.collection, entry.id));"
+    );
     expect(source).toContain("href: route ? withMountedBase(route) : null,");
     // A regex, so the anchor's own `${…}` isn't read as interpolation here.
     expect(source).toMatch(/href=\{item\.href \?\? `#\$\{item\.id\}`\}/u);
-    expect(source).toContain("routeByEntry.set(route.entryId, route.path);");
+    expect(source).toContain(
+      "routeByEntry.set(entryKey(route.collection, route.entryId), route.path);"
+    );
+    // Keyed by collection too: both collections id an entry by its file path,
+    // so a file on disk and a staged release can share an id while rendering
+    // at different routes, and an id-only map would point both rows at one.
+    expect(source).toMatch(
+      /const entryKey = \(collection: string, id: string\) =>\s+`\$\{collection\}:\$\{id\}`;/u
+    );
   });
 
   it("is a built-in tag, so a page using it passes the component check", async () => {

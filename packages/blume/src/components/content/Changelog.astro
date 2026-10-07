@@ -72,6 +72,12 @@ const slugify = (text: string) =>
 // translated changelog file does not add a second row for the same release.
 // These are the conditions `ai/changelog-markdown.ts` filters pages by, so the
 // rendered list and the Markdown mirror select the same releases.
+//
+// Keyed by collection and id together, the way the catch-all looks an entry up:
+// both collections id an entry by its file path, so a `releases/v1-0-0.md` on
+// disk and a staged release from a source named `releases` share an id while
+// rendering at different routes.
+const entryKey = (collection: string, id: string) => `${collection}:${id}`;
 const routeByEntry = new Map<string, string>();
 for (const route of data.routes) {
   if (
@@ -79,7 +85,7 @@ for (const route of data.routes) {
     !route.fallback &&
     (locale === null || route.locale === locale)
   ) {
-    routeByEntry.set(route.entryId, route.path);
+    routeByEntry.set(entryKey(route.collection, route.entryId), route.path);
   }
 }
 
@@ -101,7 +107,7 @@ const entries = [
     // i18n the map still drops archived versions, and an entry with no
     // current-docs route would otherwise be listed with a dead self-anchor
     // while the Markdown mirror left it out.
-    routeByEntry.has(entry.id)
+    routeByEntry.has(entryKey(entry.collection, entry.id))
 );
 
 const rows = entries
@@ -112,7 +118,7 @@ const rows = entries
       (entry.data.changelog?.version
         ? `v${entry.data.changelog.version}`
         : "Update");
-    const route = routeByEntry.get(entry.id);
+    const route = routeByEntry.get(entryKey(entry.collection, entry.id));
     return {
       date,
       href: route ? withMountedBase(route) : null,
